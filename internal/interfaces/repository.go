@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/boreas/internal/models"
+	"github.com/boreas/internal/pkg/models"
 )
 
 // VersionRepository 版本仓库接口
