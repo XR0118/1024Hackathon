@@ -47,7 +47,7 @@ const Layout: React.FC = () => {
   ]
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
+    <AntLayout style={{ minHeight: '100vh', background: '#f6f8fa' }}>
       <Sider
         breakpoint="lg"
         collapsedWidth="0"
@@ -58,20 +58,26 @@ const Layout: React.FC = () => {
           left: 0,
           top: 0,
           bottom: 0,
+          background: '#24292f',
+          boxShadow: '2px 0 8px rgba(0, 0, 0, 0.1)',
         }}
+        width={220}
       >
         <div
           style={{
             height: 64,
-            margin: 16,
+            margin: '16px 0',
+            padding: '0 20px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
             color: '#fff',
             fontSize: 18,
-            fontWeight: 'bold',
+            fontWeight: 600,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           }}
         >
+          <RocketOutlined style={{ marginRight: 12, fontSize: 20 }} />
           部署平台
         </div>
         <Menu
@@ -80,17 +86,38 @@ const Layout: React.FC = () => {
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '8px 12px',
+          }}
         />
       </Sider>
-      <AntLayout style={{ marginLeft: 200 }}>
-        <Header style={{ padding: 0, background: colorBgContainer }} />
-        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+      <AntLayout style={{ marginLeft: 220, background: '#f6f8fa' }}>
+        <Header
+          style={{
+            padding: '0 24px',
+            background: '#ffffff',
+            borderBottom: '1px solid #d1d5db',
+            display: 'flex',
+            alignItems: 'center',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            height: 64,
+          }}
+        >
+          <div style={{ fontSize: 14, color: '#57606a' }}>
+            七牛云 2024/10/24 Hackathon - 部署管理平台
+          </div>
+        </Header>
+        <Content style={{ margin: '24px', overflow: 'initial' }}>
           <div
             style={{
-              padding: 24,
-              background: colorBgContainer,
-              borderRadius: borderRadiusLG,
+              padding: 32,
+              background: '#ffffff',
+              borderRadius: 8,
               minHeight: 'calc(100vh - 112px)',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
             }}
           >
             <Outlet />

@@ -86,13 +86,24 @@ const DeploymentDetailPage: React.FC = () => {
   return (
     <div>
       <Space style={{ marginBottom: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/deployments')}>
+        <Button 
+          icon={<ArrowLeftOutlined />} 
+          onClick={() => navigate('/deployments')}
+          style={{ borderRadius: 6 }}
+        >
           返回
         </Button>
         <h1 style={{ margin: 0 }}>部署详情</h1>
       </Space>
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card 
+        style={{ 
+          marginBottom: 16,
+          borderRadius: 8,
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        }}
+      >
         <Descriptions column={2}>
           <Descriptions.Item label="部署ID">{deployment.id}</Descriptions.Item>
           <Descriptions.Item label="状态">
@@ -149,13 +160,29 @@ const DeploymentDetailPage: React.FC = () => {
       )}
 
       {deployment.grayscaleEnabled && (
-        <Card title="灰度发布" style={{ marginBottom: 16 }}>
+        <Card 
+          title="灰度发布" 
+          style={{ 
+            marginBottom: 16,
+            borderRadius: 8,
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          }}
+        >
           <p>当前灰度比例: {deployment.grayscaleRatio}%</p>
           <Slider value={deployment.grayscaleRatio} disabled />
         </Card>
       )}
 
-      <Card title="部署流程" style={{ marginBottom: 16 }}>
+      <Card 
+        title="部署流程" 
+        style={{ 
+          marginBottom: 16,
+          borderRadius: 8,
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        }}
+      >
         <Steps
           current={currentStep >= 0 ? currentStep : deployment.steps.length}
           status={
@@ -180,7 +207,14 @@ const DeploymentDetailPage: React.FC = () => {
         />
       </Card>
 
-      <Card title="实时日志">
+      <Card 
+        title="实时日志"
+        style={{
+          borderRadius: 8,
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        }}
+      >
         <div
           style={{
             background: '#000',

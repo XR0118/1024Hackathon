@@ -91,63 +91,85 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>仪表板</h1>
-        <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
-          刷新
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>仪表板</h1>
+        <Button 
+          icon={<ReloadOutlined />} 
+          onClick={loadData} 
+          loading={loading}
+          style={{ borderRadius: 6 }}
+        >
+          刷新数据
         </Button>
       </div>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="活跃版本"
-              value={stats.activeVersions}
-              prefix={<TagOutlined />}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ color: '#0969da' }}>
+              <TagOutlined />
+            </div>
+            <div className="stat-value" style={{ color: '#0969da' }}>
+              {stats.activeVersions}
+            </div>
+            <div className="stat-label">活跃版本</div>
+          </div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="进行中的部署"
-              value={stats.runningDeployments}
-              prefix={<RocketOutlined />}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ color: '#bf8700' }}>
+              <RocketOutlined />
+            </div>
+            <div className="stat-value" style={{ color: '#bf8700' }}>
+              {stats.runningDeployments}
+            </div>
+            <div className="stat-label">进行中的部署</div>
+          </div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="应用总数"
-              value={stats.totalApplications}
-              prefix={<AppstoreOutlined />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ color: '#1a7f37' }}>
+              <AppstoreOutlined />
+            </div>
+            <div className="stat-value" style={{ color: '#1a7f37' }}>
+              {stats.totalApplications}
+            </div>
+            <div className="stat-label">应用总数</div>
+          </div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="环境总数"
-              value={stats.totalEnvironments}
-              prefix={<CloudOutlined />}
-              valueStyle={{ color: '#722ed1' }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ color: '#8250df' }}>
+              <CloudOutlined />
+            </div>
+            <div className="stat-value" style={{ color: '#8250df' }}>
+              {stats.totalEnvironments}
+            </div>
+            <div className="stat-label">环境总数</div>
+          </div>
         </Col>
       </Row>
 
-      <Card title="最近部署" bordered={false}>
+      <Card 
+        title={
+          <span style={{ fontSize: 16, fontWeight: 600 }}>
+            最近部署
+          </span>
+        }
+        bordered={false}
+        style={{ 
+          borderRadius: 8,
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+        }}
+      >
         <Table
           columns={columns}
           dataSource={recentDeployments}
           rowKey="id"
           loading={loading}
           pagination={false}
+          style={{ fontSize: 14 }}
         />
       </Card>
     </div>

@@ -107,31 +107,36 @@ const Versions: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
+      <div className="page-header">
         <h1>版本管理</h1>
       </div>
 
-      <Space style={{ marginBottom: 16 }} wrap>
+      <Space style={{ marginBottom: 20 }} wrap>
         <Input
           placeholder="搜索版本号或标签"
           prefix={<SearchOutlined />}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: 300 }}
+          style={{ width: 300, borderRadius: 6 }}
           allowClear
         />
         <Select
           placeholder="筛选类型"
           value={filterRevert}
           onChange={setFilterRevert}
-          style={{ width: 150 }}
+          style={{ width: 150, borderRadius: 6 }}
           allowClear
         >
           <Select.Option value={false}>正常版本</Select.Option>
           <Select.Option value={true}>回滚版本</Select.Option>
         </Select>
-        <Button icon={<ReloadOutlined />} onClick={loadVersions} loading={loading}>
-          刷新
+        <Button 
+          icon={<ReloadOutlined />} 
+          onClick={loadVersions} 
+          loading={loading}
+          style={{ borderRadius: 6 }}
+        >
+          刷新数据
         </Button>
       </Space>
 

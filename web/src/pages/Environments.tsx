@@ -73,9 +73,13 @@ const Environments: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>环境管理</h1>
-        <Button type="primary" icon={<PlusOutlined />}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>环境管理</h1>
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />}
+          style={{ borderRadius: 6 }}
+        >
           添加环境
         </Button>
       </div>

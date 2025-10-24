@@ -29,9 +29,13 @@ const Applications: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>应用管理</h1>
-        <Button type="primary" icon={<AppstoreAddOutlined />}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>应用管理</h1>
+        <Button 
+          type="primary" 
+          icon={<AppstoreAddOutlined />}
+          style={{ borderRadius: 6 }}
+        >
           添加应用
         </Button>
       </div>
@@ -42,6 +46,11 @@ const Applications: React.FC = () => {
             <Card
               hoverable
               loading={loading}
+              style={{
+                borderRadius: 8,
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              }}
               actions={[
                 <Button
                   type="link"

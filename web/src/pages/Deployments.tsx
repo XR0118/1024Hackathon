@@ -97,23 +97,24 @@ const Deployments: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>部署管理</h1>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>部署管理</h1>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => navigate('/deployments/new')}
+          style={{ borderRadius: 6 }}
         >
           新建部署
         </Button>
       </div>
 
-      <Space style={{ marginBottom: 16 }} wrap>
+      <Space style={{ marginBottom: 20 }} wrap>
         <Select
           placeholder="筛选状态"
           value={statusFilter}
           onChange={setStatusFilter}
-          style={{ width: 150 }}
+          style={{ width: 150, borderRadius: 6 }}
           allowClear
         >
           <Select.Option value="pending">待开始</Select.Option>
@@ -122,9 +123,14 @@ const Deployments: React.FC = () => {
           <Select.Option value="failed">失败</Select.Option>
           <Select.Option value="waiting_confirm">待确认</Select.Option>
         </Select>
-        <RangePicker />
-        <Button icon={<ReloadOutlined />} onClick={loadDeployments} loading={loading}>
-          刷新
+        <RangePicker style={{ borderRadius: 6 }} />
+        <Button 
+          icon={<ReloadOutlined />} 
+          onClick={loadDeployments} 
+          loading={loading}
+          style={{ borderRadius: 6 }}
+        >
+          刷新数据
         </Button>
       </Space>
 

@@ -190,7 +190,14 @@ const CreateDeployment: React.FC = () => {
             showIcon
             style={{ marginBottom: 16 }}
           />
-          <Card title="部署摘要" size="small">
+          <Card 
+            title="部署摘要" 
+            size="small"
+            style={{
+              borderRadius: 8,
+              border: '1px solid #e5e7eb',
+            }}
+          >
             <p><strong>版本:</strong> {versions.find((v) => v.id === selectedVersion)?.version}</p>
             <p>
               <strong>应用:</strong>{' '}
@@ -229,24 +236,43 @@ const CreateDeployment: React.FC = () => {
   return (
     <div>
       <Space style={{ marginBottom: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/deployments')}>
+        <Button 
+          icon={<ArrowLeftOutlined />} 
+          onClick={() => navigate('/deployments')}
+          style={{ borderRadius: 6 }}
+        >
           返回
         </Button>
         <h1 style={{ margin: 0 }}>新建部署</h1>
       </Space>
 
-      <Card>
+      <Card
+        style={{
+          borderRadius: 8,
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        }}
+      >
         <Steps current={currentStep} items={steps.map((s) => ({ title: s.title }))} />
         <div style={{ marginTop: 24, marginBottom: 24 }}>
           {steps[currentStep].content}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button disabled={currentStep === 0} onClick={handlePrev}>
+          <Button 
+            disabled={currentStep === 0} 
+            onClick={handlePrev}
+            style={{ borderRadius: 6 }}
+          >
             上一步
           </Button>
           <Space>
             {currentStep < steps.length - 1 && (
-              <Button type="primary" onClick={handleNext} disabled={!isStepValid()}>
+              <Button 
+                type="primary" 
+                onClick={handleNext} 
+                disabled={!isStepValid()}
+                style={{ borderRadius: 6 }}
+              >
                 下一步
               </Button>
             )}
@@ -256,6 +282,7 @@ const CreateDeployment: React.FC = () => {
                 onClick={handleSubmit}
                 loading={loading}
                 disabled={!isStepValid()}
+                style={{ borderRadius: 6 }}
               >
                 提交部署
               </Button>
