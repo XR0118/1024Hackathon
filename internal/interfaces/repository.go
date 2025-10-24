@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/guaguasong/1024Hackathon/internal/models"
+	"github.com/boreas/internal/models"
 )
 
 // VersionRepository 版本仓库接口

@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/guaguasong/1024Hackathon/internal/config"
-	"github.com/guaguasong/1024Hackathon/internal/database"
-	"github.com/guaguasong/1024Hackathon/internal/handler"
-	"github.com/guaguasong/1024Hackathon/internal/logger"
-	"github.com/guaguasong/1024Hackathon/internal/middleware"
-	"github.com/guaguasong/1024Hackathon/internal/repository/postgres"
-	"github.com/guaguasong/1024Hackathon/internal/service"
-	"github.com/guaguasong/1024Hackathon/internal/utils"
+	"github.com/boreas/internal/config"
+	"github.com/boreas/internal/database"
+	"github.com/boreas/internal/handler"
+	"github.com/boreas/internal/logger"
+	"github.com/boreas/internal/middleware"
+	"github.com/boreas/internal/repository/postgres"
+	"github.com/boreas/internal/service"
+	"github.com/boreas/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -103,7 +103,15 @@ func main() {
 
 	router.GET("/ready", func(c *gin.Context) {
 		// 检查数据库连接
-		if err := database.GetDB().DB().Ping(); err != nil {
+		sqlDB, err := database.GetDB().DB()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "not ready",
+				"error":  err.Error(),
+			})
+			return
+		}
+		if err := sqlDB.Ping(); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status": "not ready",
 				"error":  err.Error(),

@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/guaguasong/1024Hackathon/internal/interfaces"
-	"github.com/guaguasong/1024Hackathon/internal/models"
-	"github.com/guaguasong/1024Hackathon/internal/utils"
+	"github.com/boreas/internal/interfaces"
+	"github.com/boreas/internal/models"
+	"github.com/boreas/internal/utils"
 )
 
 type taskHandler struct {

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/guaguasong/1024Hackathon/internal/interfaces"
-	"github.com/guaguasong/1024Hackathon/internal/models"
-	"github.com/guaguasong/1024Hackathon/internal/utils"
+	"github.com/boreas/internal/interfaces"
+	"github.com/boreas/internal/models"
+	"github.com/boreas/internal/utils"
 )
 
 type deploymentService struct {
@@ -43,13 +43,13 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 	}
 
 	// 验证版本是否存在
-	version, err := s.versionRepo.GetByID(ctx, req.VersionID)
+	_, err := s.versionRepo.GetByID(ctx, req.VersionID)
 	if err != nil {
 		return nil, fmt.Errorf("version not found: %w", err)
 	}
 
 	// 验证环境是否存在
-	environment, err := s.envRepo.GetByID(ctx, req.EnvironmentID)
+	_, err = s.envRepo.GetByID(ctx, req.EnvironmentID)
 	if err != nil {
 		return nil, fmt.Errorf("environment not found: %w", err)
 	}

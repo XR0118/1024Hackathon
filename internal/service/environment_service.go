@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/guaguasong/1024Hackathon/internal/interfaces"
-	"github.com/guaguasong/1024Hackathon/internal/models"
-	"github.com/guaguasong/1024Hackathon/internal/utils"
+	"github.com/boreas/internal/interfaces"
+	"github.com/boreas/internal/models"
+	"github.com/boreas/internal/utils"
 )
 
 type environmentService struct {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/guaguasong/1024Hackathon/internal/config"
-	"github.com/guaguasong/1024Hackathon/internal/models"
+	"github.com/boreas/internal/config"
+	"github.com/boreas/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/guaguasong/1024Hackathon/internal/models"
+	"github.com/boreas/internal/models"
 )
 
 // Response 统一响应结构

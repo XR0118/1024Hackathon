@@ -68,7 +68,7 @@ func Sync() {
 
 // NewFileLogger 创建文件日志器
 func NewFileLogger(filename string, level zapcore.Level) (*zap.Logger, error) {
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	_, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
