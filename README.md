@@ -1,59 +1,108 @@
-# Boreas - 基于 GitOps 的持续部署平台
+# Boreas - 基于 GitOps 的多服务持续部署平台
 
-Boreas 是一个基于 GitOps 的持续部署平台，支持 Kubernetes 和物理机部署，提供完整的版本管理、应用管理、环境管理和部署管理功能。
+Boreas 是一个基于 GitOps 的持续部署平台，采用单体仓库 + 共享库模式，支持 Kubernetes 和物理机部署，提供完整的版本管理、应用管理、环境管理和部署管理功能。
+
+## 架构概述
+
+Boreas 采用单体仓库 + 共享库模式，包含以下核心服务：
+
+### 1. Master Service (核心服务)
+作为整个系统的中枢模块，负责：
+- 上游承接时间通知，包含Git Tag等，即创建版本
+- 内部实现规划、编排部署任务
+- 运行编排好的部署任务，让下游具体操作
+- 同时监控跟踪部署状态
+
+**端口**: 8080  
+**入口**: `cmd/master-service/main.go`
+
+### 2. Operator Services (部署执行器)
+为master下游，由于K8S与裸金属环境的不同，拆分成不同服务：
+
+#### Operator-K8s
+- 执行Kubernetes环境的部署操作
+- 维持Kubernetes部署状态
+- 提供Kubernetes部署状态，供上游查询
+
+**端口**: 8081  
+**入口**: `cmd/operator-k8s/main.go`
+
+#### Operator-Baremetal
+- 执行物理机环境的部署操作
+- 维持物理机部署状态
+- 提供物理机部署状态，供上游查询
+
+**端口**: 8082  
+**入口**: `cmd/operator-baremetal/main.go`
+
+### 3. Web Management (Web管理界面)
+为master服务搭配的web管理界面，包含功能：
+- 状态查看
+- 半自动编排/编辑等
+- 人工复核确认
+
+**端口**: 3000  
+**目录**: `web/`
 
 ## 项目结构
 
 ```
 boreas/
-├── cmd/                    # 应用程序入口
-│   ├── management-service/ # 管理服务
-│   ├── deploy-service/    # 部署服务
-│   └── webhook-service/   # Webhook 服务
-├── internal/              # 内部包
-│   ├── config/           # 配置管理
-│   ├── database/         # 数据库连接
-│   ├── handler/          # HTTP 处理器
-│   ├── interfaces/       # 接口定义
-│   ├── logger/           # 日志管理
-│   ├── middleware/       # 中间件
-│   ├── models/           # 数据模型
-│   ├── repository/       # 数据访问层
-│   └── service/          # 业务逻辑层
-├── configs/              # 配置文件
-├── docker/               # Docker 文件
-├── migrations/           # 数据库迁移
-├── nginx/                # Nginx 配置
-├── docs/                 # 文档
-└── web/                  # 前端应用
+├── cmd/                          # 应用入口
+│   ├── master-service/          # 核心服务入口
+│   │   ├── main.go             # 主服务入口
+│   │   └── webhook/            # Webhook服务入口
+│   ├── operator-k8s/            # K8s Operator入口
+│   │   └── main.go
+│   └── operator-baremetal/      # Baremetal Operator入口
+│       └── main.go
+├── internal/                     # 内部包
+│   ├── pkg/                     # 共享包
+│   │   ├── config/              # 配置管理
+│   │   ├── database/            # 数据库连接
+│   │   ├── logger/              # 日志管理
+│   │   ├── middleware/          # 中间件
+│   │   ├── models/              # 数据模型
+│   │   └── utils/               # 工具函数
+│   ├── services/                # 各服务特有逻辑
+│   │   ├── master/              # Master服务逻辑
+│   │   │   ├── handler/         # HTTP处理器
+│   │   │   ├── service/         # 业务逻辑
+│   │   │   └── repository/      # 数据访问层
+│   │   ├── operator-k8s/        # K8s Operator逻辑
+│   │   │   ├── handler/
+│   │   │   ├── service/
+│   │   │   └── repository/
+│   │   └── operator-baremetal/  # Baremetal Operator逻辑
+│   │       ├── handler/
+│   │       ├── service/
+│   │       └── repository/
+│   └── interfaces/              # 接口定义
+├── web/                         # 前端管理界面
+├── api/                         # API定义
+│   ├── proto/                   # gRPC定义
+│   └── openapi/                 # REST API定义
+├── configs/                     # 配置文件
+├── deployments/                 # 部署配置
+│   └── docker/                  # Docker配置
+├── docs/                        # 文档
+├── migrations/                  # 数据库迁移
+├── scripts/                     # 脚本
+├── docker-compose.yml           # Docker Compose配置
+├── go.mod                       # Go模块定义
+└── Makefile                     # 构建脚本
 ```
-
-## 功能特性
-
-### 核心功能
-
-- **版本管理**: 基于 Git Tag 的版本管理，支持自动版本创建
-- **应用管理**: 支持微服务和单体应用的管理
-- **环境管理**: 支持 Kubernetes 和物理机环境
-- **部署管理**: 完整的部署生命周期管理
-- **工作流管理**: 基于任务的工作流编排
-- **Webhook 集成**: 支持 GitHub Webhook 自动触发
-
-### 部署支持
-
-- **Kubernetes 部署**: 支持滚动更新、蓝绿部署等策略
-- **物理机部署**: 支持 SSH 部署和系统服务管理
-- **健康检查**: 多种健康检查方式
-- **回滚支持**: 快速回滚到历史版本
 
 ## 快速开始
 
 ### 环境要求
 
 - Go 1.21+
+- Node.js 18+
 - PostgreSQL 15+
 - Redis 7+
 - Docker & Docker Compose
+- Kubernetes 集群 (如果使用K8s部署)
 
 ### 本地开发
 
@@ -66,10 +115,9 @@ boreas/
 2. **安装依赖**
    ```bash
    make deps
-   make install-tools
    ```
 
-3. **启动数据库**
+3. **启动基础设施**
    ```bash
    docker-compose up -d postgres redis
    ```
@@ -79,79 +127,73 @@ boreas/
    make migrate-up
    ```
 
-5. **启动服务**
+5. **启动Master服务**
    ```bash
-   # 启动管理服务
-   make run-management-service
+   make run-master
+   ```
+
+6. **启动Operator服务**
+   ```bash
+   # 启动K8s Operator
+   make run-operator-k8s
    
-   # 或启动所有服务
-   make run-dev
+   # 启动Baremetal Operator
+   make run-operator-baremetal
    ```
 
-### Docker 部署
-
-1. **构建镜像**
+7. **启动Web管理界面**
    ```bash
-   make docker-build
+   make run-web
    ```
 
-2. **启动服务**
+### Docker部署
+
+1. **构建所有服务**
    ```bash
-   make docker-run
+   make docker-build-all
    ```
 
-3. **停止服务**
+2. **启动所有服务**
    ```bash
-   make docker-stop
+   make docker-run-all
    ```
 
-## API 文档
+3. **停止所有服务**
+   ```bash
+   make docker-stop-all
+   ```
 
-### 管理服务 API (端口 8080)
+## 服务间通信
 
-#### 版本管理
-- `POST /api/v1/versions` - 创建版本
-- `GET /api/v1/versions` - 获取版本列表
-- `GET /api/v1/versions/{id}` - 获取版本详情
-- `DELETE /api/v1/versions/{id}` - 删除版本
+### Master Service API
+- **端口**: 8080
+- **功能**: 版本管理、应用管理、环境管理、部署编排
+- **健康检查**: `GET /health`
+- **就绪检查**: `GET /ready`
 
-#### 应用管理
-- `POST /api/v1/applications` - 创建应用
-- `GET /api/v1/applications` - 获取应用列表
-- `GET /api/v1/applications/{id}` - 获取应用详情
-- `PUT /api/v1/applications/{id}` - 更新应用
-- `DELETE /api/v1/applications/{id}` - 删除应用
+### Operator-K8s API
+- **端口**: 8081
+- **功能**: Kubernetes部署执行、状态查询
+- **健康检查**: `GET /health`
+- **就绪检查**: `GET /ready`
+- **部署执行**: `POST /api/v1/deploy/{id}/execute`
+- **状态查询**: `GET /api/v1/deploy/{id}/status`
+- **日志获取**: `GET /api/v1/deploy/{id}/logs`
+- **取消部署**: `POST /api/v1/deploy/{id}/cancel`
 
-#### 环境管理
-- `POST /api/v1/environments` - 创建环境
-- `GET /api/v1/environments` - 获取环境列表
-- `GET /api/v1/environments/{id}` - 获取环境详情
-- `PUT /api/v1/environments/{id}` - 更新环境
-- `DELETE /api/v1/environments/{id}` - 删除环境
+### Operator-Baremetal API
+- **端口**: 8082
+- **功能**: 物理机部署执行、状态查询
+- **健康检查**: `GET /health`
+- **就绪检查**: `GET /ready`
+- **部署执行**: `POST /api/v1/deploy/{id}/execute`
+- **状态查询**: `GET /api/v1/deploy/{id}/status`
+- **日志获取**: `GET /api/v1/deploy/{id}/logs`
+- **取消部署**: `POST /api/v1/deploy/{id}/cancel`
 
-#### 部署管理
-- `POST /api/v1/deployments` - 创建部署
-- `GET /api/v1/deployments` - 获取部署列表
-- `GET /api/v1/deployments/{id}` - 获取部署详情
-- `POST /api/v1/deployments/{id}/cancel` - 取消部署
-- `POST /api/v1/deployments/{id}/rollback` - 回滚部署
-
-#### 任务管理
-- `GET /api/v1/tasks` - 获取任务列表
-- `GET /api/v1/tasks/{id}` - 获取任务详情
-- `POST /api/v1/tasks/{id}/retry` - 重试任务
-
-### Webhook 服务 API (端口 8082)
-
-#### GitHub Webhook
-- `POST /api/v1/webhooks/github` - 接收 GitHub Webhook
-
-### 部署服务 API (端口 8081)
-
-#### 内部 API
-- `GET /internal/v1/deploy/info/{deployment_id}` - 获取部署信息
-- `GET /internal/v1/deploy/health/{deployment_id}` - 健康检查
-- `GET /internal/v1/deploy/logs/{deployment_id}` - 获取日志
+### Web Management
+- **端口**: 3000
+- **功能**: 管理界面、状态查看、人工复核
 
 ## 配置说明
 
@@ -166,10 +208,10 @@ boreas/
 | `DB_USER` | 数据库用户 | `boreas` |
 | `DB_PASSWORD` | 数据库密码 | `boreas123` |
 | `DB_NAME` | 数据库名称 | `boreas` |
-| `REDIS_HOST` | Redis 主机 | `localhost` |
-| `REDIS_PORT` | Redis 端口 | `6379` |
+| `REDIS_HOST` | Redis主机 | `localhost` |
+| `REDIS_PORT` | Redis端口 | `6379` |
 | `LOG_LEVEL` | 日志级别 | `info` |
-| `GITHUB_WEBHOOK_SECRET` | GitHub Webhook 密钥 | - |
+| `GITHUB_WEBHOOK_SECRET` | GitHub Webhook密钥 | - |
 
 ### 配置文件
 
@@ -179,40 +221,40 @@ boreas/
 
 ### 代码结构
 
-- `internal/models/` - 数据模型和类型定义
+- `internal/pkg/` - 共享包，所有服务都可以使用
+- `internal/services/` - 各服务特有的业务逻辑
 - `internal/interfaces/` - 接口定义
-- `internal/repository/` - 数据访问层实现
-- `internal/service/` - 业务逻辑层实现
-- `internal/handler/` - HTTP 处理器
-- `internal/middleware/` - 中间件
+- `cmd/` - 各服务的入口点
 
 ### 添加新功能
 
-1. 在 `internal/models/` 中定义数据模型
+1. 在 `internal/pkg/models/` 中定义数据模型
 2. 在 `internal/interfaces/` 中定义接口
-3. 在 `internal/repository/` 中实现数据访问
-4. 在 `internal/service/` 中实现业务逻辑
-5. 在 `internal/handler/` 中实现 HTTP 处理
+3. 在对应服务的 `repository/` 中实现数据访问
+4. 在对应服务的 `service/` 中实现业务逻辑
+5. 在对应服务的 `handler/` 中实现HTTP处理
 6. 在 `cmd/` 中注册路由
 
 ### 测试
 
 ```bash
-# 运行测试
-make test
+# 运行所有测试
+make test-all
 
-# 运行测试并生成覆盖率报告
-make test-coverage
+# 运行特定服务测试
+make test-master
+make test-operator-k8s
+make test-operator-baremetal
 ```
 
 ### 代码检查
 
 ```bash
-# 格式化代码
-make fmt
+# 格式化所有代码
+make fmt-all
 
-# 运行 linter
-make lint
+# 运行所有linter
+make lint-all
 ```
 
 ## 部署指南
@@ -220,20 +262,22 @@ make lint
 ### 生产环境部署
 
 1. **准备环境**
-   - 安装 PostgreSQL 和 Redis
-   - 配置 Kubernetes 集群（如果使用 K8s 部署）
+   - 安装PostgreSQL和Redis
+   - 配置Kubernetes集群（如果使用K8s部署）
+   - 配置物理机环境（如果使用Baremetal部署）
 
 2. **配置应用**
    - 修改 `configs/config.yaml` 或设置环境变量
-   - 配置 GitHub Webhook 密钥
+   - 配置GitHub Webhook密钥
+   - 配置Kubernetes认证信息
 
 3. **部署服务**
    ```bash
-   # 使用 Docker Compose
-   docker-compose up -d
+   # 使用Docker Compose
+   make docker-run-all
    
-   # 或使用 Kubernetes
-   kubectl apply -f k8s/
+   # 或使用Kubernetes
+   kubectl apply -f deployments/k8s/
    ```
 
 ### 监控和日志
@@ -245,11 +289,11 @@ make lint
 
 ## 贡献指南
 
-1. Fork 项目
+1. Fork项目
 2. 创建功能分支
 3. 提交更改
 4. 推送到分支
-5. 创建 Pull Request
+5. 创建Pull Request
 
 ## 许可证
 

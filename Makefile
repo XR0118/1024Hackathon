@@ -1,133 +1,153 @@
-.PHONY: build run test clean docker-build docker-run help
+# Boreas 多服务架构 Makefile
 
-# 项目配置
-PROJECT_NAME := boreas
-VERSION := $(shell git describe --tags --always --dirty)
-BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-GO_VERSION := $(shell go version | awk '{print $$3}')
-
-# 构建标志
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.GoVersion=$(GO_VERSION)"
+.PHONY: help build run test clean docker-build docker-run docker-stop migrate-up migrate-down deps install-tools
 
 # 默认目标
-.DEFAULT_GOAL := help
+help:
+	@echo "Boreas 多服务架构构建工具"
+	@echo ""
+	@echo "可用命令:"
+	@echo "  deps                    - 安装所有依赖"
+	@echo "  install-tools           - 安装开发工具"
+	@echo "  build-all               - 构建所有服务"
+	@echo "  build-master            - 构建Master服务"
+	@echo "  build-operator-k8s      - 构建K8s Operator服务"
+	@echo "  build-operator-baremetal - 构建Baremetal Operator服务"
+	@echo "  build-web               - 构建Web管理界面"
+	@echo "  run-all                 - 运行所有服务"
+	@echo "  run-master              - 运行Master服务"
+	@echo "  run-operator-k8s        - 运行K8s Operator服务"
+	@echo "  run-operator-baremetal  - 运行Baremetal Operator服务"
+	@echo "  run-web                 - 运行Web管理界面"
+	@echo "  test-all                - 运行所有测试"
+	@echo "  test-master             - 运行Master服务测试"
+	@echo "  test-operator-k8s       - 运行K8s Operator测试"
+	@echo "  test-operator-baremetal - 运行Baremetal Operator测试"
+	@echo "  fmt-all                 - 格式化所有代码"
+	@echo "  lint-all                - 运行所有linter"
+	@echo "  clean-all               - 清理所有构建文件"
+	@echo "  docker-build-all        - 构建所有Docker镜像"
+	@echo "  docker-run-all          - 运行所有Docker容器"
+	@echo "  docker-stop-all         - 停止所有Docker容器"
+	@echo "  migrate-up              - 运行数据库迁移"
+	@echo "  migrate-down            - 回滚数据库迁移"
 
-# 构建所有服务
-build:
-	@echo "Building $(PROJECT_NAME) services..."
-	@mkdir -p bin
-	go build $(LDFLAGS) -o bin/management-service ./cmd/management-service
-	go build $(LDFLAGS) -o bin/deploy-service ./cmd/deploy-service
-	go build $(LDFLAGS) -o bin/webhook-service ./cmd/webhook-service
-	@echo "Build completed!"
+# 依赖管理
+deps:
+	@echo "安装Go依赖..."
+	go mod tidy
+	@echo "安装Node.js依赖..."
+	cd web && npm install
 
-# 运行开发环境
-run-dev:
-	@echo "Starting development environment..."
-	@make -j3 run-management-service run-deploy-service run-webhook-service
+install-tools:
+	@echo "安装开发工具..."
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
-# 运行各个服务
-run-management-service:
-	@echo "Starting management service..."
-	./bin/management-service
+# 构建
+build-all: build-master build-operator-k8s build-operator-baremetal build-web
 
-run-deploy-service:
-	@echo "Starting deploy service..."
-	./bin/deploy-service
+build-master:
+	@echo "构建Master服务..."
+	go build -o bin/master-service cmd/master-service/main.go
 
-run-webhook-service:
-	@echo "Starting webhook service..."
-	./bin/webhook-service
+build-operator-k8s:
+	@echo "构建K8s Operator服务..."
+	go build -o bin/operator-k8s cmd/operator-k8s/main.go
+
+build-operator-baremetal:
+	@echo "构建Baremetal Operator服务..."
+	go build -o bin/operator-baremetal cmd/operator-baremetal/main.go
+
+build-web:
+	@echo "构建Web管理界面..."
+	cd web && npm run build
+
+# 运行
+run-all: run-master run-operator-k8s run-operator-baremetal run-web
+
+run-master:
+	@echo "运行Master服务..."
+	go run cmd/master-service/main.go
+
+run-operator-k8s:
+	@echo "运行K8s Operator服务..."
+	go run cmd/operator-k8s/main.go
+
+run-operator-baremetal:
+	@echo "运行Baremetal Operator服务..."
+	go run cmd/operator-baremetal/main.go
+
+run-web:
+	@echo "运行Web管理界面..."
+	cd web && npm run dev
 
 # 测试
-test:
-	@echo "Running tests..."
-	go test -v ./...
+test-all: test-master test-operator-k8s test-operator-baremetal
 
-test-coverage:
-	@echo "Running tests with coverage..."
-	go test -v -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
+test-master:
+	@echo "运行Master服务测试..."
+	go test ./internal/services/master/...
 
-# 代码检查
-lint:
-	@echo "Running linters..."
-	golangci-lint run
+test-operator-k8s:
+	@echo "运行K8s Operator测试..."
+	go test ./internal/services/operator-k8s/...
 
-# 格式化代码
-fmt:
-	@echo "Formatting code..."
+test-operator-baremetal:
+	@echo "运行Baremetal Operator测试..."
+	go test ./internal/services/operator-baremetal/...
+
+# 代码格式化
+fmt-all:
+	@echo "格式化所有代码..."
 	go fmt ./...
 
+# Lint
+lint-all:
+	@echo "运行所有linter..."
+	golangci-lint run
+
 # 清理
-clean:
-	@echo "Cleaning up..."
+clean-all:
+	@echo "清理所有构建文件..."
 	rm -rf bin/
-	rm -f coverage.out coverage.html
+	cd web && rm -rf dist/
+	cd web && rm -rf node_modules/
 
-# Docker 构建
-docker-build:
-	@echo "Building Docker images..."
-	docker build -t $(PROJECT_NAME)/management-service:$(VERSION) -f docker/management-service.Dockerfile .
-	docker build -t $(PROJECT_NAME)/deploy-service:$(VERSION) -f docker/deploy-service.Dockerfile .
-	docker build -t $(PROJECT_NAME)/webhook-service:$(VERSION) -f docker/webhook-service.Dockerfile .
+# Docker
+docker-build-all:
+	@echo "构建所有Docker镜像..."
+	docker build -f deployments/docker/master-service.Dockerfile -t boreas/master-service:latest .
+	docker build -f deployments/docker/operator-k8s.Dockerfile -t boreas/operator-k8s:latest .
+	docker build -f deployments/docker/operator-baremetal.Dockerfile -t boreas/operator-baremetal:latest .
+	docker build -f deployments/docker/web-management.Dockerfile -t boreas/web-management:latest .
 
-# Docker 运行
-docker-run:
-	@echo "Starting services with Docker Compose..."
+docker-run-all:
+	@echo "运行所有Docker容器..."
 	docker-compose up -d
 
-# 停止 Docker 服务
-docker-stop:
-	@echo "Stopping Docker services..."
+docker-stop-all:
+	@echo "停止所有Docker容器..."
 	docker-compose down
 
 # 数据库迁移
 migrate-up:
-	@echo "Running database migrations..."
-	migrate -path migrations -database "postgres://localhost/boreas?sslmode=disable" up
+	@echo "运行数据库迁移..."
+	go run cmd/master-service/migrate.go up
 
 migrate-down:
-	@echo "Rolling back database migrations..."
-	migrate -path migrations -database "postgres://localhost/boreas?sslmode=disable" down
+	@echo "回滚数据库迁移..."
+	go run cmd/master-service/migrate.go down
 
-# 生成 API 文档
-docs:
-	@echo "Generating API documentation..."
-	swag init -g cmd/management-service/main.go -o docs/api
+# 开发环境
+dev-setup: deps install-tools
+	@echo "设置开发环境..."
+	docker-compose up -d postgres redis
+	@echo "等待数据库启动..."
+	sleep 10
+	make migrate-up
+	@echo "开发环境设置完成！"
 
-# 安装依赖
-deps:
-	@echo "Installing dependencies..."
-	go mod download
-	go mod tidy
-
-# 安装开发工具
-install-tools:
-	@echo "Installing development tools..."
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	go install github.com/swaggo/swag/cmd/swag@latest
-	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-
-# 帮助信息
-help:
-	@echo "Available commands:"
-	@echo "  build              - Build all services"
-	@echo "  run-dev            - Run all services in development mode"
-	@echo "  run-management-service - Run management service only"
-	@echo "  run-deploy-service - Run deploy service only"
-	@echo "  run-webhook-service - Run webhook service only"
-	@echo "  test               - Run tests"
-	@echo "  test-coverage      - Run tests with coverage report"
-	@echo "  lint               - Run linters"
-	@echo "  fmt                - Format code"
-	@echo "  clean              - Clean build artifacts"
-	@echo "  docker-build       - Build Docker images"
-	@echo "  docker-run         - Run services with Docker Compose"
-	@echo "  docker-stop        - Stop Docker services"
-	@echo "  migrate-up         - Run database migrations"
-	@echo "  migrate-down       - Rollback database migrations"
-	@echo "  docs               - Generate API documentation"
-	@echo "  deps               - Install dependencies"
-	@echo "  install-tools      - Install development tools"
-	@echo "  help               - Show this help message"
+# 生产环境
+prod-deploy: docker-build-all docker-run-all
+	@echo "生产环境部署完成！"
