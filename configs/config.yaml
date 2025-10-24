@@ -1,0 +1,30 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "boreas"
+  password: "boreas123"
+  name: "boreas"
+  ssl_mode: "disable"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+log:
+  level: "info"
+  format: "json"
+  output: "stdout"
+
+github:
+  webhook_secret: ""
+  token: ""
+
+k8s:
+  config_path: ""
+  namespace: "default"
