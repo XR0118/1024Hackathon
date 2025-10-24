@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 
 interface ErrorMessageProps {
   message: string;
@@ -10,9 +11,11 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({ message, onDismiss }) => {
     return null;
   }
 
+  const sanitizedMessage = DOMPurify.sanitize(message);
+
   return (
     <div className="alert alert-danger alert-dismissible" role="alert">
-      {message}
+      <div dangerouslySetInnerHTML={{ __html: sanitizedMessage }} />
       <button type="button" className="btn-close" onClick={onDismiss} aria-label="Close"></button>
     </div>
   );

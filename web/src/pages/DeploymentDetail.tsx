@@ -5,11 +5,11 @@ import { formatDate, formatDuration, getStatusColor, getStatusText } from '@/uti
 import type { DeploymentDetail as DeploymentDetailType } from '@/types'
 import { IconArrowLeft, IconCheck, IconArrowBackUp } from '@tabler/icons-react'
 import { useErrorStore } from '@/store/error'
+import DOMPurify from 'dompurify';
 
 const DeploymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { setError } = useErrorStore();
   const [deployment, setDeployment] = useState<DeploymentDetailType | null>(null)
   const [loading, setLoading] = useState(false)
   const [note, setNote] = useState('')
@@ -22,11 +22,11 @@ const DeploymentDetailPage: React.FC = () => {
       const data = await deploymentApi.get(id)
       setDeployment(data)
     } catch (error) {
-      setError('Failed to load deployment details.')
+      useErrorStore.getState().setError('Failed to load deployment details.')
     } finally {
       setLoading(false)
     }
-  }, [id, setError])
+  }, [id])
 
   useEffect(() => {
     loadDeployment()
@@ -41,7 +41,7 @@ const DeploymentDetailPage: React.FC = () => {
       setNote('')
       loadDeployment()
     } catch (error) {
-      setError('Failed to confirm deployment.')
+      useErrorStore.getState().setError('Failed to confirm deployment.')
     }
   }
 
@@ -52,7 +52,7 @@ const DeploymentDetailPage: React.FC = () => {
       setReason('')
       loadDeployment()
     } catch (error) {
-      setError('Failed to rollback deployment.')
+      useErrorStore.getState().setError('Failed to rollback deployment.')
     }
   }
 
@@ -146,7 +146,7 @@ const DeploymentDetailPage: React.FC = () => {
             <div key={index}>
               <span style={{ color: '#666' }}>[{log.timestamp}]</span>{' '}
               <span style={{ color: log.level === 'error' ? '#f00' : log.level === 'warn' ? '#fa0' : '#0f0' }}>[{log.level.toUpperCase()}]</span>{' '}
-              {log.message}
+              <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.message) }} />
             </div>
           ))}
         </div>

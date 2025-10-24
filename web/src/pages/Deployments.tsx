@@ -8,7 +8,6 @@ import { useErrorStore } from '@/store/error'
 
 const Deployments: React.FC = () => {
   const navigate = useNavigate()
-  const { setError } = useErrorStore();
   const [deployments, setDeployments] = useState<Deployment[]>([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -25,11 +24,11 @@ const Deployments: React.FC = () => {
       })
       setDeployments(data)
     } catch (error) {
-      setError('Failed to load deployments.')
+      useErrorStore.getState().setError('Failed to load deployments.')
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, startDate, endDate, setError])
+  }, [statusFilter, startDate, endDate])
 
   useEffect(() => {
     loadDeployments()
