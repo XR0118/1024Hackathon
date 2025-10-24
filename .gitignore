@@ -36,3 +36,29 @@ web/node_modules/
 web/dist/
 web/dist-ssr/
 web/*.local
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+
+# Temporary files
+.tmp/
+.tmp-comment/
+
+# Old structure (deprecated) - only ignore at root level
+/cmd/
+/internal/
+/configs/
+/migrations/
+/docker/
+/docs/
+/nginx/
+/bin/deploy-service
+/bin/management-service
+/bin/webhook-service
+/deploy-service
+/management-service
+/webhook-service
+/Makefile
+/docker-compose.yml
+/scripts/
