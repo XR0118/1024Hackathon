@@ -1,24 +1,22 @@
 import React, { useEffect, useState } from 'react'
-import { Table, Tag, Button, Input, Select, Space, Drawer } from 'antd'
-import { SearchOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
 import { versionApi } from '@/services/api'
 import { formatDate } from '@/utils'
 import type { Version } from '@/types'
+import { IconSearch, IconRefresh, IconAlertTriangle } from '@tabler/icons-react'
 
 const Versions: React.FC = () => {
   const [versions, setVersions] = useState<Version[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [filterRevert, setFilterRevert] = useState<boolean | undefined>(undefined)
+  const [filterRevert, setFilterRevert] = useState<string>('')
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
-  const [drawerVisible, setDrawerVisible] = useState(false)
 
   const loadVersions = async () => {
     setLoading(true)
     try {
       const data = await versionApi.list({
         search: searchText || undefined,
-        isRevert: filterRevert,
+        isRevert: filterRevert ? filterRevert === 'true' : undefined,
       })
       setVersions(data)
     } catch (error) {
@@ -29,142 +27,154 @@ const Versions: React.FC = () => {
   }
 
   useEffect(() => {
-    loadVersions()
+    const timer = setTimeout(() => {
+      loadVersions()
+    }, 500) // Debounce search input
+    return () => clearTimeout(timer)
   }, [searchText, filterRevert])
 
-  const columns = [
-    {
-      title: '版本号',
-      dataIndex: 'version',
-      key: 'version',
-      render: (version: string, record: Version) => (
-        <span>
-          {record.isRevert && <WarningOutlined style={{ color: '#faad14', marginRight: 8 }} />}
-          {version}
-        </span>
-      ),
-    },
-    {
-      title: 'Git Tag',
-      dataIndex: 'gitTag',
-      key: 'gitTag',
-      render: (tag: string) => (
-        <a href={`https://github.com/your-org/your-repo/releases/tag/${tag}`} target="_blank" rel="noopener noreferrer">
-          {tag}
-        </a>
-      ),
-    },
-    {
-      title: '关联PR',
-      dataIndex: 'relatedPR',
-      key: 'relatedPR',
-      render: (pr?: string) =>
-        pr ? (
-          <a href={pr} target="_blank" rel="noopener noreferrer">
-            查看PR
-          </a>
-        ) : (
-          '-'
-        ),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
-        const colorMap: Record<string, string> = {
-          active: 'blue',
-          deployed: 'green',
-          deploying: 'orange',
-        }
-        return <Tag color={colorMap[status]}>{status}</Tag>
-      },
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => formatDate(date),
-      sorter: (a: Version, b: Version) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: Version) => (
-        <Button
-          type="link"
-          onClick={() => {
-            setSelectedVersion(record)
-            setDrawerVisible(true)
-          }}
-        >
-          详情
-        </Button>
-      ),
-    },
-  ]
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value)
+  }
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilterRevert(e.target.value)
+  }
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h1>版本管理</h1>
+      <div className="page-header d-print-none">
+        <div className="row align-items-center">
+          <div className="col">
+            <h2 className="page-title">版本管理</h2>
+          </div>
+        </div>
       </div>
 
-      <Space style={{ marginBottom: 16 }} wrap>
-        <Input
-          placeholder="搜索版本号或标签"
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: 300 }}
-          allowClear
-        />
-        <Select
-          placeholder="筛选类型"
-          value={filterRevert}
-          onChange={setFilterRevert}
-          style={{ width: 150 }}
-          allowClear
-        >
-          <Select.Option value={false}>正常版本</Select.Option>
-          <Select.Option value={true}>回滚版本</Select.Option>
-        </Select>
-        <Button icon={<ReloadOutlined />} onClick={loadVersions} loading={loading}>
-          刷新
-        </Button>
-      </Space>
-
-      <Table
-        columns={columns}
-        dataSource={versions}
-        rowKey="id"
-        loading={loading}
-      />
-
-      <Drawer
-        title="版本详情"
-        placement="right"
-        onClose={() => setDrawerVisible(false)}
-        open={drawerVisible}
-        width={600}
-      >
-        {selectedVersion && (
-          <div>
-            <h3>基本信息</h3>
-            <p><strong>版本号:</strong> {selectedVersion.version}</p>
-            <p><strong>Git Tag:</strong> {selectedVersion.gitTag}</p>
-            <p><strong>状态:</strong> {selectedVersion.status}</p>
-            <p><strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}</p>
-            <p><strong>回滚标记:</strong> {selectedVersion.isRevert ? '是' : '否'}</p>
-            
-            <h3 style={{ marginTop: 24 }}>包含的应用</h3>
-            {selectedVersion.applications.map((app) => (
-              <Tag key={app} style={{ marginBottom: 8 }}>{app}</Tag>
-            ))}
+      <div className="card">
+        <div className="card-header">
+          <div className="d-flex">
+            <div className="input-icon">
+              <span className="input-icon-addon">
+                <IconSearch />
+              </span>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="搜索版本号或标签..."
+                value={searchText}
+                onChange={handleSearchChange}
+              />
+            </div>
+            <select className="form-select ms-2" value={filterRevert} onChange={handleFilterChange}>
+              <option value="">所有类型</option>
+              <option value="false">正常版本</option>
+              <option value="true">回滚版本</option>
+            </select>
+            <button
+              className="btn btn-primary ms-2"
+              onClick={loadVersions}
+              disabled={loading}
+            >
+              <IconRefresh className="icon" />
+              刷新
+            </button>
           </div>
-        )}
-      </Drawer>
+        </div>
+        <div className="table-responsive">
+          <table className="table card-table table-vcenter text-nowrap datatable">
+            <thead>
+              <tr>
+                <th>版本号</th>
+                <th>Git Tag</th>
+                <th>关联PR</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {versions.map((version) => (
+                <tr key={version.id}>
+                  <td>
+                    {version.isRevert && (
+                      <IconAlertTriangle
+                        className="text-warning"
+                        style={{ marginRight: 8 }}
+                      />
+                    )}
+                    {version.version}
+                  </td>
+                  <td>
+                    <a
+                      href={`https://github.com/your-org/your-repo/releases/tag/${version.gitTag}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {version.gitTag}
+                    </a>
+                  </td>
+                  <td>
+                    {version.relatedPR ? (
+                      <a
+                        href={version.relatedPR}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        查看PR
+                      </a>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td>
+                    <span className="badge bg-success-lt">{version.status}</span>
+                  </td>
+                  <td>{formatDate(version.createdAt)}</td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-ghost-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#versionDetailModal"
+                      onClick={() => setSelectedVersion(version)}
+                    >
+                      详情
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="modal" id="versionDetailModal" tabIndex={-1}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">版本详情</h5>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div className="modal-body">
+              {selectedVersion && (
+                <div>
+                  <h3>基本信息</h3>
+                  <p><strong>版本号:</strong> {selectedVersion.version}</p>
+                  <p><strong>Git Tag:</strong> {selectedVersion.gitTag}</p>
+                  <p><strong>状态:</strong> {selectedVersion.status}</p>
+                  <p><strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}</p>
+                  <p><strong>回滚标记:</strong> {selectedVersion.isRevert ? '是' : '否'}</p>
+
+                  <h3 style={{ marginTop: 24 }}>包含的应用</h3>
+                  {selectedVersion.applications.map((app) => (
+                    <span className="badge bg-secondary-lt me-1" key={app}>{app}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

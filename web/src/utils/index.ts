@@ -12,11 +12,11 @@ export const formatDuration = (seconds: number): string => {
 
 export const getStatusColor = (status: Deployment['status']): string => {
   const colorMap: Record<Deployment['status'], string> = {
-    pending: '#d9d9d9',
-    running: '#1890ff',
-    success: '#52c41a',
-    failed: '#ff4d4f',
-    waiting_confirm: '#faad14',
+    pending: 'secondary',
+    running: 'primary',
+    success: 'success',
+    failed: 'danger',
+    waiting_confirm: 'warning',
   }
   return colorMap[status]
 }
