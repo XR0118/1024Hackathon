@@ -24,10 +24,13 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 **请求体**:
 ```json
 {
+    "name": "",
     "git_tag": "v1.0.0",
     "git_commit": "abc123def456",
     "repository": "https://github.com/org/repo",
-    "description": "Release version 1.0.0"
+    "metadata": {
+        "description": "Release version 1.0.0"
+    }
 }
 ```
 
@@ -38,9 +41,11 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "git_tag": "v1.0.0",
     "git_commit": "abc123def456",
     "repository": "https://github.com/org/repo",
+    "metadata": {
+        "description": "Release version 1.0.0"
+    }
     "created_by": "user@example.com",
-    "created_at": "2024-10-24T10:00:00Z",
-    "description": "Release version 1.0.0"
+    "created_at": "2024-10-24T10:00:00Z"
 }
 ```
 
@@ -62,9 +67,11 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
             "git_tag": "v1.0.0",
             "git_commit": "abc123def456",
             "repository": "https://github.com/org/repo",
+            "metadata": {
+                "description": "Release version 1.0.0"
+            }
             "created_by": "user@example.com",
-            "created_at": "2024-10-24T10:00:00Z",
-            "description": "Release version 1.0.0"
+            "created_at": "2024-10-24T10:00:00Z"
         }
     ],
     "total": 100,
@@ -84,9 +91,11 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "git_tag": "v1.0.0",
     "git_commit": "abc123def456",
     "repository": "https://github.com/org/repo",
+    "metadata": {
+        "description": "Release version 1.0.0"
+    }
     "created_by": "user@example.com",
-    "created_at": "2024-10-24T10:00:00Z",
-    "description": "Release version 1.0.0"
+    "created_at": "2024-10-24T10:00:00Z"
 }
 ```
 
@@ -112,11 +121,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 {
     "name": "api-service",
     "repository": "https://github.com/org/repo",
-    "type": "microservice",
+    "description": "microservice",
+    "owner": "user@example.com",
     "config": {
-        "dockerfile": "Dockerfile",
-        "build_args": "arg1=value1",
-        "port": "8080"
+        "build_config": {
+            "dockerfile": "Dockerfile",
+            "context": "."
+        },
+        "runtime_config": {
+            "port": 8080,
+            "env": {
+                "ENV_VAR": "value"
+            },
+            "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+            }
+        },
+        "health_check": {
+            "path": "/health",
+            "port": 8080,
+            "initial_delay": 10,
+            "period": 10
+        }
     }
 }
 ```
@@ -126,12 +153,31 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 {
     "id": "app_123456",
     "name": "api-service",
+    "name": "api-service",
     "repository": "https://github.com/org/repo",
-    "type": "microservice",
+    "description": "microservice",
+    "owner": "user@example.com",
     "config": {
-        "dockerfile": "Dockerfile",
-        "build_args": "arg1=value1",
-        "port": "8080"
+        "build_config": {
+            "dockerfile": "Dockerfile",
+            "context": "."
+        },
+        "runtime_config": {
+            "port": 8080,
+            "env": {
+                "ENV_VAR": "value"
+            },
+            "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+            }
+        },
+        "health_check": {
+            "path": "/health",
+            "port": 8080,
+            "initial_delay": 10,
+            "period": 10
+        }
     },
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T10:00:00Z"
@@ -155,12 +201,31 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
         {
             "id": "app_123456",
             "name": "api-service",
+            "name": "api-service",
             "repository": "https://github.com/org/repo",
-            "type": "microservice",
+            "description": "microservice",
+            "owner": "user@example.com",
             "config": {
-                "dockerfile": "Dockerfile",
-                "build_args": "arg1=value1",
-                "port": "8080"
+                "build_config": {
+                    "dockerfile": "Dockerfile",
+                    "context": "."
+                },
+                "runtime_config": {
+                    "port": 8080,
+                    "env": {
+                        "ENV_VAR": "value"
+                    },
+                    "resources": {
+                        "cpu": "100m",
+                        "memory": "128Mi"
+                    }
+                },
+                "health_check": {
+                    "path": "/health",
+                    "port": 8080,
+                    "initial_delay": 10,
+                    "period": 10
+                }
             },
             "created_at": "2024-10-24T10:00:00Z",
             "updated_at": "2024-10-24T10:00:00Z"
@@ -182,11 +247,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "id": "app_123456",
     "name": "api-service",
     "repository": "https://github.com/org/repo",
-    "type": "microservice",
+    "description": "microservice",
+    "owner": "user@example.com",
     "config": {
-        "dockerfile": "Dockerfile",
-        "build_args": "arg1=value1",
-        "port": "8080"
+        "build_config": {
+            "dockerfile": "Dockerfile",
+            "context": "."
+        },
+        "runtime_config": {
+            "port": 8080,
+            "env": {
+                "ENV_VAR": "value"
+            },
+            "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+            }
+        },
+        "health_check": {
+            "path": "/health",
+            "port": 8080,
+            "initial_delay": 10,
+            "period": 10
+        }
     },
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T10:00:00Z"
@@ -200,12 +283,31 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 **请求体**:
 ```json
 {
-    "name": "api-service-v2",
-    "type": "microservice",
+    "name": "api-service",
+    "repository": "https://github.com/org/repo",
+    "description": "microservice",
+    "owner": "user@example.com",
     "config": {
-        "dockerfile": "Dockerfile.prod",
-        "build_args": "arg1=value2",
-        "port": "8080"
+        "build_config": {
+            "dockerfile": "Dockerfile",
+            "context": "."
+        },
+        "runtime_config": {
+            "port": 8080,
+            "env": {
+                "ENV_VAR": "value"
+            },
+            "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+            }
+        },
+        "health_check": {
+            "path": "/health",
+            "port": 8080,
+            "initial_delay": 10,
+            "period": 10
+        }
     }
 }
 ```
@@ -213,14 +315,31 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 **响应体**:
 ```json
 {
-    "id": "app_123456",
-    "name": "api-service-v2",
+    "name": "api-service",
     "repository": "https://github.com/org/repo",
-    "type": "microservice",
+    "description": "microservice",
+    "owner": "user@example.com",
     "config": {
-        "dockerfile": "Dockerfile.prod",
-        "build_args": "arg1=value2",
-        "port": "8080"
+        "build_config": {
+            "dockerfile": "Dockerfile",
+            "context": "."
+        },
+        "runtime_config": {
+            "port": 8080,
+            "env": {
+                "ENV_VAR": "value"
+            },
+            "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+            }
+        },
+        "health_check": {
+            "path": "/health",
+            "port": 8080,
+            "initial_delay": 10,
+            "period": 10
+        }
     },
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T11:00:00Z"
@@ -249,12 +368,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 {
     "name": "production",
     "type": "kubernetes",
+    "region": "us-east-1",
     "config": {
-        "cluster": "prod-cluster",
-        "namespace": "default",
-        "kubeconfig": "base64_encoded_config"
+        "k8s_config": {
+            "kube_config": "base64_encoded_config",
+            "namespace": "default",
+            "cluster_name": "prod-cluster"
+        },
+        "physical_config": {
+            "hosts": [
+                {
+                    "ip": "10.0.0.1",
+                    "hostname": "host1",
+                    "role": "worker"
+                }
+            ],
+            "ssh_config": {
+                "user": "root",
+                "port": 22,
+                "key_path": "/path/to/key"
+            }
+        }
     },
-    "is_active": true
+    "Status": "active"
 }
 ```
 
@@ -264,12 +400,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "id": "env_123456",
     "name": "production",
     "type": "kubernetes",
+    "region": "us-east-1",
     "config": {
-        "cluster": "prod-cluster",
-        "namespace": "default",
-        "kubeconfig": "base64_encoded_config"
+        "k8s_config": {
+            "kube_config": "base64_encoded_config",
+            "namespace": "default",
+            "cluster_name": "prod-cluster"
+        },
+        "physical_config": {
+            "hosts": [
+                {
+                    "ip": "10.0.0.1",
+                    "hostname": "host1",
+                    "role": "worker"
+                }
+            ],
+            "ssh_config": {
+                "user": "root",
+                "port": 22,
+                "key_path": "/path/to/key"
+            }
+        }
     },
-    "is_active": true,
+    "Status": "active",
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T10:00:00Z"
 }
@@ -293,12 +446,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
             "id": "env_123456",
             "name": "production",
             "type": "kubernetes",
+            "region": "us-east-1",
             "config": {
-                "cluster": "prod-cluster",
-                "namespace": "default",
-                "kubeconfig": "base64_encoded_config"
+                "k8s_config": {
+                    "kube_config": "base64_encoded_config",
+                    "namespace": "default",
+                    "cluster_name": "prod-cluster"
+                },
+                "physical_config": {
+                    "hosts": [
+                        {
+                            "ip": "10.0.0.1",
+                            "hostname": "host1",
+                            "role": "worker"
+                        }
+                    ],
+                    "ssh_config": {
+                        "user": "root",
+                        "port": 22,
+                        "key_path": "/path/to/key"
+                    }
+                }
             },
-            "is_active": true,
+            "Status": "active",
             "created_at": "2024-10-24T10:00:00Z",
             "updated_at": "2024-10-24T10:00:00Z"
         }
@@ -319,12 +489,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "id": "env_123456",
     "name": "production",
     "type": "kubernetes",
+    "region": "us-east-1",
     "config": {
-        "cluster": "prod-cluster",
-        "namespace": "default",
-        "kubeconfig": "base64_encoded_config"
+        "k8s_config": {
+            "kube_config": "base64_encoded_config",
+            "namespace": "default",
+            "cluster_name": "prod-cluster"
+        },
+        "physical_config": {
+            "hosts": [
+                {
+                    "ip": "10.0.0.1",
+                    "hostname": "host1",
+                    "role": "worker"
+                }
+            ],
+            "ssh_config": {
+                "user": "root",
+                "port": 22,
+                "key_path": "/path/to/key"
+            }
+        }
     },
-    "is_active": true,
+    "Status": "active",
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T10:00:00Z"
 }
@@ -339,12 +526,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 {
     "name": "production",
     "type": "kubernetes",
+    "region": "us-east-1",
     "config": {
-        "cluster": "prod-cluster-v2",
-        "namespace": "production",
-        "kubeconfig": "base64_encoded_config_new"
+        "k8s_config": {
+            "kube_config": "base64_encoded_config",
+            "namespace": "default",
+            "cluster_name": "prod-cluster"
+        },
+        "physical_config": {
+            "hosts": [
+                {
+                    "ip": "10.0.0.1",
+                    "hostname": "host1",
+                    "role": "worker"
+                }
+            ],
+            "ssh_config": {
+                "user": "root",
+                "port": 22,
+                "key_path": "/path/to/key"
+            }
+        }
     },
-    "is_active": true
+    "Status": "active"
 }
 ```
 
@@ -354,12 +558,29 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "id": "env_123456",
     "name": "production",
     "type": "kubernetes",
+    "region": "us-east-1",
     "config": {
-        "cluster": "prod-cluster-v2",
-        "namespace": "production",
-        "kubeconfig": "base64_encoded_config_new"
+        "k8s_config": {
+            "kube_config": "base64_encoded_config",
+            "namespace": "default",
+            "cluster_name": "prod-cluster"
+        },
+        "physical_config": {
+            "hosts": [
+                {
+                    "ip": "10.0.0.1",
+                    "hostname": "host1",
+                    "role": "worker"
+                }
+            ],
+            "ssh_config": {
+                "user": "root",
+                "port": 22,
+                "key_path": "/path/to/key"
+            }
+        }
     },
-    "is_active": true,
+    "Status": "active",
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T11:00:00Z"
 }
@@ -385,9 +606,20 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 **请求体**:
 ```json
 {
+    "name": "service-a-deployment",
     "version_id": "ver_123456",
-    "application_ids": ["app_123456", "app_789012"],
-    "environment_id": "env_123456"
+    "apps": ["app_123456"],
+    "target_envs": ["env_123456"],
+    "strategy": {},
+    "status": "pending",
+    "progress": {
+        "total": 1,
+        "completed": 0,
+        "failed": 0,
+        "current_batch": 0
+    },
+    "approval": [],
+    "created_by": "user@example.com"
 }
 ```
 
@@ -395,16 +627,24 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 ```json
 {
     "id": "dep_123456",
+    "name": "service-a-deployment",
     "version_id": "ver_123456",
-    "application_ids": ["app_123456", "app_789012"],
-    "environment_id": "env_123456",
+    "apps": ["app_123456"],
+    "target_envs": ["env_123456"],
+    "strategy": {},
     "status": "pending",
+    "progress": {
+        "total": 1,
+        "completed": 0,
+        "failed": 0,
+        "current_batch": 0
+    },
+    "approval": [],
     "created_by": "user@example.com",
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T10:00:00Z",
     "started_at": null,
-    "completed_at": null,
-    "error_message": ""
+    "completed_at": null
 }
 ```
 
@@ -425,16 +665,24 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
     "deployments": [
         {
             "id": "dep_123456",
+            "name": "service-a-deployment",
             "version_id": "ver_123456",
-            "application_ids": ["app_123456", "app_789012"],
-            "environment_id": "env_123456",
-            "status": "running",
-            "created_by": "user@example.com",
+            "apps": ["app_123456"],
+            "target_envs": ["env_123456"],
+            "strategy": {},
+            "status": "pending",
+            "progress": {
+                "total": 1,
+                "completed": 0,
+                "failed": 0,
+                "current_batch": 0
+            },
+            "approval": [],
+            "created_by": "user@example.com"
             "created_at": "2024-10-24T10:00:00Z",
             "updated_at": "2024-10-24T10:05:00Z",
             "started_at": "2024-10-24T10:05:00Z",
-            "completed_at": null,
-            "error_message": ""
+            "completed_at": null
         }
     ],
     "total": 200,
@@ -451,16 +699,24 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 ```json
 {
     "id": "dep_123456",
+    "name": "service-a-deployment",
     "version_id": "ver_123456",
-    "application_ids": ["app_123456", "app_789012"],
-    "environment_id": "env_123456",
-    "status": "success",
+    "apps": ["app_123456"],
+    "target_envs": ["env_123456"],
+    "strategy": {},
+    "status": "pending",
+    "progress": {
+        "total": 1,
+        "completed": 0,
+        "failed": 0,
+        "current_batch": 0
+    },
+    "approval": [],
     "created_by": "user@example.com",
     "created_at": "2024-10-24T10:00:00Z",
     "updated_at": "2024-10-24T10:10:00Z",
     "started_at": "2024-10-24T10:05:00Z",
-    "completed_at": "2024-10-24T10:10:00Z",
-    "error_message": ""
+    "completed_at": "2024-10-24T10:10:00Z"
 }
 ```
 
@@ -497,16 +753,24 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 ```json
 {
     "id": "dep_999999",
-    "version_id": "ver_111111",
-    "application_ids": ["app_123456", "app_789012"],
-    "environment_id": "env_123456",
+    "name": "service-a-deployment",
+    "version_id": "ver_123456",
+    "apps": ["app_123456"],
+    "target_envs": ["env_123456"],
+    "strategy": {},
     "status": "pending",
+    "progress": {
+        "total": 1,
+        "completed": 0,
+        "failed": 0,
+        "current_batch": 0
+    },
+    "approval": [],
     "created_by": "user@example.com",
     "created_at": "2024-10-24T11:00:00Z",
     "updated_at": "2024-10-24T11:00:00Z",
     "started_at": null,
-    "completed_at": null,
-    "error_message": ""
+    "completed_at": null
 }
 ```
 
@@ -530,39 +794,17 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
         {
             "id": "task_123456",
             "deployment_id": "dep_123456",
-            "type": "build",
+            "app_id": "app_123456",
+            "env_id": "env_123456",
             "status": "success",
-            "payload": "{\"build_config\": {\"dockerfile\": \"Dockerfile\"}}",
-            "result": "{\"artifact_url\": \"https://...\", \"image\": \"org/app:v1.0.0\"}",
-            "created_at": "2024-10-24T10:00:00Z",
-            "updated_at": "2024-10-24T10:02:00Z",
             "started_at": "2024-10-24T10:00:10Z",
-            "completed_at": "2024-10-24T10:02:00Z"
+            "completed_at": "2024-10-24T10:02:00Z",
+            "error_msg": ""
         }
     ],
     "total": 500,
     "page": 1,
     "page_size": 20
-}
-```
-
-#### 获取任务详情
-
-**Endpoint**: `GET /api/v1/tasks/{id}`
-
-**响应体**:
-```json
-{
-    "id": "task_123456",
-    "deployment_id": "dep_123456",
-    "type": "build",
-    "status": "success",
-    "payload": "{\"build_config\": {\"dockerfile\": \"Dockerfile\"}}",
-    "result": "{\"artifact_url\": \"https://...\", \"image\": \"org/app:v1.0.0\"}",
-    "created_at": "2024-10-24T10:00:00Z",
-    "updated_at": "2024-10-24T10:02:00Z",
-    "started_at": "2024-10-24T10:00:10Z",
-    "completed_at": "2024-10-24T10:02:00Z"
 }
 ```
 
@@ -580,14 +822,11 @@ API 层 → Service 层 → WorkflowManager → TaskScheduler → Deploy 服务
 {
     "id": "task_123456",
     "deployment_id": "dep_123456",
-    "type": "build",
-    "status": "pending",
-    "payload": "{\"build_config\": {\"dockerfile\": \"Dockerfile\"}}",
-    "result": "",
-    "created_at": "2024-10-24T10:00:00Z",
-    "updated_at": "2024-10-24T10:15:00Z",
-    "started_at": null,
-    "completed_at": null
+    "app_id": "app_123456",
+    "env_id": "env_123456",
+    "status": "waiting",
+    "started_at": "2024-10-24T10:00:10Z",
+    "completed_at": "2024-10-24T10:02:00Z"
 }
 ```
 
@@ -629,7 +868,6 @@ type DeploymentService interface {
 
 type TaskService interface {
     GetTaskList(ctx context.Context, req *ListTasksRequest) (*TaskListResponse, error)
-    GetTask(ctx context.Context, id string) (*Task, error)
     RetryTask(ctx context.Context, id string) (*Task, error)
 }
 ```
@@ -638,67 +876,17 @@ type TaskService interface {
 
 ```go
 type WorkflowManager interface {
-    CreateWorkflow(ctx context.Context, deployment *Deployment) (*Workflow, error)
+    CreateTasks(ctx context.Context, deployment *Deployment) ([]TaskDetail, error)
     
-    ExecuteWorkflow(ctx context.Context, workflowID string) error
+    StartTasks(ctx context.Context, deploymentID string) error
     
-    GetWorkflowStatus(ctx context.Context, workflowID string) (*WorkflowStatus, error)
+    CancelTasks(ctx context.Context, deploymentID string) error
+
+    GetTaskLists(ctx context.Context, deploymentID string) ([]TaskDetail, error)
+    ExecuteTask(ctx context.Context, taskID string) error
+    CancelTask(ctx context.Context, taskID string) error
     
-    CancelWorkflow(ctx context.Context, workflowID string) error
-    
-    RetryFailedTasks(ctx context.Context, workflowID string) error
-}
-
-type TaskScheduler interface {
-    ScheduleTask(ctx context.Context, task *Task) error
-    
-    GetNextTask(ctx context.Context) (*Task, error)
-    
-    UpdateTaskStatus(ctx context.Context, taskID string, status TaskStatus, result string) error
-    
-    GetTasksByDeployment(ctx context.Context, deploymentID string) ([]*Task, error)
-}
-```
-
-### Repository 接口
-
-```go
-type VersionRepository interface {
-    Create(ctx context.Context, version *Version) error
-    GetByID(ctx context.Context, id string) (*Version, error)
-    List(ctx context.Context, filter *VersionFilter) ([]*Version, int, error)
-    Delete(ctx context.Context, id string) error
-}
-
-type ApplicationRepository interface {
-    Create(ctx context.Context, app *Application) error
-    GetByID(ctx context.Context, id string) (*Application, error)
-    List(ctx context.Context, filter *ApplicationFilter) ([]*Application, int, error)
-    Update(ctx context.Context, app *Application) error
-    Delete(ctx context.Context, id string) error
-}
-
-type EnvironmentRepository interface {
-    Create(ctx context.Context, env *Environment) error
-    GetByID(ctx context.Context, id string) (*Environment, error)
-    List(ctx context.Context, filter *EnvironmentFilter) ([]*Environment, int, error)
-    Update(ctx context.Context, env *Environment) error
-    Delete(ctx context.Context, id string) error
-}
-
-type DeploymentRepository interface {
-    Create(ctx context.Context, deployment *Deployment) error
-    GetByID(ctx context.Context, id string) (*Deployment, error)
-    List(ctx context.Context, filter *DeploymentFilter) ([]*Deployment, int, error)
-    Update(ctx context.Context, deployment *Deployment) error
-}
-
-type TaskRepository interface {
-    Create(ctx context.Context, task *Task) error
-    GetByID(ctx context.Context, id string) (*Task, error)
-    List(ctx context.Context, filter *TaskFilter) ([]*Task, int, error)
-    Update(ctx context.Context, task *Task) error
-    GetByDeploymentID(ctx context.Context, deploymentID string) ([]*Task, error)
+    RetryFailedTasks(ctx context.Context, taskID string) error
 }
 ```
 
@@ -712,32 +900,35 @@ type TaskRepository interface {
 POST /api/v1/deployments
 {
     "version_id": "ver_123456",
-    "application_ids": ["app_123456"],
-    "environment_id": "env_123456"
+    "app_ids": ["app_123456"],
+    "env_ids": [env_123456"]
 }
 ```
 
-### 2. 生成工作流
+### 2. 生成任务
 
 WorkflowManager 接收到新部署后，生成工作流:
 
 ```go
-workflow := workflowManager.CreateWorkflow(ctx, deployment)
+tasks := workflowManager.CreateTasks(ctx, deployment)
 ```
 
 工作流包含以下任务:
 1. **Build Task**: 构建应用镜像或制品
-2. **Test Task**: 运行测试（可选）
-3. **Deploy Task**: 执行实际部署
-4. **HealthCheck Task**: 健康检查
+2. **Deploy Task**: 执行实际部署
+3. **HealthCheck Task**: 健康检查
 
 ### 3. 调度任务
 
-TaskScheduler 按依赖顺序调度任务:
+WorkflowManager 按依赖顺序调度任务:
 
 ```go
-for _, task := range workflow.Tasks {
-    taskScheduler.ScheduleTask(ctx, task)
+deploymentIDs := deployment.GetDeployments()
+for _, deploymentID := range deploymentIDs {
+    tasks := workflowManager.GetTaskLists(ctx, deploymentID)
+    for _, task := range tasks {
+        workflowManager.ExecuteTask(ctx, task)
+    }
 }
 ```
 
@@ -757,108 +948,6 @@ WorkflowManager 汇总所有任务状态，更新部署:
 ```
 所有任务成功 → DeploymentStatusSuccess
 任意任务失败 → DeploymentStatusFailed
-```
-
-## 工作流编排示例
-
-### 标准部署工作流
-
-```json
-{
-    "workflow_id": "wf_123456",
-    "deployment_id": "dep_123456",
-    "tasks": [
-        {
-            "id": "task_001",
-            "type": "build",
-            "depends_on": [],
-            "config": {
-                "dockerfile": "Dockerfile",
-                "context": ".",
-                "tags": ["org/app:v1.0.0", "org/app:latest"]
-            }
-        },
-        {
-            "id": "task_002",
-            "type": "test",
-            "depends_on": ["task_001"],
-            "config": {
-                "test_command": "go test ./...",
-                "coverage_threshold": 80
-            }
-        },
-        {
-            "id": "task_003",
-            "type": "deploy",
-            "depends_on": ["task_002"],
-            "config": {
-                "strategy": "rolling-update",
-                "replicas": 3,
-                "max_unavailable": 1
-            }
-        },
-        {
-            "id": "task_004",
-            "type": "health_check",
-            "depends_on": ["task_003"],
-            "config": {
-                "endpoint": "/health",
-                "expected_status": 200,
-                "timeout": 60
-            }
-        }
-    ]
-}
-```
-
-### 蓝绿部署工作流
-
-```json
-{
-    "workflow_id": "wf_789012",
-    "deployment_id": "dep_789012",
-    "tasks": [
-        {
-            "id": "task_001",
-            "type": "build",
-            "depends_on": []
-        },
-        {
-            "id": "task_002",
-            "type": "deploy_green",
-            "depends_on": ["task_001"],
-            "config": {
-                "environment": "green",
-                "replicas": 3
-            }
-        },
-        {
-            "id": "task_003",
-            "type": "health_check",
-            "depends_on": ["task_002"],
-            "config": {
-                "target": "green"
-            }
-        },
-        {
-            "id": "task_004",
-            "type": "switch_traffic",
-            "depends_on": ["task_003"],
-            "config": {
-                "from": "blue",
-                "to": "green"
-            }
-        },
-        {
-            "id": "task_005",
-            "type": "cleanup_blue",
-            "depends_on": ["task_004"],
-            "config": {
-                "delay": 300
-            }
-        }
-    ]
-}
 ```
 
 ## 认证与授权

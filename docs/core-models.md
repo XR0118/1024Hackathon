@@ -10,24 +10,17 @@
 
 ```go
 type Version struct {
-    ID          string    `json:"id"`
-    GitTag      string    `json:"git_tag"`
-    GitCommit   string    `json:"git_commit"`
-    Repository  string    `json:"repository"`
-    CreatedBy   string    `json:"created_by"`
-    CreatedAt   time.Time `json:"created_at"`
-    Description string    `json:"description"`
+    ID            string            `json:"id"`
+    Name          string            `json:"name"`
+    GitTag        string            `json:"git_tag"`
+    GitCommit     string            `json:"git_commit"`
+    Repository    string            `json:"repository"`
+    CreatedBy     string            `json:"created_by"`
+    CreatedAt     time.Time         `json:"created_at"`
+    Metadata      map[string]string `json:"metadata,omitempty"`
+    Status        string            `json:"status"`
 }
 ```
-
-**字段说明**:
-- `ID`: 版本唯一标识符
-- `GitTag`: Git 标签名称（如 v1.0.0）
-- `GitCommit`: Git 提交哈希值
-- `Repository`: 代码仓库地址
-- `CreatedBy`: 创建者
-- `CreatedAt`: 创建时间
-- `Description`: 版本描述
 
 ## Application (应用)
 
@@ -35,72 +28,88 @@ type Version struct {
 
 ```go
 type Application struct {
-    ID          string            `json:"id"`
-    Name        string            `json:"name"`
-    Repository  string            `json:"repository"`
-    Type        string            `json:"type"`
-    Config      map[string]string `json:"config"`
-    CreatedAt   time.Time         `json:"created_at"`
-    UpdatedAt   time.Time         `json:"updated_at"`
+    ID          string    `json:"id"`
+    Name        string    `json:"name"`
+    Repository  string    `json:"repository"`
+    Description string    `json:"description"`
+    Owner       string    `json:"owner"`
+    Config      AppConfig `json:"config"`
+    CreatedAt   time.Time `json:"created_at"`
+    UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type AppConfig struct {
+    BuildConfig   BuildConfig   `json:"build_config"`
+    RuntimeConfig RuntimeConfig `json:"runtime_config"`
+    HealthCheck   HealthCheck   `json:"health_check"`
+}
+
+type BuildConfig struct {
+    Dockerfile string            `json:"dockerfile"`
+    BuildArgs  map[string]string `json:"build_args"`
+    Context    string            `json:"context"`
+}
+
+type RuntimeConfig struct {
+    Port      int               `json:"port"`
+    Env       map[string]string `json:"env"`
+    Resources Resources         `json:"resources"`
+}
+
+type Resources struct {
+    CPU    string `json:"cpu"`
+    Memory string `json:"memory"`
+}
+
+type HealthCheck struct {
+    Path         string `json:"path"`
+    Port         int    `json:"port"`
+    InitialDelay int    `json:"initial_delay"`
+    Period       int    `json:"period"`
 }
 ```
-
-**字段说明**:
-- `ID`: 应用唯一标识符
-- `Name`: 应用名称
-- `Repository`: 代码仓库地址
-- `Type`: 应用类型（如 microservice, monolith）
-- `Config`: 应用配置（构建参数、运行参数等）
-- `CreatedAt`: 创建时间
-- `UpdatedAt`: 更新时间
 
 ## Environment (目标环境)
 
 目标环境是部署目标，支持逻辑隔离。
 
 ```go
-type Environment struct {
-    ID          string            `json:"id"`
-    Name        string            `json:"name"`
-    Type        string            `json:"type"`
-    Config      map[string]string `json:"config"`
-    IsActive    bool              `json:"is_active"`
-    CreatedAt   time.Time         `json:"created_at"`
-    UpdatedAt   time.Time         `json:"updated_at"`
+type TargetEnvironment struct {
+    ID        string    `json:"id"`
+    Name      string    `json:"name"`
+    Type      string    `json:"type"`
+    Region    string    `json:"region"`
+    Config    EnvConfig `json:"config"`
+    Status    string    `json:"status"`
+    CreatedAt time.Time `json:"created_at"`
 }
-```
 
-**字段说明**:
-- `ID`: 环境唯一标识符
-- `Name`: 环境名称（如 production, staging, development）
-- `Type`: 环境类型（kubernetes 或 physical）
-- `Config`: 环境配置（集群信息、主机列表等）
-- `IsActive`: 是否激活
-- `CreatedAt`: 创建时间
-- `UpdatedAt`: 更新时间
-
-### Kubernetes 环境配置示例
-
-```json
-{
-    "cluster": "prod-cluster",
-    "namespace": "production",
-    "kubeconfig": "base64_encoded_kubeconfig",
-    "deployment_strategy": "rolling-update",
-    "health_check_enabled": true,
-    "timeout": 600
+type EnvConfig struct {
+    K8SConfig      *K8SConfig      `json:"k8s_config,omitempty"`
+    PhysicalConfig *PhysicalConfig `json:"physical_config,omitempty"`
 }
-```
 
-### 物理机环境配置示例
+type K8SConfig struct {
+    KubeConfig  string `json:"kube_config"`
+    Namespace   string `json:"namespace"`
+    ClusterName string `json:"cluster_name"`
+}
 
-```json
-{
-    "hosts": ["192.168.1.10", "192.168.1.11"],
-    "ssh_key": "base64_encoded_ssh_key",
-    "deploy_path": "/opt/applications",
-    "service_name": "api-service",
-    "restart_command": "systemctl restart api-service"
+type PhysicalConfig struct {
+    Hosts     []Host    `json:"hosts"`
+    SSHConfig SSHConfig `json:"ssh_config"`
+}
+
+type Host struct {
+    IP       string `json:"ip"`
+    Hostname string `json:"hostname"`
+    Role     string `json:"role"`
+}
+
+type SSHConfig struct {
+    User    string `json:"user"`
+    Port    int    `json:"port"`
+    KeyPath string `json:"key_path"`
 }
 ```
 
@@ -110,115 +119,56 @@ type Environment struct {
 
 ```go
 type Deployment struct {
-    ID             string           `json:"id"`
-    VersionID      string           `json:"version_id"`
-    ApplicationIDs []string         `json:"application_ids"`
-    EnvironmentID  string           `json:"environment_id"`
-    Status         DeploymentStatus `json:"status"`
-    CreatedBy      string           `json:"created_by"`
-    CreatedAt      time.Time        `json:"created_at"`
-    UpdatedAt      time.Time        `json:"updated_at"`
-    StartedAt      *time.Time       `json:"started_at,omitempty"`
-    CompletedAt    *time.Time       `json:"completed_at,omitempty"`
-    ErrorMessage   string           `json:"error_message,omitempty"`
+    ID           string         `json:"id"`
+    Name         string         `json:"name"`
+    VersionID    string         `json:"version_id"`
+    Applications []string       `json:"apps"`
+    TargetEnvs   []string       `json:"target_envs"`
+    Details      []TaskDetail   `json:"task_details"`
+    Strategy     DeployStrategy `json:"strategy"`
+    Status       string         `json:"status"`
+    Progress     Progress       `json:"progress"`
+    Approvals    []Approval     `json:"approvals"`
+    CreatedBy    string         `json:"created_by"`
+    CreatedAt    time.Time      `json:"created_at"`
+    StartedAt    *time.Time     `json:"started_at,omitempty"`
+    CompletedAt  *time.Time     `json:"completed_at,omitempty"`
 }
 
-type DeploymentStatus string
+type DeployStrategy struct {
+    Type           string  `json:"type"`
+    BatchSize      int     `json:"batch_size"`
+    BatchInterval  int     `json:"batch_interval"`
+    CanaryRatio    float64 `json:"canary_ratio"`
+    AutoRollback   bool    `json:"auto_rollback"`
+    ManualApproval bool    `json:"manual_approval"`
+}
 
-const (
-    DeploymentStatusPending    DeploymentStatus = "pending"
-    DeploymentStatusRunning    DeploymentStatus = "running"
-    DeploymentStatusSuccess    DeploymentStatus = "success"
-    DeploymentStatusFailed     DeploymentStatus = "failed"
-    DeploymentStatusRolledBack DeploymentStatus = "rolled_back"
-)
-```
+type Progress struct {
+    Total        int          `json:"total"`
+    Completed    int          `json:"completed"`
+    Failed       int          `json:"failed"`
+    CurrentBatch int          `json:"current_batch"`
+}
 
-**字段说明**:
-- `ID`: 部署唯一标识符
-- `VersionID`: 版本 ID
-- `ApplicationIDs`: 应用 ID 列表（支持多应用部署）
-- `EnvironmentID`: 目标环境 ID
-- `Status`: 部署状态
-- `CreatedBy`: 创建者
-- `CreatedAt`: 创建时间
-- `UpdatedAt`: 更新时间
-- `StartedAt`: 开始时间
-- `CompletedAt`: 完成时间
-- `ErrorMessage`: 错误信息
-
-## Task (任务)
-
-任务是部署过程中的具体执行任务。
-
-```go
-type Task struct {
+type TaskDetail struct {
     ID           string     `json:"id"`
     DeploymentID string     `json:"deployment_id"`
-    Type         string     `json:"type"`
-    Status       TaskStatus `json:"status"`
-    Payload      string     `json:"payload"`
-    Result       string     `json:"result,omitempty"`
-    CreatedAt    time.Time  `json:"created_at"`
-    UpdatedAt    time.Time  `json:"updated_at"`
+    AppID        string     `json:"app_id"`
+    EnvID        string     `json:"env_id"`
+    Status       string     `json:"status"`
     StartedAt    *time.Time `json:"started_at,omitempty"`
     CompletedAt  *time.Time `json:"completed_at,omitempty"`
+    ErrorMsg     string     `json:"error_msg,omitempty"`
 }
 
-type TaskStatus string
-
-const (
-    TaskStatusPending   TaskStatus = "pending"
-    TaskStatusRunning   TaskStatus = "running"
-    TaskStatusSuccess   TaskStatus = "success"
-    TaskStatusFailed    TaskStatus = "failed"
-)
-```
-
-**字段说明**:
-- `ID`: 任务唯一标识符
-- `DeploymentID`: 所属部署 ID
-- `Type`: 任务类型（如 build, test, deploy）
-- `Status`: 任务状态
-- `Payload`: 任务输入参数（JSON 格式）
-- `Result`: 任务执行结果（JSON 格式）
-- `CreatedAt`: 创建时间
-- `UpdatedAt`: 更新时间
-- `StartedAt`: 开始时间
-- `CompletedAt`: 完成时间
-
-## Workflow (工作流)
-
-工作流定义了一组任务的执行流程。
-
-```go
-type Workflow struct {
-    ID           string         `json:"id"`
-    DeploymentID string         `json:"deployment_id"`
-    Tasks        []*Task        `json:"tasks"`
-    Status       WorkflowStatus `json:"status"`
-    CreatedAt    time.Time      `json:"created_at"`
-    UpdatedAt    time.Time      `json:"updated_at"`
+type Approval struct {
+    ApproverID string    `json:"approver_id"`
+    Action     string    `json:"action"`
+    Comment    string    `json:"comment"`
+    Timestamp  time.Time `json:"timestamp"`
 }
-
-type WorkflowStatus string
-
-const (
-    WorkflowStatusPending   WorkflowStatus = "pending"
-    WorkflowStatusRunning   WorkflowStatus = "running"
-    WorkflowStatusSuccess   WorkflowStatus = "success"
-    WorkflowStatusFailed    WorkflowStatus = "failed"
-    WorkflowStatusCancelled WorkflowStatus = "cancelled"
-)
 ```
-
-**字段说明**:
-- `ID`: 工作流唯一标识符
-- `DeploymentID`: 所属部署 ID
-- `Tasks`: 任务列表
-- `Status`: 工作流状态
-- `CreatedAt`: 创建时间
-- `UpdatedAt`: 更新时间
 
 ## 通用响应结构
 
