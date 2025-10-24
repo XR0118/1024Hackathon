@@ -1,0 +1,10 @@
+version-trigger
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/tmp/
+/vendor/
+.DS_Store
