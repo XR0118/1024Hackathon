@@ -852,6 +852,488 @@ Authorization: Bearer <token>
 }
 ```
 
+## 模块接口设计
+
+本节定义各模块的 Go 接口，用于规范模块之间的交互和依赖关系。
+
+### Service 层接口
+
+Service 层负责处理所有 HTTP 请求，提供 RESTful API。
+
+```go
+type VersionService interface {
+    CreateVersion(ctx context.Context, req *CreateVersionRequest) (*Version, error)
+    GetVersionList(ctx context.Context, req *ListVersionsRequest) (*VersionListResponse, error)
+    GetVersion(ctx context.Context, id string) (*Version, error)
+    DeleteVersion(ctx context.Context, id string) error
+}
+
+type ApplicationService interface {
+    CreateApplication(ctx context.Context, req *CreateApplicationRequest) (*Application, error)
+    GetApplicationList(ctx context.Context, req *ListApplicationsRequest) (*ApplicationListResponse, error)
+    GetApplication(ctx context.Context, id string) (*Application, error)
+    UpdateApplication(ctx context.Context, id string, req *UpdateApplicationRequest) (*Application, error)
+    DeleteApplication(ctx context.Context, id string) error
+}
+
+type EnvironmentService interface {
+    CreateEnvironment(ctx context.Context, req *CreateEnvironmentRequest) (*Environment, error)
+    GetEnvironmentList(ctx context.Context, req *ListEnvironmentsRequest) (*EnvironmentListResponse, error)
+    GetEnvironment(ctx context.Context, id string) (*Environment, error)
+    UpdateEnvironment(ctx context.Context, id string, req *UpdateEnvironmentRequest) (*Environment, error)
+    DeleteEnvironment(ctx context.Context, id string) error
+}
+
+type DeploymentService interface {
+    CreateDeployment(ctx context.Context, req *CreateDeploymentRequest) (*Deployment, error)
+    GetDeploymentList(ctx context.Context, req *ListDeploymentsRequest) (*DeploymentListResponse, error)
+    GetDeployment(ctx context.Context, id string) (*Deployment, error)
+    CancelDeployment(ctx context.Context, id string) (*Deployment, error)
+    RollbackDeployment(ctx context.Context, id string, req *RollbackRequest) (*Deployment, error)
+}
+
+type TaskService interface {
+    GetTaskList(ctx context.Context, req *ListTasksRequest) (*TaskListResponse, error)
+    GetTask(ctx context.Context, id string) (*Task, error)
+    RetryTask(ctx context.Context, id string) (*Task, error)
+}
+
+type WebhookService interface {
+    HandleGitHubWebhook(ctx context.Context, event string, payload []byte) (*WebhookResponse, error)
+}
+```
+
+### DeploymentManager 接口
+
+DeploymentManager 负责接收 GitHub 回调和管理部署生命周期。
+
+```go
+type DeploymentManager interface {
+    ProcessWebhookEvent(ctx context.Context, event *GitHubEvent) error
+    
+    CreateVersionFromTag(ctx context.Context, tag *GitTag) (*Version, error)
+    
+    CreateVersionFromPR(ctx context.Context, pr *PullRequest) (*Version, error)
+    
+    StartDeployment(ctx context.Context, deploymentID string) error
+    
+    CancelDeployment(ctx context.Context, deploymentID string) error
+    
+    UpdateDeploymentStatus(ctx context.Context, deploymentID string, status DeploymentStatus, errorMsg string) error
+    
+    GetDeploymentProgress(ctx context.Context, deploymentID string) (*DeploymentProgress, error)
+}
+
+type GitHubEvent struct {
+    Type       string
+    Repository string
+    Payload    interface{}
+}
+
+type GitTag struct {
+    Name       string
+    Commit     string
+    Repository string
+    Pusher     string
+    Message    string
+}
+
+type PullRequest struct {
+    Number       int
+    Title        string
+    MergeCommit  string
+    Repository   string
+    BaseBranch   string
+    HeadBranch   string
+    MergedBy     string
+}
+
+type DeploymentProgress struct {
+    DeploymentID string
+    Status       DeploymentStatus
+    TotalTasks   int
+    CompletedTasks int
+    FailedTasks  int
+    CurrentTask  *Task
+}
+```
+
+### WorkflowManager 接口
+
+WorkflowManager 负责管理和编排部署任务的执行。
+
+```go
+type WorkflowManager interface {
+    CreateWorkflow(ctx context.Context, deployment *Deployment) (*Workflow, error)
+    
+    ExecuteWorkflow(ctx context.Context, workflowID string) error
+    
+    GetWorkflowStatus(ctx context.Context, workflowID string) (*WorkflowStatus, error)
+    
+    CancelWorkflow(ctx context.Context, workflowID string) error
+    
+    RetryFailedTasks(ctx context.Context, workflowID string) error
+}
+
+type TaskScheduler interface {
+    ScheduleTask(ctx context.Context, task *Task) error
+    
+    GetNextTask(ctx context.Context) (*Task, error)
+    
+    UpdateTaskStatus(ctx context.Context, taskID string, status TaskStatus, result string) error
+    
+    GetTasksByDeployment(ctx context.Context, deploymentID string) ([]*Task, error)
+}
+
+type Workflow struct {
+    ID           string
+    DeploymentID string
+    Tasks        []*Task
+    Status       WorkflowStatus
+    CreatedAt    time.Time
+    UpdatedAt    time.Time
+}
+
+type WorkflowStatus string
+
+const (
+    WorkflowStatusPending   WorkflowStatus = "pending"
+    WorkflowStatusRunning   WorkflowStatus = "running"
+    WorkflowStatusSuccess   WorkflowStatus = "success"
+    WorkflowStatusFailed    WorkflowStatus = "failed"
+    WorkflowStatusCancelled WorkflowStatus = "cancelled"
+)
+```
+
+### Deploy 模块接口
+
+Deploy 模块负责执行实际的部署操作，支持 Kubernetes 和物理机部署。
+
+```go
+type Deployer interface {
+    Deploy(ctx context.Context, req *DeployRequest) (*DeployResult, error)
+    
+    Rollback(ctx context.Context, req *RollbackDeployRequest) (*DeployResult, error)
+    
+    GetDeploymentInfo(ctx context.Context, deploymentID string) (*DeploymentInfo, error)
+    
+    HealthCheck(ctx context.Context, deploymentID string) (*HealthCheckResult, error)
+}
+
+type KubernetesDeployer interface {
+    Deployer
+    
+    ApplyManifest(ctx context.Context, namespace string, manifest []byte) error
+    
+    GetPodStatus(ctx context.Context, namespace, selector string) ([]*PodStatus, error)
+    
+    ScaleDeployment(ctx context.Context, namespace, name string, replicas int32) error
+    
+    GetLogs(ctx context.Context, namespace, podName string, lines int) (string, error)
+}
+
+type PhysicalDeployer interface {
+    Deployer
+    
+    UploadArtifact(ctx context.Context, hosts []string, artifact *Artifact) error
+    
+    ExecuteCommand(ctx context.Context, hosts []string, command string) (*CommandResult, error)
+    
+    RestartService(ctx context.Context, hosts []string, serviceName string) error
+    
+    CheckServiceStatus(ctx context.Context, hosts []string, serviceName string) ([]*ServiceStatus, error)
+}
+
+type DeployRequest struct {
+    DeploymentID  string
+    Version       *Version
+    Applications  []*Application
+    Environment   *Environment
+    Config        map[string]string
+}
+
+type RollbackDeployRequest struct {
+    DeploymentID       string
+    TargetDeploymentID string
+    Environment        *Environment
+}
+
+type DeployResult struct {
+    Success      bool
+    Message      string
+    DeploymentID string
+    Details      map[string]interface{}
+}
+
+type DeploymentInfo struct {
+    DeploymentID string
+    Status       string
+    Replicas     int32
+    ReadyReplicas int32
+    UpdatedAt    time.Time
+}
+
+type HealthCheckResult struct {
+    Healthy   bool
+    Message   string
+    Checks    []*HealthCheck
+}
+
+type HealthCheck struct {
+    Name    string
+    Status  string
+    Message string
+}
+
+type PodStatus struct {
+    Name      string
+    Phase     string
+    Ready     bool
+    Restarts  int32
+    NodeName  string
+}
+
+type Artifact struct {
+    Name    string
+    Version string
+    Path    string
+    Size    int64
+}
+
+type CommandResult struct {
+    Host     string
+    Success  bool
+    Output   string
+    Error    string
+}
+
+type ServiceStatus struct {
+    Host      string
+    Running   bool
+    Status    string
+    PID       int
+    Uptime    string
+}
+```
+
+### 数据访问层接口
+
+定义数据持久化相关的接口。
+
+```go
+type VersionRepository interface {
+    Create(ctx context.Context, version *Version) error
+    GetByID(ctx context.Context, id string) (*Version, error)
+    List(ctx context.Context, filter *VersionFilter) ([]*Version, int, error)
+    Delete(ctx context.Context, id string) error
+}
+
+type ApplicationRepository interface {
+    Create(ctx context.Context, app *Application) error
+    GetByID(ctx context.Context, id string) (*Application, error)
+    List(ctx context.Context, filter *ApplicationFilter) ([]*Application, int, error)
+    Update(ctx context.Context, app *Application) error
+    Delete(ctx context.Context, id string) error
+}
+
+type EnvironmentRepository interface {
+    Create(ctx context.Context, env *Environment) error
+    GetByID(ctx context.Context, id string) (*Environment, error)
+    List(ctx context.Context, filter *EnvironmentFilter) ([]*Environment, int, error)
+    Update(ctx context.Context, env *Environment) error
+    Delete(ctx context.Context, id string) error
+}
+
+type DeploymentRepository interface {
+    Create(ctx context.Context, deployment *Deployment) error
+    GetByID(ctx context.Context, id string) (*Deployment, error)
+    List(ctx context.Context, filter *DeploymentFilter) ([]*Deployment, int, error)
+    Update(ctx context.Context, deployment *Deployment) error
+}
+
+type TaskRepository interface {
+    Create(ctx context.Context, task *Task) error
+    GetByID(ctx context.Context, id string) (*Task, error)
+    List(ctx context.Context, filter *TaskFilter) ([]*Task, int, error)
+    Update(ctx context.Context, task *Task) error
+    GetByDeploymentID(ctx context.Context, deploymentID string) ([]*Task, error)
+}
+
+type VersionFilter struct {
+    Repository string
+    Page       int
+    PageSize   int
+}
+
+type ApplicationFilter struct {
+    Repository string
+    Type       string
+    Page       int
+    PageSize   int
+}
+
+type EnvironmentFilter struct {
+    Type     string
+    IsActive *bool
+    Page     int
+    PageSize int
+}
+
+type DeploymentFilter struct {
+    Status        DeploymentStatus
+    EnvironmentID string
+    VersionID     string
+    Page          int
+    PageSize      int
+}
+
+type TaskFilter struct {
+    DeploymentID string
+    Status       TaskStatus
+    Type         string
+    Page         int
+    PageSize     int
+}
+```
+
+### 请求和响应类型
+
+定义 API 请求和响应的数据结构。
+
+```go
+type CreateVersionRequest struct {
+    GitTag      string `json:"git_tag" binding:"required"`
+    GitCommit   string `json:"git_commit" binding:"required"`
+    Repository  string `json:"repository" binding:"required"`
+    Description string `json:"description"`
+}
+
+type ListVersionsRequest struct {
+    Repository string `form:"repository"`
+    Page       int    `form:"page" binding:"min=1"`
+    PageSize   int    `form:"page_size" binding:"min=1,max=100"`
+}
+
+type VersionListResponse struct {
+    Versions []*Version `json:"versions"`
+    Total    int        `json:"total"`
+    Page     int        `json:"page"`
+    PageSize int        `json:"page_size"`
+}
+
+type CreateApplicationRequest struct {
+    Name       string            `json:"name" binding:"required"`
+    Repository string            `json:"repository" binding:"required"`
+    Type       string            `json:"type" binding:"required"`
+    Config     map[string]string `json:"config"`
+}
+
+type UpdateApplicationRequest struct {
+    Name   string            `json:"name"`
+    Type   string            `json:"type"`
+    Config map[string]string `json:"config"`
+}
+
+type ListApplicationsRequest struct {
+    Repository string `form:"repository"`
+    Type       string `form:"type"`
+    Page       int    `form:"page" binding:"min=1"`
+    PageSize   int    `form:"page_size" binding:"min=1,max=100"`
+}
+
+type ApplicationListResponse struct {
+    Applications []*Application `json:"applications"`
+    Total        int            `json:"total"`
+    Page         int            `json:"page"`
+    PageSize     int            `json:"page_size"`
+}
+
+type CreateEnvironmentRequest struct {
+    Name     string            `json:"name" binding:"required"`
+    Type     string            `json:"type" binding:"required"`
+    Config   map[string]string `json:"config" binding:"required"`
+    IsActive bool              `json:"is_active"`
+}
+
+type UpdateEnvironmentRequest struct {
+    Name     string            `json:"name"`
+    Type     string            `json:"type"`
+    Config   map[string]string `json:"config"`
+    IsActive *bool             `json:"is_active"`
+}
+
+type ListEnvironmentsRequest struct {
+    Type     string `form:"type"`
+    IsActive *bool  `form:"is_active"`
+    Page     int    `form:"page" binding:"min=1"`
+    PageSize int    `form:"page_size" binding:"min=1,max=100"`
+}
+
+type EnvironmentListResponse struct {
+    Environments []*Environment `json:"environments"`
+    Total        int            `json:"total"`
+    Page         int            `json:"page"`
+    PageSize     int            `json:"page_size"`
+}
+
+type CreateDeploymentRequest struct {
+    VersionID      string   `json:"version_id" binding:"required"`
+    ApplicationIDs []string `json:"application_ids" binding:"required"`
+    EnvironmentID  string   `json:"environment_id" binding:"required"`
+}
+
+type ListDeploymentsRequest struct {
+    Status        string `form:"status"`
+    EnvironmentID string `form:"environment_id"`
+    VersionID     string `form:"version_id"`
+    Page          int    `form:"page" binding:"min=1"`
+    PageSize      int    `form:"page_size" binding:"min=1,max=100"`
+}
+
+type DeploymentListResponse struct {
+    Deployments []*Deployment `json:"deployments"`
+    Total       int           `json:"total"`
+    Page        int           `json:"page"`
+    PageSize    int           `json:"page_size"`
+}
+
+type RollbackRequest struct {
+    TargetVersionID string `json:"target_version_id" binding:"required"`
+}
+
+type ListTasksRequest struct {
+    DeploymentID string `form:"deployment_id"`
+    Status       string `form:"status"`
+    Type         string `form:"type"`
+    Page         int    `form:"page" binding:"min=1"`
+    PageSize     int    `form:"page_size" binding:"min=1,max=100"`
+}
+
+type TaskListResponse struct {
+    Tasks    []*Task `json:"tasks"`
+    Total    int     `json:"total"`
+    Page     int     `json:"page"`
+    PageSize int     `json:"page_size"`
+}
+
+type WebhookResponse struct {
+    Message        string `json:"message"`
+    VersionCreated bool   `json:"version_created,omitempty"`
+    VersionID      string `json:"version_id,omitempty"`
+    AutoTag        string `json:"auto_tag,omitempty"`
+}
+
+type ErrorResponse struct {
+    Error ErrorDetail `json:"error"`
+}
+
+type ErrorDetail struct {
+    Code    string                 `json:"code"`
+    Message string                 `json:"message"`
+    Details map[string]interface{} `json:"details,omitempty"`
+}
+```
+
 ## 模块交互流程
 
 ### 部署流程
