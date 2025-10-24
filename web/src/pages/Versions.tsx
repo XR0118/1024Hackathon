@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { versionApi } from '@/services/api'
 import { formatDate } from '@/utils'
 import type { Version } from '@/types'
 import { IconSearch, IconRefresh, IconAlertTriangle } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
 
 const Versions: React.FC = () => {
+  const { setError } = useErrorStore();
   const [versions, setVersions] = useState<Version[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [filterRevert, setFilterRevert] = useState<string>('')
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
 
-  const loadVersions = async () => {
+  const loadVersions = useCallback(async () => {
     setLoading(true)
     try {
       const data = await versionApi.list({
@@ -20,18 +22,18 @@ const Versions: React.FC = () => {
       })
       setVersions(data)
     } catch (error) {
-      console.error('Failed to load versions:', error)
+      setError('Failed to load versions.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchText, filterRevert, setError])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadVersions()
     }, 500) // Debounce search input
     return () => clearTimeout(timer)
-  }, [searchText, filterRevert])
+  }, [loadVersions])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value)

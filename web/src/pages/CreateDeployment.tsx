@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   versionApi,
@@ -8,9 +8,11 @@ import {
 } from '@/services/api'
 import type { Version, Application, Environment, CreateDeploymentRequest } from '@/types'
 import { IconArrowLeft } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
 
 const CreateDeployment: React.FC = () => {
   const navigate = useNavigate()
+  const { setError } = useErrorStore();
   const [currentStep, setCurrentStep] = useState(0)
   
   const [versions, setVersions] = useState<Version[]>([])
@@ -26,11 +28,7 @@ const CreateDeployment: React.FC = () => {
   const [grayscaleRatio, setGrayscaleRatio] = useState(50)
   const [autoRollback, setAutoRollback] = useState(true)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [versionsData, appsData, envsData] = await Promise.all([
         versionApi.list(),
@@ -41,9 +39,13 @@ const CreateDeployment: React.FC = () => {
       setApplications(appsData)
       setEnvironments(envsData)
     } catch (error) {
-      console.error('Failed to load data:', error)
+      setError('Failed to load data for creating deployment.')
     }
-  }
+  }, [setError])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleNext = () => {
     setCurrentStep(currentStep + 1)
@@ -72,7 +74,7 @@ const CreateDeployment: React.FC = () => {
       const deployment = await deploymentApi.create(request)
       navigate(`/deployments/${deployment.id}`)
     } catch (error) {
-      console.error('Failed to create deployment:', error)
+      setError('Failed to create deployment.')
     } finally {
       setLoading(false)
     }
@@ -218,7 +220,7 @@ const CreateDeployment: React.FC = () => {
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <a href="#" className="btn btn-ghost-secondary" onClick={() => navigate('/deployments')}>
+            <a href="javascript:void(0)" className="btn btn-ghost-secondary" onClick={(e) => { e.preventDefault(); navigate('/deployments')}}>
               <IconArrowLeft />
               返回
             </a>
@@ -232,7 +234,7 @@ const CreateDeployment: React.FC = () => {
           <ul className="nav nav-tabs card-header-tabs">
             {steps.map((step, index) => (
               <li className="nav-item" key={index}>
-                <a href="#" className={`nav-link ${currentStep === index ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentStep(index); }}>
+                <a href="javascript:void(0)" className={`nav-link ${currentStep === index ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentStep(index); }}>
                   {step.title}
                 </a>
               </li>

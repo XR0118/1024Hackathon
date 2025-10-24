@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deploymentApi } from '@/services/api'
 import { formatDate, getStatusColor, getStatusText } from '@/utils'
 import type { Deployment } from '@/types'
 import { IconPlus, IconRefresh } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
 
 const Deployments: React.FC = () => {
   const navigate = useNavigate()
+  const { setError } = useErrorStore();
   const [deployments, setDeployments] = useState<Deployment[]>([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
 
-  const loadDeployments = async () => {
+  const loadDeployments = useCallback(async () => {
     setLoading(true)
     try {
       const data = await deploymentApi.list({
@@ -23,17 +25,17 @@ const Deployments: React.FC = () => {
       })
       setDeployments(data)
     } catch (error) {
-      console.error('Failed to load deployments:', error)
+      setError('Failed to load deployments.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, startDate, endDate, setError])
 
   useEffect(() => {
     loadDeployments()
     const interval = setInterval(loadDeployments, 5000)
     return () => clearInterval(interval)
-  }, [statusFilter, startDate, endDate])
+  }, [loadDeployments])
 
   return (
     <div>

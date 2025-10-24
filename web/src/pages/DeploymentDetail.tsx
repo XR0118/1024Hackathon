@@ -1,36 +1,38 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { deploymentApi } from '@/services/api'
 import { formatDate, formatDuration, getStatusColor, getStatusText } from '@/utils'
 import type { DeploymentDetail as DeploymentDetailType } from '@/types'
 import { IconArrowLeft, IconCheck, IconArrowBackUp } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
 
 const DeploymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { setError } = useErrorStore();
   const [deployment, setDeployment] = useState<DeploymentDetailType | null>(null)
   const [loading, setLoading] = useState(false)
   const [note, setNote] = useState('')
   const [reason, setReason] = useState('')
 
-  const loadDeployment = async () => {
+  const loadDeployment = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
       const data = await deploymentApi.get(id)
       setDeployment(data)
     } catch (error) {
-      console.error('Failed to load deployment:', error)
+      setError('Failed to load deployment details.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, setError])
 
   useEffect(() => {
     loadDeployment()
     const interval = setInterval(loadDeployment, 3000)
     return () => clearInterval(interval)
-  }, [id])
+  }, [id, loadDeployment])
 
   const handleConfirm = async () => {
     if (!id) return
@@ -39,7 +41,7 @@ const DeploymentDetailPage: React.FC = () => {
       setNote('')
       loadDeployment()
     } catch (error) {
-      console.error('Failed to confirm deployment:', error)
+      setError('Failed to confirm deployment.')
     }
   }
 
@@ -50,7 +52,7 @@ const DeploymentDetailPage: React.FC = () => {
       setReason('')
       loadDeployment()
     } catch (error) {
-      console.error('Failed to rollback deployment:', error)
+      setError('Failed to rollback deployment.')
     }
   }
 
@@ -67,7 +69,7 @@ const DeploymentDetailPage: React.FC = () => {
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <a href="#" className="btn btn-ghost-secondary" onClick={() => navigate('/deployments')}>
+            <a href="javascript:void(0)" className="btn btn-ghost-secondary" onClick={(e) => { e.preventDefault(); navigate('/deployments')}}>
               <IconArrowLeft />
               返回
             </a>
@@ -130,7 +132,7 @@ const DeploymentDetailPage: React.FC = () => {
               <li key={index} className={`step-item ${
                 step.status === 'success' ? 'active' : ''
               }`}>
-                <a href="#">{step.name}</a>
+                <a href="javascript:void(0)" onClick={(e) => e.preventDefault()}>{step.name}</a>
               </li>
             ))}
           </ul>

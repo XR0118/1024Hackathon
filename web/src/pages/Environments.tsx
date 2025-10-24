@@ -1,23 +1,25 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { environmentApi } from '@/services/api'
 import type { Environment } from '@/types'
 import { IconCloud, IconPlus } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
 
 const Environments: React.FC = () => {
+  const { setError } = useErrorStore();
   const [environments, setEnvironments] = useState<Environment[]>([])
 
-  const loadEnvironments = async () => {
+  const loadEnvironments = useCallback(async () => {
     try {
       const data = await environmentApi.list()
       setEnvironments(data)
     } catch (error) {
-      console.error('Failed to load environments:', error)
+      setError('Failed to load environments.')
     }
-  }
+  }, [setError])
 
   useEffect(() => {
     loadEnvironments()
-  }, [])
+  }, [loadEnvironments])
 
   return (
     <div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconRocket,
@@ -10,8 +10,10 @@ import {
 import { dashboardApi } from '@/services/api'
 import { formatDate, getStatusColor, getStatusText } from '@/utils'
 import type { Deployment, DashboardStats } from '@/types'
+import { useErrorStore } from '@/store/error'
 
 const Dashboard: React.FC = () => {
+  const { setError } = useErrorStore();
   const [stats, setStats] = useState<DashboardStats>({
     activeVersions: 0,
     runningDeployments: 0,
@@ -21,7 +23,7 @@ const Dashboard: React.FC = () => {
   const [recentDeployments, setRecentDeployments] = useState<Deployment[]>([])
   const [loading, setLoading] = useState(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [statsData, deploymentsData] = await Promise.all([
@@ -31,15 +33,15 @@ const Dashboard: React.FC = () => {
       setStats(statsData)
       setRecentDeployments(deploymentsData)
     } catch (error) {
-      console.error('Failed to load dashboard data:', error)
+      setError('Failed to load dashboard data.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [setError])
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
   return (
     <div>

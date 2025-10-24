@@ -7,8 +7,11 @@ import {
   IconCloud,
   IconRocket,
 } from '@tabler/icons-react';
+import ErrorMessage from './ErrorMessage';
+import { useErrorStore } from '@/store/error';
 
 const Layout: React.FC = () => {
+  const { errorMessage, clearError } = useErrorStore();
   const menuItems = [
     {
       key: '/',
@@ -69,6 +72,7 @@ const Layout: React.FC = () => {
       <div className="page-wrapper">
         <div className="page-body">
           <div className="container-xl">
+            {errorMessage && <ErrorMessage message={errorMessage} onDismiss={clearError} />}
             <Outlet />
           </div>
         </div>

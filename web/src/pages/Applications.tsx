@@ -1,26 +1,28 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { applicationApi } from '@/services/api'
 import { formatDate } from '@/utils'
 import type { Application } from '@/types'
 import { IconPlus, IconRocket } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
 
 const Applications: React.FC = () => {
   const navigate = useNavigate()
+  const { setError } = useErrorStore();
   const [applications, setApplications] = useState<Application[]>([])
 
-  const loadApplications = async () => {
+  const loadApplications = useCallback(async () => {
     try {
       const data = await applicationApi.list()
       setApplications(data)
     } catch (error) {
-      console.error('Failed to load applications:', error)
+      setError('Failed to load applications.')
     }
-  }
+  }, [setError])
 
   useEffect(() => {
     loadApplications()
-  }, [])
+  }, [loadApplications])
 
   return (
     <div>
