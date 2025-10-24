@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deploymentApi } from '@/services/api'
 import { formatDate, getStatusColor, getStatusText } from '@/utils'
@@ -12,8 +12,9 @@ const Deployments: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
 
-  const loadDeployments = async () => {
+  const loadDeployments = useCallback(async () => {
     setLoading(true)
     try {
       const data = await deploymentApi.list({
@@ -22,18 +23,20 @@ const Deployments: React.FC = () => {
         endDate: endDate || undefined,
       })
       setDeployments(data)
+      setError(null)
     } catch (error) {
       console.error('Failed to load deployments:', error)
+      setError('加载部署列表失败，请稍后重试')
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, startDate, endDate])
 
   useEffect(() => {
     loadDeployments()
     const interval = setInterval(loadDeployments, 5000)
     return () => clearInterval(interval)
-  }, [statusFilter, startDate, endDate])
+  }, [loadDeployments])
 
   return (
     <div>
@@ -53,6 +56,13 @@ const Deployments: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-danger alert-dismissible mb-3">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-header">

@@ -4,12 +4,26 @@ import { formatDate } from '@/utils'
 import type { Version } from '@/types'
 import { IconSearch, IconRefresh, IconAlertTriangle } from '@tabler/icons-react'
 
+const sanitizeGitTag = (tag: string): string => {
+  return tag.replace(/[^a-zA-Z0-9._-]/g, '')
+}
+
+const isValidGitHubUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && parsed.hostname.endsWith('github.com')
+  } catch {
+    return false
+  }
+}
+
 const Versions: React.FC = () => {
   const [versions, setVersions] = useState<Version[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [filterRevert, setFilterRevert] = useState<string>('')
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const loadVersions = async () => {
     setLoading(true)
@@ -19,8 +33,10 @@ const Versions: React.FC = () => {
         isRevert: filterRevert ? filterRevert === 'true' : undefined,
       })
       setVersions(data)
+      setError(null)
     } catch (error) {
       console.error('Failed to load versions:', error)
+      setError('加载版本列表失败，请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -50,6 +66,13 @@ const Versions: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-danger alert-dismissible mb-3">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-header">
@@ -107,7 +130,7 @@ const Versions: React.FC = () => {
                   </td>
                   <td>
                     <a
-                      href={`https://github.com/your-org/your-repo/releases/tag/${version.gitTag}`}
+                      href={`https://github.com/your-org/your-repo/releases/tag/${sanitizeGitTag(version.gitTag)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -115,7 +138,7 @@ const Versions: React.FC = () => {
                     </a>
                   </td>
                   <td>
-                    {version.relatedPR ? (
+                    {version.relatedPR && isValidGitHubUrl(version.relatedPR) ? (
                       <a
                         href={version.relatedPR}
                         target="_blank"
@@ -123,6 +146,8 @@ const Versions: React.FC = () => {
                       >
                         查看PR
                       </a>
+                    ) : version.relatedPR ? (
+                      <span className="text-muted">Invalid URL</span>
                     ) : (
                       '-'
                     )}

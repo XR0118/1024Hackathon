@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { deploymentApi } from '@/services/api'
 import { formatDate, formatDuration, getStatusColor, getStatusText } from '@/utils'
@@ -12,25 +12,28 @@ const DeploymentDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [note, setNote] = useState('')
   const [reason, setReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  const loadDeployment = async () => {
+  const loadDeployment = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
       const data = await deploymentApi.get(id)
       setDeployment(data)
+      setError(null)
     } catch (error) {
       console.error('Failed to load deployment:', error)
+      setError('加载部署详情失败，请稍后重试')
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     loadDeployment()
     const interval = setInterval(loadDeployment, 3000)
     return () => clearInterval(interval)
-  }, [id])
+  }, [loadDeployment])
 
   const handleConfirm = async () => {
     if (!id) return
@@ -38,8 +41,10 @@ const DeploymentDetailPage: React.FC = () => {
       await deploymentApi.confirm(id, note)
       setNote('')
       loadDeployment()
+      setError(null)
     } catch (error) {
       console.error('Failed to confirm deployment:', error)
+      setError('确认部署失败，请稍后重试')
     }
   }
 
@@ -49,8 +54,10 @@ const DeploymentDetailPage: React.FC = () => {
       await deploymentApi.rollback(id, reason)
       setReason('')
       loadDeployment()
+      setError(null)
     } catch (error) {
       console.error('Failed to rollback deployment:', error)
+      setError('回滚部署失败，请稍后重试')
     }
   }
 
@@ -67,14 +74,21 @@ const DeploymentDetailPage: React.FC = () => {
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <a href="#" className="btn btn-ghost-secondary" onClick={() => navigate('/deployments')}>
+            <button type="button" className="btn btn-ghost-secondary" onClick={() => navigate('/deployments')}>
               <IconArrowLeft />
               返回
-            </a>
+            </button>
             <h2 className="page-title ms-2 d-inline-block">部署详情</h2>
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-danger alert-dismissible mb-3">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
+        </div>
+      )}
 
       <div className="card mb-3">
         <div className="card-body">
@@ -130,7 +144,7 @@ const DeploymentDetailPage: React.FC = () => {
               <li key={index} className={`step-item ${
                 step.status === 'success' ? 'active' : ''
               }`}>
-                <a href="#">{step.name}</a>
+                <span>{step.name}</span>
               </li>
             ))}
           </ul>

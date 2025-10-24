@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   versionApi,
@@ -17,6 +17,7 @@ const CreateDeployment: React.FC = () => {
   const [applications, setApplications] = useState<Application[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const [selectedVersion, setSelectedVersion] = useState<string>()
   const [selectedApps, setSelectedApps] = useState<string[]>([])
@@ -25,6 +26,21 @@ const CreateDeployment: React.FC = () => {
   const [grayscaleEnabled, setGrayscaleEnabled] = useState(false)
   const [grayscaleRatio, setGrayscaleRatio] = useState(50)
   const [autoRollback, setAutoRollback] = useState(true)
+
+  const versionsMap = useMemo(() => 
+    new Map(versions.map(v => [v.id, v])), 
+    [versions]
+  )
+
+  const applicationsMap = useMemo(() => 
+    new Map(applications.map(a => [a.id, a])), 
+    [applications]
+  )
+
+  const environmentsMap = useMemo(() => 
+    new Map(environments.map(e => [e.id, e])), 
+    [environments]
+  )
 
   useEffect(() => {
     loadData()
@@ -40,8 +56,10 @@ const CreateDeployment: React.FC = () => {
       setVersions(versionsData)
       setApplications(appsData)
       setEnvironments(envsData)
+      setError(null)
     } catch (error) {
       console.error('Failed to load data:', error)
+      setError('加载数据失败，请稍后重试')
     }
   }
 
@@ -71,8 +89,10 @@ const CreateDeployment: React.FC = () => {
       }
       const deployment = await deploymentApi.create(request)
       navigate(`/deployments/${deployment.id}`)
+      setError(null)
     } catch (error) {
       console.error('Failed to create deployment:', error)
+      setError('创建部署失败，请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -177,17 +197,19 @@ const CreateDeployment: React.FC = () => {
           <div className="alert alert-info">请确认部署信息，提交后将立即开始部署流程</div>
           <div className="card">
             <div className="card-body">
-              <p><strong>版本:</strong> {versions.find((v) => v.id === selectedVersion)?.version}</p>
+              <p><strong>版本:</strong> {selectedVersion ? versionsMap.get(selectedVersion)?.version : '-'}</p>
               <p>
                 <strong>应用:</strong>{' '}
                 {selectedApps
-                  .map((id) => applications.find((a) => a.id === id)?.name)
+                  .map((id) => applicationsMap.get(id)?.name)
+                  .filter(Boolean)
                   .join(', ')}
               </p>
               <p>
                 <strong>环境:</strong>{' '}
                 {selectedEnvs
-                  .map((id) => environments.find((e) => e.id === id)?.name)
+                  .map((id) => environmentsMap.get(id)?.name)
+                  .filter(Boolean)
                   .join(', ')}
               </p>
               <p><strong>需要人工确认:</strong> {requireConfirm ? '是' : '否'}</p>
@@ -218,21 +240,28 @@ const CreateDeployment: React.FC = () => {
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <a href="#" className="btn btn-ghost-secondary" onClick={() => navigate('/deployments')}>
+            <button type="button" className="btn btn-ghost-secondary" onClick={() => navigate('/deployments')}>
               <IconArrowLeft />
               返回
-            </a>
+            </button>
             <h2 className="page-title ms-2 d-inline-block">新建部署</h2>
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-danger alert-dismissible mb-3">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-header">
           <ul className="nav nav-tabs card-header-tabs">
             {steps.map((step, index) => (
               <li className="nav-item" key={index}>
-                <a href="#" className={`nav-link ${currentStep === index ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentStep(index); }}>
+                <a href="#" className={`nav-link ${currentStep === index ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentStep(index); }} role="tab">
                   {step.title}
                 </a>
               </li>

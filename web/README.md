@@ -6,7 +6,7 @@
 
 - **React 18** - UI框架
 - **TypeScript** - 类型安全
-- **Ant Design 5** - UI组件库
+- **Tabler** - UI组件库和设计系统
 - **React Router 6** - 路由管理
 - **Zustand** - 状态管理
 - **Axios** - HTTP客户端
@@ -146,19 +146,19 @@ npm run preview
 
 ## 设计规范
 
-### 颜色规范
-- 成功: `#52c41a` (绿色)
-- 进行中: `#1890ff` (蓝色)
-- 失败/错误: `#ff4d4f` (红色)
-- 警告/待确认: `#faad14` (橙色)
-- 中性/未开始: `#d9d9d9` (灰色)
+### 颜色规范 (Tabler)
+- 成功: `.bg-success` / `.text-success` (绿色)
+- 进行中: `.bg-primary` / `.text-primary` (蓝色)
+- 失败/错误: `.bg-danger` / `.text-danger` (红色)
+- 警告/待确认: `.bg-warning` / `.text-warning` (橙色)
+- 中性/未开始: `.bg-secondary` / `.text-secondary` (灰色)
 
-### 图标使用
-- 成功: ✓ (CheckOutlined)
-- 失败: ✗ (CloseOutlined)
-- 进行中: ⟳ (SyncOutlined)
-- 待确认: ⏸ (PauseCircleOutlined)
-- 回滚: ↶ (RollbackOutlined)
+### 图标使用 (Tabler Icons)
+- 成功: IconCheck
+- 失败: IconX
+- 进行中: IconRefresh
+- 待确认: IconClock
+- 回滚: IconArrowBackUp
 
 ## 浏览器支持
 
