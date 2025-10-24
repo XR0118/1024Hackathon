@@ -1,4 +1,4 @@
-module github.com/XR0118/1024Hackathon/version-trigger
+module github.com/XR0118/1024Hackathon
 
 go 1.24.0
 

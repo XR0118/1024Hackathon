@@ -1,8 +1,8 @@
-# Version Trigger 模块
+# Deployment Trigger 模块
 
 ## 概述
 
-Version Trigger 模块负责接收 GitHub webhook 事件,当新的 tag 被创建时自动触发构建流程,并将构建结果提交到发布系统。
+Deployment Trigger 模块负责接收 GitHub webhook 事件,当新的 tag 被创建时自动触发构建流程,并将构建结果提交到发布系统。
 
 ## 功能
 
@@ -24,16 +24,15 @@ GitHub Webhook → WebhookHandler → VersionService → GitService/DockerServic
 ### 环境变量
 
 - `GITHUB_WEBHOOK_SECRET`: GitHub webhook 的密钥
-- `WORK_DIR`: 工作目录,默认 `/tmp/version-trigger`
+- `WORK_DIR`: 工作目录,默认 `/tmp/deployment-trigger`
 - `DOCKER_REGISTRY`: Docker 镜像仓库地址
 - `MANAGEMENT_API`: 管理系统 API 地址,默认 `http://localhost:8080/api/v1`
 
 ### 启动服务
 
 ```bash
-cd version-trigger
-go build -o version-trigger ./main.go
-./version-trigger
+go build -o deployment-trigger ./deployment-trigger/main.go
+./deployment-trigger
 ```
 
 服务将在端口 8081 上启动。
@@ -63,9 +62,8 @@ Events: Push events (选择 Just the push event)
 ## 目录结构
 
 ```
-version-trigger/
+deployment-trigger/
 ├── main.go                          # 入口文件
-├── go.mod                           # Go 模块定义
 ├── internal/
 │   ├── handler/
 │   │   └── webhook.go              # Webhook 处理器
@@ -75,8 +73,11 @@ version-trigger/
 │       ├── docker.go               # Docker 操作
 │       ├── management.go           # 管理系统客户端
 │       └── version_test.go         # 测试
+├── Dockerfile
 └── README.md
 ```
+
+注意: 本模块使用项目根目录的 `go.mod` 文件,不再维护独立的 Go 模块。
 
 ## 依赖
 
@@ -93,20 +94,20 @@ go test ./...
 ## 构建
 
 ```bash
-go build -o version-trigger ./main.go
+go build -o deployment-trigger ./deployment-trigger/main.go
 ```
 
 ## Docker 部署
 
 ```bash
-docker build -t version-trigger .
+docker build -t deployment-trigger -f deployment-trigger/Dockerfile .
 docker run -d \
   -p 8081:8081 \
   -e GITHUB_WEBHOOK_SECRET=your-secret \
   -e DOCKER_REGISTRY=registry.example.com \
   -e MANAGEMENT_API=http://management-api:8080/api/v1 \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  version-trigger
+  deployment-trigger
 ```
 
 ## 注意事项

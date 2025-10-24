@@ -1,4 +1,4 @@
-version-trigger
+deployment-trigger
 *.exe
 *.dll
 *.so

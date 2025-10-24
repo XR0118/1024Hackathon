@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/XR0118/1024Hackathon/version-trigger/internal/handler"
-	"github.com/XR0118/1024Hackathon/version-trigger/internal/service"
+	"github.com/XR0118/1024Hackathon/deployment-trigger/internal/handler"
+	"github.com/XR0118/1024Hackathon/deployment-trigger/internal/service"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 	}
 
 	if config.WorkDir == "" {
-		config.WorkDir = "/tmp/version-trigger"
+		config.WorkDir = "/tmp/deployment-trigger"
 	}
 	if config.ManagementAPI == "" {
 		config.ManagementAPI = "http://localhost:8080/api/v1"
@@ -47,7 +47,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Starting version-trigger service on :8081")
+		log.Printf("Starting deployment-trigger service on :8081")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

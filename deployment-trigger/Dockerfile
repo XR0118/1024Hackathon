@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o version-trigger ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o deployment-trigger ./deployment-trigger/main.go
 
 FROM alpine:latest
 
@@ -15,8 +15,8 @@ RUN apk --no-cache add ca-certificates git
 
 WORKDIR /root/
 
-COPY --from=builder /app/version-trigger .
+COPY --from=builder /app/deployment-trigger .
 
 EXPOSE 8081
 
-CMD ["./version-trigger"]
+CMD ["./deployment-trigger"]
