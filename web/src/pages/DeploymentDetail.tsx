@@ -1,65 +1,47 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  Card,
-  Descriptions,
-  Tag,
-  Steps,
-  Button,
-  Space,
-  Modal,
-  Input,
-  Alert,
-  Slider,
-} from 'antd'
-import {
-  ArrowLeftOutlined,
-  CheckOutlined,
-  CloseOutlined,
-  RollbackOutlined,
-} from '@ant-design/icons'
 import { deploymentApi } from '@/services/api'
 import { formatDate, formatDuration, getStatusColor, getStatusText } from '@/utils'
-import type { DeploymentDetail } from '@/types'
+import type { DeploymentDetail as DeploymentDetailType } from '@/types'
+import { IconArrowLeft, IconCheck, IconArrowBackUp } from '@tabler/icons-react'
+import { useErrorStore } from '@/store/error'
+import DOMPurify from 'dompurify';
 
 const DeploymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [deployment, setDeployment] = useState<DeploymentDetail | null>(null)
+  const [deployment, setDeployment] = useState<DeploymentDetailType | null>(null)
   const [loading, setLoading] = useState(false)
-  const [confirmModalVisible, setConfirmModalVisible] = useState(false)
-  const [rollbackModalVisible, setRollbackModalVisible] = useState(false)
   const [note, setNote] = useState('')
   const [reason, setReason] = useState('')
 
-  const loadDeployment = async () => {
+  const loadDeployment = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
       const data = await deploymentApi.get(id)
       setDeployment(data)
     } catch (error) {
-      console.error('Failed to load deployment:', error)
+      useErrorStore.getState().setError('Failed to load deployment details.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     loadDeployment()
     const interval = setInterval(loadDeployment, 3000)
     return () => clearInterval(interval)
-  }, [id])
+  }, [id, loadDeployment])
 
   const handleConfirm = async () => {
     if (!id) return
     try {
       await deploymentApi.confirm(id, note)
-      setConfirmModalVisible(false)
       setNote('')
       loadDeployment()
     } catch (error) {
-      console.error('Failed to confirm deployment:', error)
+      useErrorStore.getState().setError('Failed to confirm deployment.')
     }
   }
 
@@ -67,182 +49,147 @@ const DeploymentDetailPage: React.FC = () => {
     if (!id) return
     try {
       await deploymentApi.rollback(id, reason)
-      setRollbackModalVisible(false)
       setReason('')
       loadDeployment()
     } catch (error) {
-      console.error('Failed to rollback deployment:', error)
+      useErrorStore.getState().setError('Failed to rollback deployment.')
     }
   }
 
-  if (!deployment) {
-    return <Card loading={loading}>加载中...</Card>
+  if (loading && !deployment) {
+    return <div>Loading...</div>
   }
 
-  const currentStep = deployment.steps.findIndex(
-    (step) => step.status === 'running' || step.status === 'pending'
-  )
+  if (!deployment) {
+    return <div>Deployment not found</div>
+  }
 
   return (
     <div>
-      <Space style={{ marginBottom: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/deployments')}>
-          返回
-        </Button>
-        <h1 style={{ margin: 0 }}>部署详情</h1>
-      </Space>
+      <div className="page-header d-print-none">
+        <div className="row align-items-center">
+          <div className="col">
+            <a href="javascript:void(0)" className="btn btn-ghost-secondary" onClick={(e) => { e.preventDefault(); navigate('/deployments')}}>
+              <IconArrowLeft />
+              返回
+            </a>
+            <h2 className="page-title ms-2 d-inline-block">部署详情</h2>
+          </div>
+        </div>
+      </div>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Descriptions column={2}>
-          <Descriptions.Item label="部署ID">{deployment.id}</Descriptions.Item>
-          <Descriptions.Item label="状态">
-            <Tag color={getStatusColor(deployment.status)}>
-              {getStatusText(deployment.status)}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="版本">{deployment.version}</Descriptions.Item>
-          <Descriptions.Item label="应用">
-            {deployment.applications.join(', ')}
-          </Descriptions.Item>
-          <Descriptions.Item label="环境">
-            {deployment.environments.join(', ')}
-          </Descriptions.Item>
-          <Descriptions.Item label="创建时间">
-            {formatDate(deployment.createdAt)}
-          </Descriptions.Item>
-          {deployment.duration && (
-            <Descriptions.Item label="执行时长">
-              {formatDuration(deployment.duration)}
-            </Descriptions.Item>
-          )}
-        </Descriptions>
-      </Card>
+      <div className="card mb-3">
+        <div className="card-body">
+          <div className="row">
+            <div className="col-md-6">
+              <p><strong>部署ID:</strong> {deployment.id}</p>
+              <p><strong>版本:</strong> {deployment.version}</p>
+              <p><strong>应用:</strong> {deployment.applications.join(', ')}</p>
+            </div>
+            <div className="col-md-6">
+              <p><strong>状态:</strong> <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span></p>
+              <p><strong>环境:</strong> {deployment.environments.join(', ')}</p>
+              <p><strong>创建时间:</strong> {formatDate(deployment.createdAt)}</p>
+            </div>
+            {deployment.duration && <div className="col-12"><p><strong>执行时长:</strong> {formatDuration(deployment.duration)}</p></div>}
+          </div>
+        </div>
+      </div>
 
       {deployment.status === 'waiting_confirm' && (
-        <Alert
-          message="需要人工确认"
-          description="此部署需要人工确认后才能继续。请仔细检查部署状态后决定是否继续。"
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-          action={
-            <Space>
-              <Button
-                size="small"
-                type="primary"
-                icon={<CheckOutlined />}
-                onClick={() => setConfirmModalVisible(true)}
-              >
-                确认继续
-              </Button>
-              <Button
-                size="small"
-                danger
-                icon={<RollbackOutlined />}
-                onClick={() => setRollbackModalVisible(true)}
-              >
-                回滚
-              </Button>
-            </Space>
-          }
-        />
+        <div className="alert alert-warning d-flex justify-content-between align-items-center">
+          <div>
+            <strong>需要人工确认:</strong> 此部署需要人工确认后才能继续。
+          </div>
+          <div>
+            <button className="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#confirmModal">
+              <IconCheck size={16} className="me-2" />
+              确认继续
+            </button>
+            <button className="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rollbackModal">
+              <IconArrowBackUp size={16} className="me-2" />
+              回滚
+            </button>
+          </div>
+        </div>
       )}
 
       {deployment.grayscaleEnabled && (
-        <Card title="灰度发布" style={{ marginBottom: 16 }}>
-          <p>当前灰度比例: {deployment.grayscaleRatio}%</p>
-          <Slider value={deployment.grayscaleRatio} disabled />
-        </Card>
+        <div className="card mb-3">
+          <div className="card-header"><h3 className="card-title">灰度发布</h3></div>
+          <div className="card-body">
+            <label className="form-label">当前灰度比例: {deployment.grayscaleRatio}%</label>
+            <input type="range" className="form-range" value={deployment.grayscaleRatio} disabled />
+          </div>
+        </div>
       )}
 
-      <Card title="部署流程" style={{ marginBottom: 16 }}>
-        <Steps
-          current={currentStep >= 0 ? currentStep : deployment.steps.length}
-          status={
-            deployment.status === 'failed'
-              ? 'error'
-              : deployment.status === 'success'
-              ? 'finish'
-              : 'process'
-          }
-          items={deployment.steps.map((step) => ({
-            title: step.name,
-            description: step.duration ? formatDuration(step.duration) : undefined,
-            status:
-              step.status === 'success'
-                ? 'finish'
-                : step.status === 'failed'
-                ? 'error'
-                : step.status === 'running'
-                ? 'process'
-                : 'wait',
-          }))}
-        />
-      </Card>
+      <div className="card mb-3">
+        <div className="card-header"><h3 className="card-title">部署流程</h3></div>
+        <div className="card-body">
+          <ul className="steps">
+            {deployment.steps.map((step, index) => (
+              <li key={index} className={`step-item ${
+                step.status === 'success' ? 'active' : ''
+              }`}>
+                <a href="javascript:void(0)" onClick={(e) => e.preventDefault()}>{step.name}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
-      <Card title="实时日志">
-        <div
-          style={{
-            background: '#000',
-            color: '#0f0',
-            padding: 16,
-            borderRadius: 4,
-            fontFamily: 'monospace',
-            fontSize: 12,
-            maxHeight: 400,
-            overflow: 'auto',
-          }}
-        >
+      <div className="card">
+        <div className="card-header"><h3 className="card-title">实时日志</h3></div>
+        <div className="card-body" style={{ background: '#000', color: '#0f0', fontFamily: 'monospace', fontSize: '12px', maxHeight: '400px', overflow: 'auto' }}>
           {deployment.logs.map((log, index) => (
             <div key={index}>
               <span style={{ color: '#666' }}>[{log.timestamp}]</span>{' '}
-              <span
-                style={{
-                  color:
-                    log.level === 'error'
-                      ? '#f00'
-                      : log.level === 'warn'
-                      ? '#fa0'
-                      : '#0f0',
-                }}
-              >
-                [{log.level.toUpperCase()}]
-              </span>{' '}
-              {log.message}
+              <span style={{ color: log.level === 'error' ? '#f00' : log.level === 'warn' ? '#fa0' : '#0f0' }}>[{log.level.toUpperCase()}]</span>{' '}
+              <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.message) }} />
             </div>
           ))}
         </div>
-      </Card>
+      </div>
 
-      <Modal
-        title="确认部署"
-        open={confirmModalVisible}
-        onOk={handleConfirm}
-        onCancel={() => setConfirmModalVisible(false)}
-      >
-        <p>确认继续此部署吗?</p>
-        <Input.TextArea
-          placeholder="备注(可选)"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={4}
-        />
-      </Modal>
+      {/* Modals */}
+      <div className="modal" id="confirmModal" tabIndex={-1}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">确认部署</h5>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div className="modal-body">
+              <p>确认继续此部署吗?</p>
+              <textarea className="form-control" placeholder="备注(可选)" value={note} onChange={(e) => setNote(e.target.value)} rows={4}></textarea>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="button" className="btn btn-primary" onClick={handleConfirm} data-bs-dismiss="modal">确认</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <Modal
-        title="回滚部署"
-        open={rollbackModalVisible}
-        onOk={handleRollback}
-        onCancel={() => setRollbackModalVisible(false)}
-      >
-        <p>确认回滚此部署吗?</p>
-        <Input.TextArea
-          placeholder="回滚原因(可选)"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={4}
-        />
-      </Modal>
+      <div className="modal" id="rollbackModal" tabIndex={-1}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">回滚部署</h5>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div className="modal-body">
+              <p>确认回滚此部署吗?</p>
+              <textarea className="form-control" placeholder="回滚原因(可选)" value={reason} onChange={(e) => setReason(e.target.value)} rows={4}></textarea>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="button" className="btn btn-danger" onClick={handleRollback} data-bs-dismiss="modal">回滚</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

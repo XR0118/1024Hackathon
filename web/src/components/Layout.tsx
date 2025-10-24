@@ -1,104 +1,84 @@
-import React from 'react'
-import { Layout as AntLayout, Menu, theme } from 'antd'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import React from 'react';
+import { NavLink, Outlet } from 'react-router-dom';
 import {
-  DashboardOutlined,
-  TagOutlined,
-  AppstoreOutlined,
-  CloudOutlined,
-  RocketOutlined,
-} from '@ant-design/icons'
-
-const { Header, Sider, Content } = AntLayout
+  IconDashboard,
+  IconTag,
+  IconApps,
+  IconCloud,
+  IconRocket,
+} from '@tabler/icons-react';
+import ErrorMessage from './ErrorMessage';
+import { useErrorStore } from '@/store/error';
 
 const Layout: React.FC = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken()
-
+  const { errorMessage, clearError } = useErrorStore();
   const menuItems = [
     {
       key: '/',
-      icon: <DashboardOutlined />,
+      icon: <IconDashboard />,
       label: '仪表板',
     },
     {
       key: '/versions',
-      icon: <TagOutlined />,
+      icon: <IconTag />,
       label: '版本管理',
     },
     {
       key: '/applications',
-      icon: <AppstoreOutlined />,
+      icon: <IconApps />,
       label: '应用管理',
     },
     {
       key: '/environments',
-      icon: <CloudOutlined />,
+      icon: <IconCloud />,
       label: '环境管理',
     },
     {
       key: '/deployments',
-      icon: <RocketOutlined />,
+      icon: <IconRocket />,
       label: '部署管理',
     },
-  ]
+  ];
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
-      <Sider
-        breakpoint="lg"
-        collapsedWidth="0"
-        style={{
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <div
-          style={{
-            height: 64,
-            margin: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: 18,
-            fontWeight: 'bold',
-          }}
-        >
-          部署平台
+    <div className="page">
+      <header className="navbar navbar-expand-md d-print-none">
+        <div className="container-xl">
+          <h1 className="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+            部署平台
+          </h1>
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-        />
-      </Sider>
-      <AntLayout style={{ marginLeft: 200 }}>
-        <Header style={{ padding: 0, background: colorBgContainer }} />
-        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
-          <div
-            style={{
-              padding: 24,
-              background: colorBgContainer,
-              borderRadius: borderRadiusLG,
-              minHeight: 'calc(100vh - 112px)',
-            }}
-          >
+      </header>
+      <div className="navbar-expand-md">
+        <div className="collapse navbar-collapse" id="navbar-menu">
+          <div className="navbar">
+            <div className="container-xl">
+              <ul className="navbar-nav">
+                {menuItems.map((item) => (
+                  <li className="nav-item" key={item.key}>
+                    <NavLink className="nav-link" to={item.key} end>
+                      <span className="nav-link-icon d-md-none d-lg-inline-block">
+                        {item.icon}
+                      </span>
+                      <span className="nav-link-title">{item.label}</span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="page-wrapper">
+        <div className="page-body">
+          <div className="container-xl">
+            {errorMessage && <ErrorMessage message={errorMessage} onDismiss={clearError} />}
             <Outlet />
           </div>
-        </Content>
-      </AntLayout>
-    </AntLayout>
-  )
-}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-export default Layout
+export default Layout;
