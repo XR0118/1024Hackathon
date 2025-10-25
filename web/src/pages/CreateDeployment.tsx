@@ -113,10 +113,10 @@ const CreateDeployment: React.FC = () => {
         <div className="list-group">
           {applications.map((app) => (
             <button
-              key={app.id}
+              key={app.name}
               type="button"
-              className={`list-group-item list-group-item-action ${selectedApps.includes(app.id) ? 'active' : ''}`}
-              onClick={() => toggleSelection(app.id, selectedApps, setSelectedApps)}
+              className={`list-group-item list-group-item-action ${selectedApps.includes(app.name) ? 'active' : ''}`}
+              onClick={() => toggleSelection(app.name, selectedApps, setSelectedApps)}
             >
               {app.name}
             </button>
@@ -183,7 +183,7 @@ const CreateDeployment: React.FC = () => {
               <p>
                 <strong>应用:</strong>{' '}
                 {selectedApps
-                  .map((id) => applications.find((a) => a.id === id)?.name)
+                  .map((name) => applications.find((a) => a.name === name)?.name)
                   .join(', ')}
               </p>
               <p>
