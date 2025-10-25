@@ -86,13 +86,43 @@ func TestMasterServiceE2E(t *testing.T) {
 	switch finalStatus {
 	case "success", "failed", "rolled_back", "cancelled":
 		// OK; terminal
-		return
+		break
 	case "":
 		// Unrecognized/empty; treat as non-terminal
 		fallthrough
 	default:
 		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
 	}
+
+	// 3) Create Version (with app_builds)
+	versionID2 := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+10),
+		GitCommit:   "e2e-commit-sha",
+		Repository:  "https://github.com/example/repo",
+		Description: "E2E test version",
+		AppBuild: []AppBuildItem{
+			{AppID: appID, AppName: appName, DockerImage: fmt.Sprintf("registry.local/%s:%d", appName, uniq+10)},
+		},
+	})
+	t.Logf("created version2: id=%s", versionID)
+
+	// 4) Create Deployment
+	deploymentID2 := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
+		VersionID:      versionID2,
+		EnvironmentID:  envID,
+		ManualApproval: false,
+		Strategy: []StrategyItem{
+			{BatchSize: 5, BatchInterval: 30, CanaryRatio: 0, AutoRollback: true},
+		},
+	})
+	t.Logf("created deployment2: id=%s", deploymentID2)
+
+	// 5) Start Deployment
+	did2 := startDeployment(t, client, baseURL, token, deploymentID2)
+	t.Logf("started deployment2: id=%s deployment=%s", deploymentID2, did2)
+
+	t.Fatal()
+
 }
 
 // --- Request/Response payloads ---
