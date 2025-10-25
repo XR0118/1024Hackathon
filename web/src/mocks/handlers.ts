@@ -307,7 +307,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       if (error.isMockResponse && error.response) {
         console.log('[Mock API] Response interceptor - returning:', error.response.data)
         if (error.response.status >= 200 && error.response.status < 300) {
-          return Promise.resolve(error.response)
+          return error.response
         }
         return Promise.reject(error)
       }
