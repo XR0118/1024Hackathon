@@ -98,14 +98,21 @@ const Versions: React.FC = () => {
                   <td>{version.version}</td>
                   <td>
                     <div className="d-flex flex-column">
-                      <span>tag: <a href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`} target="_blank" rel="noopener noreferrer">{version.git.tag}</a></span>
+                      <span>
+                        tag:{" "}
+                        <a href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`} target="_blank" rel="noopener noreferrer">
+                          {version.git.tag}
+                        </a>
+                      </span>
                     </div>
                   </td>
                   <td>
                     <div className="d-flex flex-column gap-1">
                       {version.applications.map((app) => (
                         <div key={app.name} className="d-flex align-items-center gap-2">
-                          <span className="badge bg-secondary-lt">{app.name}</span>
+                          <a href={`/applications/${app.name}`} target="_blank" rel="noopener noreferrer">
+                            <span className="badge bg-secondary-lt">{app.name}</span>
+                          </a>
                           <small className="text-muted">
                             覆盖度: {app.coverage}% | 健康度: {app.health}% | 更新: {formatDate(app.lastUpdatedAt)}
                           </small>
