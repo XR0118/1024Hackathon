@@ -6,12 +6,13 @@ import (
 
 // AgentAppStatus 应用在物理机上的状态
 type AgentAppStatus struct {
-	App     string            `json:"app"`
-	Version string            `json:"version"`
-	Healthy HealthStatus      `json:"healthy"`
-	Config  map[string]string `json:"config,omitempty"`
-	Status  string            `json:"status"` // running, stopped, error
-	Updated time.Time         `json:"updated"`
+	App      string            `json:"app"`
+	Version  string            `json:"version"`
+	Replicas int               `json:"replicas"`
+	Healthy  HealthStatus      `json:"healthy"`
+	Config   map[string]string `json:"config,omitempty"`
+	Status   string            `json:"status"` // running, stopped, error
+	Updated  time.Time         `json:"updated"`
 }
 
 // HealthStatus 健康状态
@@ -60,6 +61,7 @@ type AgentConfig struct {
 // DeploymentPackage 部署包信息
 type DeploymentPackage struct {
 	Type        string            `json:"type"` // docker, binary, script
+	Replicas    int               `json:"replicas,omitempty"`
 	Image       string            `json:"image,omitempty"`
 	Command     []string          `json:"command,omitempty"`
 	Args        []string          `json:"args,omitempty"`

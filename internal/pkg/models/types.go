@@ -96,6 +96,7 @@ type Deployment struct {
 }
 
 type DeploySteps struct {
+	BatchSize            int     `json:"batch_size"`
 	BatchInterval        int     `json:"batch_interval"`
 	CanaryRatio          float64 `json:"canary_ratio"`
 	AutoRollback         bool    `json:"auto_rollback"`
