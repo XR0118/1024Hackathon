@@ -14,6 +14,10 @@ const Versions: React.FC = () => {
   const [rollbackVersion, setRollbackVersion] = useState<Version | null>(null);
   const [rollbackReason, setRollbackReason] = useState("");
   const [rollbackLoading, setRollbackLoading] = useState(false);
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10); // 每页显示10条
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -32,6 +36,7 @@ const Versions: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       loadVersions();
+      setCurrentPage(1); // 搜索时重置到第一页
     }, 500);
     return () => clearTimeout(timer);
   }, [loadVersions]);
@@ -54,6 +59,19 @@ const Versions: React.FC = () => {
     } finally {
       setRollbackLoading(false);
     }
+  };
+
+  // 分页计算
+  const totalPages = Math.ceil(versions.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedVersions = versions.slice(startIndex, endIndex);
+
+  // 页面切换处理
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -93,7 +111,7 @@ const Versions: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {versions.map((version) => (
+              {paginatedVersions.map((version) => (
                 <tr key={version.version}>
                   <td>{version.version}</td>
                   <td>
@@ -151,6 +169,63 @@ const Versions: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="card-footer">
+            <div className="d-flex align-items-center">
+              <div className="ms-auto text-muted">
+                共 {versions.length} 条记录，第 {currentPage} / {totalPages} 页
+              </div>
+              <ul className="pagination m-0 ms-auto">
+                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
+                    首页
+                  </button>
+                </li>
+                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+                    上一页
+                  </button>
+                </li>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // 只显示当前页附近的页码
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 2 && page <= currentPage + 2)
+                  ) {
+                    return (
+                      <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                        <button className="page-link" onClick={() => handlePageChange(page)}>
+                          {page}
+                        </button>
+                      </li>
+                    );
+                  } else if (
+                    page === currentPage - 3 ||
+                    page === currentPage + 3
+                  ) {
+                    return (
+                      <li key={page} className="page-item disabled">
+                        <span className="page-link">...</span>
+                      </li>
+                    );
+                  }
+                  return null;
+                })}
+                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+                    下一页
+                  </button>
+                </li>
+                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages}>
+                    末页
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="modal" id="versionDetailModal" tabIndex={-1}>
