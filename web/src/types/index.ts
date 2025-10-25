@@ -1,12 +1,19 @@
+export interface GitInfo {
+  tag: string
+}
+
+export interface VersionApplication {
+  name: string
+  coverage: number
+  health: number
+  lastUpdatedAt: string
+}
+
 export interface Version {
-  id: string
   version: string
-  gitTag: string
-  relatedPR?: string
+  git: GitInfo
+  applications: VersionApplication[]
   createdAt: string
-  isRevert: boolean
-  status: 'active' | 'deployed' | 'deploying'
-  applications: string[]
 }
 
 export interface Application {
