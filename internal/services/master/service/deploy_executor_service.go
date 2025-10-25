@@ -9,7 +9,6 @@ import (
 
 type DeployExecutor interface {
 	Apply(ctx context.Context) error
-	UnDo(ctx context.Context) error
 }
 
 type DeployClient interface {
