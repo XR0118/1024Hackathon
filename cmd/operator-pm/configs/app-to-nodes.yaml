@@ -1,0 +1,30 @@
+# 应用->机器节点映射配置文件
+# 定义每个应用可以部署到哪些机器节点上
+
+# 应用名 -> 节点名列表的映射
+app_to_nodes:
+  # 示例应用配置
+  my-app:
+    - node-1
+    - node-2
+    - node-3
+
+  another-app:
+    - node-1
+    - node-4
+
+  web-service:
+    - node-2
+    - node-3
+    - node-5
+
+  api-service:
+    - node-1
+    - node-2
+    - node-3
+    - node-4
+    - node-5
+# 可以添加更多应用配置
+# your-app-name:
+#   - node-1
+#   - node-2

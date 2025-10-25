@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 // Config Operator-PM 配置
@@ -42,11 +43,14 @@ type LogConfig struct {
 
 // PMConfig 物理机管理配置
 type PMConfig struct {
-	AgentTimeout int               `mapstructure:"agent_timeout"` // Agent 通信超时（秒）
-	MaxRetries   int               `mapstructure:"max_retries"`   // 最大重试次数
-	HealthCheck  HealthCheckConfig `mapstructure:"health_check"`  // 健康检查配置
-	Deployment   DeploymentConfig  `mapstructure:"deployment"`    // 部署配置
-	Config       map[string]string `mapstructure:"config"`        // 自定义配置
+	AgentTimeout int                 `mapstructure:"agent_timeout"` // Agent 通信超时（秒）
+	MaxRetries   int                 `mapstructure:"max_retries"`   // 最大重试次数
+	HealthCheck  HealthCheckConfig   `mapstructure:"health_check"`  // 健康检查配置
+	Deployment   DeploymentConfig    `mapstructure:"deployment"`    // 部署配置
+	ConfigPaths  ConfigPathsConfig   `mapstructure:"config_paths"`  // 配置文件路径配置
+	Agent        AgentConfig         `mapstructure:"agent"`         // Agent服务配置
+	AppToNodes   map[string][]string // 应用->机器节点映射（从独立配置文件加载）
+	NodeToIP     map[string]string   // 机器节点->IP地址映射（从独立配置文件加载）
 }
 
 // HealthCheckConfig 健康检查配置
@@ -61,6 +65,18 @@ type DeploymentConfig struct {
 	MaxConcurrent int `mapstructure:"max_concurrent"` // 最大并发部署数
 	RetryInterval int `mapstructure:"retry_interval"` // 重试间隔（秒）
 	StatusCheck   int `mapstructure:"status_check"`   // 状态检查间隔（秒）
+}
+
+// ConfigPathsConfig 配置文件路径配置
+type ConfigPathsConfig struct {
+	AppToNodes string `mapstructure:"app_to_nodes"` // 应用->节点映射配置文件路径
+	NodeToIP   string `mapstructure:"node_to_ip"`   // 节点->IP地址映射配置文件路径
+}
+
+// AgentConfig Agent服务配置
+type AgentConfig struct {
+	Port int    `mapstructure:"port"` // Agent服务端口
+	Path string `mapstructure:"path"` // Agent服务路径前缀
 }
 
 // Load 加载配置
@@ -95,6 +111,11 @@ func loadConfigFromFile(configPath string) (*Config, error) {
 
 	// 从环境变量覆盖配置
 	overrideFromEnv(&cfg)
+
+	// 加载独立配置文件
+	if err := loadMappingConfigs(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to load mapping configs: %w", err)
+	}
 
 	return &cfg, nil
 }
@@ -132,7 +153,85 @@ func loadConfigFromDefault() (*Config, error) {
 	// 从环境变量覆盖配置
 	overrideFromEnv(&cfg)
 
+	// 加载独立配置文件
+	if err := loadMappingConfigs(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to load mapping configs: %w", err)
+	}
+
 	return &cfg, nil
+}
+
+// loadMappingConfigs 加载映射配置文件
+func loadMappingConfigs(cfg *Config) error {
+	// 初始化映射
+	cfg.PM.AppToNodes = make(map[string][]string)
+	cfg.PM.NodeToIP = make(map[string]string)
+
+	// 加载 app-to-nodes.yaml
+	if err := loadAppToNodesConfig(cfg); err != nil {
+		return fmt.Errorf("failed to load app-to-nodes config: %w", err)
+	}
+
+	// 加载 node-to-ip.yaml
+	if err := loadNodeToIPConfig(cfg); err != nil {
+		return fmt.Errorf("failed to load node-to-ip config: %w", err)
+	}
+
+	return nil
+}
+
+// loadAppToNodesConfig 加载应用->节点映射配置
+func loadAppToNodesConfig(cfg *Config) error {
+	// 使用配置中指定的路径
+	configPath := cfg.PM.ConfigPaths.AppToNodes
+	if configPath == "" {
+		// 如果配置中没有指定路径，使用默认路径
+		configPath = "./cmd/operator-pm/configs/app-to-nodes.yaml"
+	}
+
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		// 配置文件不存在，使用空映射
+		return nil
+	}
+
+	var appToNodesConfig struct {
+		AppToNodes map[string][]string `yaml:"app_to_nodes"`
+	}
+
+	if err := yaml.Unmarshal(configData, &appToNodesConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal app-to-nodes config: %w", err)
+	}
+
+	cfg.PM.AppToNodes = appToNodesConfig.AppToNodes
+	return nil
+}
+
+// loadNodeToIPConfig 加载节点->IP地址映射配置
+func loadNodeToIPConfig(cfg *Config) error {
+	// 使用配置中指定的路径
+	configPath := cfg.PM.ConfigPaths.NodeToIP
+	if configPath == "" {
+		// 如果配置中没有指定路径，使用默认路径
+		configPath = "./cmd/operator-pm/configs/node-to-ip.yaml"
+	}
+
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		// 配置文件不存在，使用空映射
+		return nil
+	}
+
+	var nodeToIPConfig struct {
+		NodeToIP map[string]string `yaml:"node_to_ip"`
+	}
+
+	if err := yaml.Unmarshal(configData, &nodeToIPConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal node-to-ip config: %w", err)
+	}
+
+	cfg.PM.NodeToIP = nodeToIPConfig.NodeToIP
+	return nil
 }
 
 // setDefaults 设置默认值
@@ -163,6 +262,14 @@ func setDefaults() {
 	viper.SetDefault("pm.deployment.max_concurrent", 5)
 	viper.SetDefault("pm.deployment.retry_interval", 30)
 	viper.SetDefault("pm.deployment.status_check", 30)
+
+	// 配置文件路径配置
+	viper.SetDefault("pm.config_paths.app_to_nodes", "./cmd/operator-pm/configs/app-to-nodes.yaml")
+	viper.SetDefault("pm.config_paths.node_to_ip", "./cmd/operator-pm/configs/node-to-ip.yaml")
+
+	// Agent服务配置
+	viper.SetDefault("pm.agent.port", 8081)
+	viper.SetDefault("pm.agent.path", "/v1")
 }
 
 // overrideFromEnv 从环境变量覆盖配置
@@ -258,4 +365,16 @@ func (c *Config) GetDSN() string {
 // GetServerAddr 获取服务器地址
 func (c *Config) GetServerAddr() string {
 	return fmt.Sprintf("%s:%d", c.Server.Host, c.Server.Port)
+}
+
+// GetAgentURL 根据节点名获取Agent服务URL
+func (c *Config) GetAgentURL(nodeName string) (string, bool) {
+	ip, exists := c.PM.NodeToIP[nodeName]
+	if !exists {
+		return "", false
+	}
+
+	// 构建完整的Agent URL
+	url := fmt.Sprintf("http://%s:%d%s", ip, c.PM.Agent.Port, c.PM.Agent.Path)
+	return url, true
 }
