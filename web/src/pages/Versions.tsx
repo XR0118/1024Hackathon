@@ -2,8 +2,26 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { versionApi } from '@/services/api'
 import { formatDate } from '@/utils'
 import type { Version } from '@/types'
-import { IconSearch, IconRefresh } from '@tabler/icons-react'
+import { Search, RefreshCw } from 'lucide-react'
 import { useErrorStore } from '@/store/error'
+import {
+  Button,
+  Input,
+  Card,
+  CardBody,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Chip,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  useDisclosure,
+} from '@heroui/react'
 
 const Versions: React.FC = () => {
   const { setError } = useErrorStore();
@@ -11,6 +29,7 @@ const Versions: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
+  const { isOpen, onOpen, onClose } = useDisclosure()
 
   const loadVersions = useCallback(async () => {
     setLoading(true)
@@ -37,147 +56,147 @@ const Versions: React.FC = () => {
     setSearchText(e.target.value)
   }
 
+  const openVersionDetail = (version: Version) => {
+    setSelectedVersion(version)
+    onOpen()
+  }
+
+  const getHealthColor = (health: number) => {
+    if (health >= 80) return 'success'
+    if (health >= 50) return 'warning'
+    return 'danger'
+  }
+
   return (
     <div>
-      <div className="page-header d-print-none">
-        <div className="row align-items-center">
-          <div className="col">
-            <h2 className="page-title">版本管理</h2>
-          </div>
-        </div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-bold">版本管理</h2>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <div className="d-flex">
-            <div className="input-icon">
-              <span className="input-icon-addon">
-                <IconSearch />
-              </span>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="搜索版本号或标签..."
-                value={searchText}
-                onChange={handleSearchChange}
-              />
-            </div>
-            <button
-              className="btn btn-primary ms-2"
-              onClick={loadVersions}
-              disabled={loading}
+      <Card>
+        <CardBody>
+          <div className="flex gap-2 mb-4">
+            <Input
+              type="text"
+              placeholder="搜索版本号或标签..."
+              value={searchText}
+              onChange={handleSearchChange}
+              startContent={<Search className="w-4 h-4" />}
+              className="flex-1"
+            />
+            <Button
+              color="primary"
+              onPress={loadVersions}
+              isDisabled={loading}
+              startContent={<RefreshCw className="w-4 h-4" />}
             >
-              <IconRefresh className="icon" />
               刷新
-            </button>
+            </Button>
           </div>
-        </div>
-        <div className="table-responsive">
-          <table className="table card-table table-vcenter text-nowrap datatable">
-            <thead>
-              <tr>
-                <th>版本号</th>
-                <th>Git Tag</th>
-                <th>应用信息</th>
-                <th>创建时间</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
+
+          <Table aria-label="版本列表">
+            <TableHeader>
+              <TableColumn>版本号</TableColumn>
+              <TableColumn>Git Tag</TableColumn>
+              <TableColumn>应用信息</TableColumn>
+              <TableColumn>创建时间</TableColumn>
+              <TableColumn>操作</TableColumn>
+            </TableHeader>
+            <TableBody>
               {versions.map((version) => (
-                <tr key={version.version}>
-                  <td>{version.version}</td>
-                  <td>
+                <TableRow key={version.version}>
+                  <TableCell>{version.version}</TableCell>
+                  <TableCell>
                     <a
                       href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="text-primary hover:underline"
                     >
                       {version.git.tag}
                     </a>
-                  </td>
-                  <td>
-                    <div className="d-flex flex-column gap-1">
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
                       {version.applications.map((app) => (
-                        <div key={app.name} className="d-flex align-items-center gap-2">
-                          <span className="badge bg-secondary-lt">{app.name}</span>
-                          <small className="text-muted">
+                        <div key={app.name} className="flex items-center gap-2">
+                          <Chip color="secondary" variant="flat" size="sm">{app.name}</Chip>
+                          <small className="text-gray-500">
                             覆盖度: {app.coverage}% | 健康度: {app.health}% | 
                             更新: {formatDate(app.lastUpdatedAt)}
                           </small>
                         </div>
                       ))}
                     </div>
-                  </td>
-                  <td>{formatDate(version.createdAt)}</td>
-                  <td>
-                    <button
-                      className="btn btn-sm btn-ghost-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#versionDetailModal"
-                      onClick={() => setSelectedVersion(version)}
+                  </TableCell>
+                  <TableCell>{formatDate(version.createdAt)}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="primary"
+                      onPress={() => openVersionDetail(version)}
                     >
                       详情
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
 
-      <div className="modal" id="versionDetailModal" tabIndex={-1}>
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">版本详情</h5>
-              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div className="modal-body">
-              {selectedVersion && (
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl">
+        <ModalContent>
+          <ModalHeader>版本详情</ModalHeader>
+          <ModalBody className="pb-6">
+            {selectedVersion && (
+              <div className="space-y-4">
                 <div>
-                  <h3>基本信息</h3>
-                  <p><strong>版本号:</strong> {selectedVersion.version}</p>
-                  <p><strong>Git Tag:</strong> {selectedVersion.git.tag}</p>
-                  <p><strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}</p>
+                  <h3 className="text-lg font-semibold mb-2">基本信息</h3>
+                  <div className="space-y-2">
+                    <p><strong>版本号:</strong> {selectedVersion.version}</p>
+                    <p><strong>Git Tag:</strong> {selectedVersion.git.tag}</p>
+                    <p><strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}</p>
+                  </div>
+                </div>
 
-                  <h3 style={{ marginTop: 24 }}>应用信息</h3>
-                  <div className="list-group">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">应用信息</h3>
+                  <div className="space-y-2">
                     {selectedVersion.applications.map((app) => (
-                      <div key={app.name} className="list-group-item">
-                        <div className="row align-items-center">
-                          <div className="col">
+                      <Card key={app.name} shadow="sm">
+                        <CardBody>
+                          <div className="flex justify-between items-center">
                             <strong>{app.name}</strong>
-                          </div>
-                          <div className="col-auto">
-                            <div className="d-flex flex-column gap-1">
+                            <div className="flex flex-col gap-1 text-sm">
                               <div>
-                                <span className="text-muted">覆盖度:</span>{' '}
-                                <span className="badge bg-info-lt">{app.coverage}%</span>
+                                <span className="text-gray-500">覆盖度:</span>{' '}
+                                <Chip color="primary" variant="flat" size="sm">{app.coverage}%</Chip>
                               </div>
                               <div>
-                                <span className="text-muted">健康度:</span>{' '}
-                                <span className={`badge ${app.health >= 80 ? 'bg-success-lt' : app.health >= 50 ? 'bg-warning-lt' : 'bg-danger-lt'}`}>
+                                <span className="text-gray-500">健康度:</span>{' '}
+                                <Chip color={getHealthColor(app.health)} variant="flat" size="sm">
                                   {app.health}%
-                                </span>
+                                </Chip>
                               </div>
                               <div>
-                                <span className="text-muted">最后更新:</span>{' '}
+                                <span className="text-gray-500">最后更新:</span>{' '}
                                 {formatDate(app.lastUpdatedAt)}
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
+                        </CardBody>
+                      </Card>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+              </div>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

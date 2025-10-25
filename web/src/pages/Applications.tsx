@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Card, CardBody, CardFooter, Button, Chip } from '@heroui/react'
 import { applicationApi } from '@/services/api'
 import { formatDate } from '@/utils'
 import type { Application } from '@/types'
-import { IconPlus, IconRocket, IconCircleCheck, IconAlertCircle } from '@tabler/icons-react'
+import { Plus, Rocket, CheckCircle, AlertCircle } from 'lucide-react'
 import { useErrorStore } from '@/store/error'
 
 const Applications: React.FC = () => {
@@ -31,108 +32,98 @@ const Applications: React.FC = () => {
   }
 
   const getHealthIcon = (health: number) => {
-    if (health >= 80) return <IconCircleCheck size={16} />
-    return <IconAlertCircle size={16} />
+    if (health >= 80) return <CheckCircle size={16} />
+    return <AlertCircle size={16} />
   }
 
   return (
-    <div>
-      <div className="page-header d-print-none">
-        <div className="row align-items-center">
-          <div className="col">
-            <h2 className="page-title">应用管理</h2>
-          </div>
-          <div className="col-auto ms-auto d-print-none">
-            <button className="btn btn-primary">
-              <IconPlus className="icon" />
-              添加应用
-            </button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold">应用管理</h2>
+        <Button color="primary" startContent={<Plus size={16} />}>
+          添加应用
+        </Button>
       </div>
 
-      <div className="row row-cards">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {applications.map((app) => (
-          <div className="col-sm-6 col-lg-4" key={app.name}>
-            <div className="card">
-              <div className="card-body">
-                <div className="d-flex align-items-center mb-3">
-                  {app.icon && (
-                    <div className="me-3">
-                      <img src={app.icon} alt={app.name} style={{ width: '40px', height: '40px' }} />
-                    </div>
-                  )}
+          <Card key={app.name} className="w-full">
+            <CardBody className="space-y-4">
+              <div className="flex items-center gap-3">
+                {app.icon && (
                   <div>
-                    <h3 className="card-title mb-1">{app.name}</h3>
-                    <p className="text-muted mb-0" style={{ fontSize: '14px' }}>{app.description}</p>
+                    <img src={app.icon} alt={app.name} className="w-10 h-10 rounded" />
                   </div>
+                )}
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">{app.name}</h3>
+                  <p className="text-sm text-default-500">{app.description}</p>
                 </div>
+              </div>
 
-                <div className="mt-3">
-                  <strong className="mb-2 d-block">版本信息:</strong>
-                  {app.versions && app.versions.length > 0 ? (
-                    <div className="list-group list-group-flush">
-                      {app.versions.slice(0, 3).map((versionInfo, index) => (
-                        <div key={index} className="list-group-item px-0 py-2">
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div className="d-flex align-items-center">
-                              <span className={`badge bg-${versionInfo.status === 'normal' ? 'blue' : 'yellow'}-lt me-2`}>
-                                {versionInfo.version}
-                              </span>
-                              {versionInfo.status === 'revert' && (
-                                <span className="badge bg-yellow me-2">回滚</span>
-                              )}
-                            </div>
-                            <div className="d-flex align-items-center">
-                              <span className={`badge bg-${getHealthColor(versionInfo.health)}-lt me-2`}>
-                                {getHealthIcon(versionInfo.health)}
-                                <span className="ms-1">{versionInfo.health}%</span>
-                              </span>
-                              <small className="text-muted">{formatDate(versionInfo.lastUpdatedAt)}</small>
-                            </div>
-                          </div>
+              <div className="space-y-2">
+                <p className="font-semibold text-sm">版本信息:</p>
+                {app.versions && app.versions.length > 0 ? (
+                  <div className="space-y-2">
+                    {app.versions.slice(0, 3).map((versionInfo, index) => (
+                      <div key={index} className="flex justify-between items-center py-2 border-b border-default-200 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <Chip size="sm" color={versionInfo.status === 'normal' ? 'primary' : 'warning'} variant="flat">
+                            {versionInfo.version}
+                          </Chip>
+                          {versionInfo.status === 'revert' && (
+                            <Chip size="sm" color="warning">回滚</Chip>
+                          )}
                         </div>
-                      ))}
-                      {app.versions.length > 3 && (
-                        <div className="list-group-item px-0 py-2 text-center">
-                          <small className="text-muted">还有 {app.versions.length - 3} 个版本</small>
+                        <div className="flex items-center gap-2">
+                          <Chip
+                            size="sm"
+                            color={getHealthColor(versionInfo.health) as any}
+                            variant="flat"
+                            startContent={getHealthIcon(versionInfo.health)}
+                          >
+                            {versionInfo.health}%
+                          </Chip>
+                          <span className="text-xs text-default-500">{formatDate(versionInfo.lastUpdatedAt)}</span>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-muted">暂无版本信息</p>
-                  )}
-                </div>
+                      </div>
+                    ))}
+                    {app.versions.length > 3 && (
+                      <p className="text-center text-sm text-default-500">
+                        还有 {app.versions.length - 3} 个版本
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-default-500">暂无版本信息</p>
+                )}
               </div>
-              <div className="card-footer">
-                <div className="d-flex">
-                  <button
-                    className="btn btn-ghost-primary"
-                    onClick={() => navigate(`/deployments/new?appName=${app.name}`)}
-                  >
-                    <IconRocket size={16} className="me-2" />
-                    新建部署
-                  </button>
-                  <button
-                    className="btn btn-ghost-secondary ms-auto"
-                    onClick={() => navigate(`/applications/${app.name}`)}
-                  >
-                    查看详情
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+            </CardBody>
+            <CardFooter className="gap-2">
+              <Button
+                color="primary"
+                variant="light"
+                startContent={<Rocket size={16} />}
+                onClick={() => navigate(`/deployments/new?appName=${app.name}`)}
+              >
+                新建部署
+              </Button>
+              <Button
+                variant="flat"
+                onClick={() => navigate(`/applications/${app.name}`)}
+              >
+                查看详情
+              </Button>
+            </CardFooter>
+          </Card>
         ))}
       </div>
 
       {applications.length === 0 && (
-        <div className="empty">
-          <div className="empty-icon">
-            <IconRocket size={48} />
-          </div>
-          <p className="empty-title">暂无应用</p>
-          <p className="empty-subtitle text-muted">
+        <div className="flex flex-col items-center justify-center py-16">
+          <Rocket size={64} className="text-default-300 mb-4" />
+          <p className="text-xl font-semibold mb-2">暂无应用</p>
+          <p className="text-default-500">
             点击上方"添加应用"按钮创建您的第一个应用
           </p>
         </div>

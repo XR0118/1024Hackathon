@@ -1,82 +1,86 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem } from '@heroui/react';
 import {
-  IconDashboard,
-  IconTag,
-  IconApps,
-  IconCloud,
-  IconRocket,
-} from '@tabler/icons-react';
+  LayoutDashboard,
+  Tag,
+  AppWindow,
+  Cloud,
+  Rocket,
+} from 'lucide-react';
 import ErrorMessage from './ErrorMessage';
 import { useErrorStore } from '@/store/error';
 
 const Layout: React.FC = () => {
   const { errorMessage, clearError } = useErrorStore();
+  const location = useLocation();
+  
   const menuItems = [
     {
       key: '/',
-      icon: <IconDashboard />,
+      icon: LayoutDashboard,
       label: '仪表板',
     },
     {
       key: '/versions',
-      icon: <IconTag />,
+      icon: Tag,
       label: '版本管理',
     },
     {
       key: '/applications',
-      icon: <IconApps />,
+      icon: AppWindow,
       label: '应用管理',
     },
     {
       key: '/environments',
-      icon: <IconCloud />,
+      icon: Cloud,
       label: '环境管理',
     },
     {
       key: '/deployments',
-      icon: <IconRocket />,
+      icon: Rocket,
       label: '部署管理',
     },
   ];
 
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
   return (
-    <div className="page">
-      <header className="navbar navbar-expand-md d-print-none">
-        <div className="container-xl">
-          <h1 className="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-            部署平台
-          </h1>
-        </div>
-      </header>
-      <div className="navbar-expand-md">
-        <div className="collapse navbar-collapse" id="navbar-menu">
-          <div className="navbar">
-            <div className="container-xl">
-              <ul className="navbar-nav">
-                {menuItems.map((item) => (
-                  <li className="nav-item" key={item.key}>
-                    <NavLink className="nav-link" to={item.key} end>
-                      <span className="nav-link-icon d-md-none d-lg-inline-block">
-                        {item.icon}
-                      </span>
-                      <span className="nav-link-title">{item.label}</span>
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="page-wrapper">
-        <div className="page-body">
-          <div className="container-xl">
-            {errorMessage && <ErrorMessage message={errorMessage} onDismiss={clearError} />}
-            <Outlet />
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Navbar isBordered maxWidth="full" position="sticky">
+        <NavbarBrand>
+          <p className="font-bold text-xl">部署平台</p>
+        </NavbarBrand>
+        <NavbarContent className="hidden sm:flex gap-6" justify="center">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavbarItem key={item.key} isActive={isActive(item.key)}>
+                <NavLink
+                  to={item.key}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 ${
+                      isActive ? 'text-primary' : 'text-foreground'
+                    }`
+                  }
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </NavLink>
+              </NavbarItem>
+            );
+          })}
+        </NavbarContent>
+      </Navbar>
+      <main className="container mx-auto max-w-7xl px-6 py-8">
+        {errorMessage && <ErrorMessage message={errorMessage} onDismiss={clearError} />}
+        <Outlet />
+      </main>
     </div>
   );
 };

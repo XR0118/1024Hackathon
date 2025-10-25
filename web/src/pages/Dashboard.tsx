@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { Card, CardHeader, CardBody, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from '@heroui/react'
 import {
-  IconRocket,
-  IconApps,
-  IconCloud,
-  IconTag,
-  IconRefresh,
-} from '@tabler/icons-react'
+  Rocket,
+  AppWindow,
+  Cloud,
+  Tag,
+  RefreshCw,
+} from 'lucide-react'
 import { dashboardApi } from '@/services/api'
 import { formatDate, getStatusColor, getStatusText } from '@/utils'
 import type { Deployment, DashboardStats } from '@/types'
@@ -44,120 +45,101 @@ const Dashboard: React.FC = () => {
   }, [loadData])
 
   return (
-    <div>
-      <div className="page-header d-print-none">
-        <div className="row align-items-center">
-          <div className="col">
-            <h2 className="page-title">仪表板</h2>
-          </div>
-          <div className="col-auto ms-auto d-print-none">
-            <div className="btn-list">
-              <button
-                className="btn btn-primary d-none d-sm-inline-block"
-                onClick={loadData}
-                disabled={loading}
-              >
-                <IconRefresh className="icon" />
-                刷新
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold">仪表板</h2>
+        <Button
+          color="primary"
+          startContent={<RefreshCw size={16} />}
+          onClick={loadData}
+          isLoading={loading}
+        >
+          刷新
+        </Button>
       </div>
 
-      <div className="row row-deck row-cards">
-        <div className="col-sm-6 col-lg-3">
-          <div className="card">
-            <div className="card-body">
-              <div className="d-flex align-items-center">
-                <div className="subheader">活跃版本</div>
-              </div>
-              <div className="h1 mb-3">{stats.activeVersions}</div>
-              <IconTag size={24} className="text-primary" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardBody className="flex flex-row items-center justify-between">
+            <div>
+              <p className="text-sm text-default-500">活跃版本</p>
+              <p className="text-3xl font-bold mt-2">{stats.activeVersions}</p>
             </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-lg-3">
-          <div className="card">
-            <div className="card-body">
-              <div className="d-flex align-items-center">
-                <div className="subheader">进行中的部署</div>
-              </div>
-              <div className="h1 mb-3">{stats.runningDeployments}</div>
-              <IconRocket size={24} className="text-warning" />
+            <Tag size={32} className="text-primary" />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="flex flex-row items-center justify-between">
+            <div>
+              <p className="text-sm text-default-500">进行中的部署</p>
+              <p className="text-3xl font-bold mt-2">{stats.runningDeployments}</p>
             </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-lg-3">
-          <div className="card">
-            <div className="card-body">
-              <div className="d-flex align-items-center">
-                <div className="subheader">应用总数</div>
-              </div>
-              <div className="h1 mb-3">{stats.totalApplications}</div>
-              <IconApps size={24} className="text-success" />
+            <Rocket size={32} className="text-warning" />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="flex flex-row items-center justify-between">
+            <div>
+              <p className="text-sm text-default-500">应用总数</p>
+              <p className="text-3xl font-bold mt-2">{stats.totalApplications}</p>
             </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-lg-3">
-          <div className="card">
-            <div className="card-body">
-              <div className="d-flex align-items-center">
-                <div className="subheader">环境总数</div>
-              </div>
-              <div className="h1 mb-3">{stats.totalEnvironments}</div>
-              <IconCloud size={24} className="text-info" />
+            <AppWindow size={32} className="text-success" />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="flex flex-row items-center justify-between">
+            <div>
+              <p className="text-sm text-default-500">环境总数</p>
+              <p className="text-3xl font-bold mt-2">{stats.totalEnvironments}</p>
             </div>
-          </div>
-        </div>
+            <Cloud size={32} className="text-secondary" />
+          </CardBody>
+        </Card>
       </div>
 
-      <div className="card mt-4">
-        <div className="card-header">
-          <h3 className="card-title">最近部署</h3>
-        </div>
-        <div className="table-responsive">
-          <table className="table card-table table-vcenter text-nowrap datatable">
-            <thead>
-              <tr>
-                <th>版本号</th>
-                <th>应用</th>
-                <th>目标环境</th>
-                <th>状态</th>
-                <th>创建时间</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card>
+        <CardHeader>
+          <h3 className="text-xl font-semibold">最近部署</h3>
+        </CardHeader>
+        <CardBody>
+          <Table aria-label="最近部署列表">
+            <TableHeader>
+              <TableColumn>版本号</TableColumn>
+              <TableColumn>应用</TableColumn>
+              <TableColumn>目标环境</TableColumn>
+              <TableColumn>状态</TableColumn>
+              <TableColumn>创建时间</TableColumn>
+              <TableColumn>操作</TableColumn>
+            </TableHeader>
+            <TableBody>
               {recentDeployments.map((deployment) => (
-                <tr key={deployment.id}>
-                  <td>{deployment.version}</td>
-                  <td>{deployment.applications.join(', ')}</td>
-                  <td>{deployment.environments.join(', ')}</td>
-                  <td>
-                    <span
-                      className={`badge bg-${getStatusColor(
-                        deployment.status
-                      )}-lt`}
-                    >
+                <TableRow key={deployment.id}>
+                  <TableCell>{deployment.version}</TableCell>
+                  <TableCell>{deployment.applications.join(', ')}</TableCell>
+                  <TableCell>{deployment.environments.join(', ')}</TableCell>
+                  <TableCell>
+                    <Chip color={getStatusColor(deployment.status) as any} variant="flat">
                       {getStatusText(deployment.status)}
-                    </span>
-                  </td>
-                  <td>{formatDate(deployment.createdAt)}</td>
-                  <td>
-                    <Link
+                    </Chip>
+                  </TableCell>
+                  <TableCell>{formatDate(deployment.createdAt)}</TableCell>
+                  <TableCell>
+                    <Button
+                      as={Link}
                       to={`/deployments/${deployment.id}`}
-                      className="btn btn-sm btn-ghost-primary"
+                      size="sm"
+                      color="primary"
+                      variant="light"
                     >
                       查看详情
-                    </Link>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
     </div>
   )
 }

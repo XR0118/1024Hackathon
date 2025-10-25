@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { Card, CardBody, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from '@heroui/react'
 import { environmentApi } from '@/services/api'
 import type { Environment } from '@/types'
-import { IconCloud, IconPlus } from '@tabler/icons-react'
+import { Cloud, Plus } from 'lucide-react'
 import { useErrorStore } from '@/store/error'
 
 const Environments: React.FC = () => {
@@ -22,70 +23,55 @@ const Environments: React.FC = () => {
   }, [loadEnvironments])
 
   return (
-    <div>
-      <div className="page-header d-print-none">
-        <div className="row align-items-center">
-          <div className="col">
-            <h2 className="page-title">环境管理</h2>
-          </div>
-          <div className="col-auto ms-auto d-print-none">
-            <button className="btn btn-primary">
-              <IconPlus className="icon" />
-              添加环境
-            </button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold">环境管理</h2>
+        <Button color="primary" startContent={<Plus size={16} />}>
+          添加环境
+        </Button>
       </div>
 
-      <div className="card">
-        <div className="table-responsive">
-          <table className="table card-table table-vcenter text-nowrap datatable">
-            <thead>
-              <tr>
-                <th>环境名称</th>
-                <th>类型</th>
-                <th>状态</th>
-                <th>应用数量</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card>
+        <CardBody>
+          <Table aria-label="环境列表">
+            <TableHeader>
+              <TableColumn>环境名称</TableColumn>
+              <TableColumn>类型</TableColumn>
+              <TableColumn>状态</TableColumn>
+              <TableColumn>应用数量</TableColumn>
+              <TableColumn>操作</TableColumn>
+            </TableHeader>
+            <TableBody>
               {environments.map((env) => (
-                <tr key={env.id}>
-                  <td>
-                    <IconCloud size={16} className="me-2" />
-                    {env.name}
-                  </td>
-                  <td>
-                    <span
-                      className={`badge bg-${
-                        env.type === 'k8s' ? 'primary' : 'success'
-                      }-lt`}
-                    >
+                <TableRow key={env.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Cloud size={16} />
+                      {env.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Chip color={env.type === 'k8s' ? 'primary' : 'success'} variant="flat">
                       {env.type === 'k8s' ? 'Kubernetes' : '物理机'}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge bg-${
-                        env.status === 'active' ? 'success' : 'secondary'
-                      }-lt`}
-                    >
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <Chip color={env.status === 'active' ? 'success' : 'default'} variant="flat">
                       {env.status === 'active' ? '运行中' : '已停止'}
-                    </span>
-                  </td>
-                  <td>{env.applicationCount}</td>
-                  <td>
-                    <button className="btn btn-sm btn-ghost-primary">
+                    </Chip>
+                  </TableCell>
+                  <TableCell>{env.applicationCount}</TableCell>
+                  <TableCell>
+                    <Button size="sm" color="primary" variant="light">
                       查看详情
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
     </div>
   )
 }

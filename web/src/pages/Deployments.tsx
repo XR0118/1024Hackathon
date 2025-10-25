@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Card, CardHeader, CardBody, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Input, Progress } from '@heroui/react'
 import { deploymentApi } from '@/services/api'
 import { formatDate, getStatusColor, getStatusText } from '@/utils'
 import type { Deployment } from '@/types'
-import { IconPlus, IconRefresh } from '@tabler/icons-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import { useErrorStore } from '@/store/error'
 
 const Deployments: React.FC = () => {
@@ -37,115 +38,109 @@ const Deployments: React.FC = () => {
   }, [loadDeployments])
 
   return (
-    <div>
-      <div className="page-header d-print-none">
-        <div className="row align-items-center">
-          <div className="col">
-            <h2 className="page-title">部署管理</h2>
-          </div>
-          <div className="col-auto ms-auto d-print-none">
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate('/deployments/new')}
-            >
-              <IconPlus className="icon" />
-              新建部署
-            </button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold">部署管理</h2>
+        <Button
+          color="primary"
+          startContent={<Plus size={16} />}
+          onClick={() => navigate('/deployments/new')}
+        >
+          新建部署
+        </Button>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <div className="d-flex">
-            <select
-              className="form-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+      <Card>
+        <CardHeader>
+          <div className="flex gap-2 w-full">
+            <Select
+              label="状态"
+              placeholder="所有状态"
+              selectedKeys={statusFilter ? [statusFilter] : []}
+              onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || '')}
+              className="max-w-xs"
             >
-              <option value="">所有状态</option>
-              <option value="pending">待开始</option>
-              <option value="running">进行中</option>
-              <option value="success">成功</option>
-              <option value="failed">失败</option>
-              <option value="waiting_confirm">待确认</option>
-            </select>
-            <input type="date" className="form-control ms-2" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <span className="mx-2">to</span>
-            <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
-            <button
-              className="btn btn-primary ms-2"
+              <SelectItem key="">所有状态</SelectItem>
+              <SelectItem key="pending">待开始</SelectItem>
+              <SelectItem key="running">进行中</SelectItem>
+              <SelectItem key="success">成功</SelectItem>
+              <SelectItem key="failed">失败</SelectItem>
+              <SelectItem key="waiting_confirm">待确认</SelectItem>
+            </Select>
+            <Input
+              type="date"
+              label="开始日期"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="max-w-xs"
+            />
+            <Input
+              type="date"
+              label="结束日期"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="max-w-xs"
+            />
+            <Button
+              color="primary"
+              startContent={<RefreshCw size={16} />}
               onClick={loadDeployments}
-              disabled={loading}
+              isLoading={loading}
             >
-              <IconRefresh className="icon" />
               刷新
-            </button>
+            </Button>
           </div>
-        </div>
-        <div className="table-responsive">
-          <table className="table card-table table-vcenter text-nowrap datatable">
-            <thead>
-              <tr>
-                <th>部署ID</th>
-                <th>版本</th>
-                <th>应用</th>
-                <th>环境</th>
-                <th>状态</th>
-                <th>进度</th>
-                <th>创建时间</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
+        </CardHeader>
+        <CardBody>
+          <Table aria-label="部署列表">
+            <TableHeader>
+              <TableColumn>部署ID</TableColumn>
+              <TableColumn>版本</TableColumn>
+              <TableColumn>应用</TableColumn>
+              <TableColumn>环境</TableColumn>
+              <TableColumn>状态</TableColumn>
+              <TableColumn>进度</TableColumn>
+              <TableColumn>创建时间</TableColumn>
+              <TableColumn>操作</TableColumn>
+            </TableHeader>
+            <TableBody>
               {deployments.map((deployment) => (
-                <tr key={deployment.id}>
-                  <td>{deployment.id}</td>
-                  <td>{deployment.version}</td>
-                  <td>{deployment.applications.join(', ')}</td>
-                  <td>{deployment.environments.join(', ')}</td>
-                  <td>
-                    <span
-                      className={`badge bg-${getStatusColor(
-                        deployment.status
-                      )}-lt`}
-                    >
+                <TableRow key={deployment.id}>
+                  <TableCell>{deployment.id}</TableCell>
+                  <TableCell>{deployment.version}</TableCell>
+                  <TableCell>{deployment.applications.join(', ')}</TableCell>
+                  <TableCell>{deployment.environments.join(', ')}</TableCell>
+                  <TableCell>
+                    <Chip color={getStatusColor(deployment.status) as any} variant="flat">
                       {getStatusText(deployment.status)}
-                    </span>
-                  </td>
-                  <td>
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
                     {deployment.status === 'running' && (
-                      <div className="progress">
-                        <div
-                          className="progress-bar"
-                          style={{ width: `${deployment.progress}%` }}
-                          role="progressbar"
-                          aria-valuenow={deployment.progress}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <span className="visually-hidden">
-                            {deployment.progress}% Complete
-                          </span>
-                        </div>
-                      </div>
+                      <Progress
+                        value={deployment.progress}
+                        className="max-w-md"
+                        color="primary"
+                      />
                     )}
-                  </td>
-                  <td>{formatDate(deployment.createdAt)}</td>
-                  <td>
-                    <button
-                      className="btn btn-sm btn-ghost-primary"
+                  </TableCell>
+                  <TableCell>{formatDate(deployment.createdAt)}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="light"
                       onClick={() => navigate(`/deployments/${deployment.id}`)}
                     >
                       查看详情
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
     </div>
   )
 }

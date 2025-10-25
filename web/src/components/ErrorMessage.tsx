@@ -1,4 +1,6 @@
 import React from 'react';
+import { Card, CardBody, Button } from '@heroui/react';
+import { X } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 interface ErrorMessageProps {
@@ -14,10 +16,24 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({ message, onDismiss }) => {
   const sanitizedMessage = DOMPurify.sanitize(message);
 
   return (
-    <div className="alert alert-danger alert-dismissible" role="alert">
-      <div dangerouslySetInnerHTML={{ __html: sanitizedMessage }} />
-      <button type="button" className="btn-close" onClick={onDismiss} aria-label="Close"></button>
-    </div>
+    <Card className="bg-danger-50 border-danger mb-4">
+      <CardBody className="flex flex-row items-start justify-between gap-3">
+        <div 
+          className="flex-1 text-danger" 
+          dangerouslySetInnerHTML={{ __html: sanitizedMessage }} 
+        />
+        <Button
+          isIconOnly
+          size="sm"
+          variant="light"
+          color="danger"
+          onPress={onDismiss}
+          aria-label="Close"
+        >
+          <X size={18} />
+        </Button>
+      </CardBody>
+    </Card>
   );
 };
 
