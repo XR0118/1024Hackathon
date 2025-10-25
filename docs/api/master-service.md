@@ -45,7 +45,14 @@ Master Service 是 Boreas 平台的核心服务，负责版本管理、应用管
   "git_tag": "v1.0.0",
   "git_commit": "abc123def456",
   "repository": "https://github.com/example/repo",
-  "description": "Initial release"
+  "description": "Initial release",
+  "app_build": [
+    {
+      "app_id": "app-uuid",
+      "app_name": "api-service",
+      "docker_image": "registry.example.com/api-service:v1.0.0"
+    }
+  ]
 }
 ```
 
@@ -58,7 +65,14 @@ Master Service 是 Boreas 平台的核心服务，负责版本管理、应用管
   "repository": "https://github.com/example/repo",
   "created_by": "user@example.com",
   "created_at": "2024-01-01T00:00:00Z",
-  "description": "Initial release"
+  "description": "Initial release",
+  "app_build": [
+    {
+      "app_id": "app-uuid",
+      "app_name": "api-service",
+      "docker_image": "registry.example.com/api-service:v1.0.0"
+    }
+  ]
 }
 ```
 
@@ -197,8 +211,18 @@ Master Service 是 Boreas 平台的核心服务，负责版本管理、应用管
 ```json
 {
   "version_id": "version-uuid",
-  "application_ids": ["app-uuid-1", "app-uuid-2"],
-  "environment_id": "env-uuid"
+  "must_in_order": ["app-uuid-1", "app-uuid-2"],
+  "environment_id": "env-uuid",
+  "manual_approval": false,
+  "strategy": [
+    {
+      "batch_size": 1,
+      "batch_interval": 10,
+      "canary_ratio": 0.1,
+      "auto_rollback": true,
+      "manual_approval_status": null
+    }
+  ]
 }
 ```
 
