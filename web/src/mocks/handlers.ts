@@ -265,6 +265,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
 
       if (url.startsWith('/dashboard')) {
+        console.log('[Mock API] Dashboard URL detected:', url)
         if (url.includes('/dashboard/stats')) {
           return Promise.reject({
             config,
@@ -286,6 +287,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         if (url.includes('/dashboard/recent-deployments')) {
           const limit = config.params?.limit || 10
           const recent = mockDeployments.slice(0, limit)
+          console.log('[Mock API] Returning recent deployments:', recent, 'isArray:', Array.isArray(recent))
           return Promise.reject({
             config,
             response: { data: recent, status: 200, statusText: 'OK', headers: {}, config },
@@ -303,6 +305,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
     (response) => response,
     (error) => {
       if (error.isMockResponse && error.response) {
+        console.log('[Mock API] Response interceptor - returning:', error.response.data)
         if (error.response.status >= 200 && error.response.status < 300) {
           return Promise.resolve(error.response)
         }

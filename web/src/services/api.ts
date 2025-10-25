@@ -105,10 +105,13 @@ export const dashboardApi = {
       params: { days },
     }),
   
-  getRecentDeployments: (limit: number = 10) =>
-    api.get<any, Deployment[]>('/dashboard/recent-deployments', {
+  getRecentDeployments: async (limit: number = 10) => {
+    const result = await api.get<any, Deployment[]>('/dashboard/recent-deployments', {
       params: { limit },
-    }),
+    })
+    console.log('[API] dashboardApi.getRecentDeployments result:', result, 'isArray:', Array.isArray(result))
+    return result
+  },
 }
 
 export default api
