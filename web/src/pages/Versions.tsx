@@ -1,48 +1,48 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { versionApi } from '@/services/api'
-import { formatDate } from '@/utils'
-import type { Version } from '@/types'
-import { IconSearch, IconRefresh } from '@tabler/icons-react'
-import { useErrorStore } from '@/store/error'
+import React, { useEffect, useState, useCallback } from "react";
+import { versionApi } from "@/services/api";
+import { formatDate } from "@/utils";
+import type { Version } from "@/types";
+import { IconSearch, IconRefresh } from "@tabler/icons-react";
+import { useErrorStore } from "@/store/error";
 
 const Versions: React.FC = () => {
   const { setError } = useErrorStore();
-  const [versions, setVersions] = useState<Version[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searchText, setSearchText] = useState('')
-  const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
 
   const loadVersions = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const data = await versionApi.list({
         search: searchText || undefined,
-      })
-      setVersions(data)
+      });
+      setVersions(data);
     } catch (error) {
-      setError('Failed to load versions.')
+      setError("Failed to load versions.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [searchText, setError])
+  }, [searchText, setError]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadVersions()
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [loadVersions])
+      loadVersions();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [loadVersions]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchText(e.target.value)
-  }
+    setSearchText(e.target.value);
+  };
 
   return (
     <div>
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <h2 className="page-title">版本管理</h2>
+            <h2 className="page-title">版本</h2>
           </div>
         </div>
       </div>
@@ -54,19 +54,9 @@ const Versions: React.FC = () => {
               <span className="input-icon-addon">
                 <IconSearch />
               </span>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="搜索版本号或标签..."
-                value={searchText}
-                onChange={handleSearchChange}
-              />
+              <input type="text" className="form-control" placeholder="搜索版本号或标签..." value={searchText} onChange={handleSearchChange} />
             </div>
-            <button
-              className="btn btn-primary ms-2"
-              onClick={loadVersions}
-              disabled={loading}
-            >
+            <button className="btn btn-primary ms-2" onClick={loadVersions} disabled={loading}>
               <IconRefresh className="icon" />
               刷新
             </button>
@@ -88,11 +78,7 @@ const Versions: React.FC = () => {
                 <tr key={version.version}>
                   <td>{version.version}</td>
                   <td>
-                    <a
-                      href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <a href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`} target="_blank" rel="noopener noreferrer">
                       {version.git.tag}
                     </a>
                   </td>
@@ -102,8 +88,7 @@ const Versions: React.FC = () => {
                         <div key={app.name} className="d-flex align-items-center gap-2">
                           <span className="badge bg-secondary-lt">{app.name}</span>
                           <small className="text-muted">
-                            覆盖度: {app.coverage}% | 健康度: {app.health}% | 
-                            更新: {formatDate(app.lastUpdatedAt)}
+                            覆盖度: {app.coverage}% | 健康度: {app.health}% | 更新: {formatDate(app.lastUpdatedAt)}
                           </small>
                         </div>
                       ))}
@@ -138,9 +123,15 @@ const Versions: React.FC = () => {
               {selectedVersion && (
                 <div>
                   <h3>基本信息</h3>
-                  <p><strong>版本号:</strong> {selectedVersion.version}</p>
-                  <p><strong>Git Tag:</strong> {selectedVersion.git.tag}</p>
-                  <p><strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}</p>
+                  <p>
+                    <strong>版本号:</strong> {selectedVersion.version}
+                  </p>
+                  <p>
+                    <strong>Git Tag:</strong> {selectedVersion.git.tag}
+                  </p>
+                  <p>
+                    <strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}
+                  </p>
 
                   <h3 style={{ marginTop: 24 }}>应用信息</h3>
                   <div className="list-group">
@@ -153,18 +144,16 @@ const Versions: React.FC = () => {
                           <div className="col-auto">
                             <div className="d-flex flex-column gap-1">
                               <div>
-                                <span className="text-muted">覆盖度:</span>{' '}
-                                <span className="badge bg-info-lt">{app.coverage}%</span>
+                                <span className="text-muted">覆盖度:</span> <span className="badge bg-info-lt">{app.coverage}%</span>
                               </div>
                               <div>
-                                <span className="text-muted">健康度:</span>{' '}
-                                <span className={`badge ${app.health >= 80 ? 'bg-success-lt' : app.health >= 50 ? 'bg-warning-lt' : 'bg-danger-lt'}`}>
+                                <span className="text-muted">健康度:</span>{" "}
+                                <span className={`badge ${app.health >= 80 ? "bg-success-lt" : app.health >= 50 ? "bg-warning-lt" : "bg-danger-lt"}`}>
                                   {app.health}%
                                 </span>
                               </div>
                               <div>
-                                <span className="text-muted">最后更新:</span>{' '}
-                                {formatDate(app.lastUpdatedAt)}
+                                <span className="text-muted">最后更新:</span> {formatDate(app.lastUpdatedAt)}
                               </div>
                             </div>
                           </div>
@@ -179,7 +168,7 @@ const Versions: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Versions
+export default Versions;

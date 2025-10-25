@@ -1,55 +1,52 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { deploymentApi } from '@/services/api'
-import { formatDate, getStatusColor, getStatusText } from '@/utils'
-import type { Deployment } from '@/types'
-import { IconPlus, IconRefresh } from '@tabler/icons-react'
-import { useErrorStore } from '@/store/error'
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { deploymentApi } from "@/services/api";
+import { formatDate, getStatusColor, getStatusText } from "@/utils";
+import type { Deployment } from "@/types";
+import { IconPlus, IconRefresh } from "@tabler/icons-react";
+import { useErrorStore } from "@/store/error";
 
 const Deployments: React.FC = () => {
-  const navigate = useNavigate()
-  const [deployments, setDeployments] = useState<Deployment[]>([])
-  const [loading, setLoading] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [startDate, setStartDate] = useState<string>('')
-  const [endDate, setEndDate] = useState<string>('')
+  const navigate = useNavigate();
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   const loadDeployments = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const data = await deploymentApi.list({
         status: statusFilter || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
-      })
-      setDeployments(data)
+      });
+      setDeployments(data);
     } catch (error) {
-      useErrorStore.getState().setError('Failed to load deployments.')
+      useErrorStore.getState().setError("Failed to load deployments.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [statusFilter, startDate, endDate])
+  }, [statusFilter, startDate, endDate]);
 
   useEffect(() => {
-    loadDeployments()
-    const interval = setInterval(loadDeployments, 5000)
-    return () => clearInterval(interval)
-  }, [loadDeployments])
+    loadDeployments();
+    const interval = setInterval(loadDeployments, 5000);
+    return () => clearInterval(interval);
+  }, [loadDeployments]);
 
   return (
     <div>
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <h2 className="page-title">部署管理</h2>
+            <h2 className="page-title">部署任务</h2>
           </div>
           <div className="col-auto ms-auto d-print-none">
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate('/deployments/new')}
-            >
+            <button className="btn btn-primary" onClick={() => navigate("/deployments/new")}>
               <IconPlus className="icon" />
-              新建部署
+              新建任务
             </button>
           </div>
         </div>
@@ -58,11 +55,7 @@ const Deployments: React.FC = () => {
       <div className="card">
         <div className="card-header">
           <div className="d-flex">
-            <select
-              className="form-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
+            <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">所有状态</option>
               <option value="pending">待开始</option>
               <option value="running">进行中</option>
@@ -70,14 +63,10 @@ const Deployments: React.FC = () => {
               <option value="failed">失败</option>
               <option value="waiting_confirm">待确认</option>
             </select>
-            <input type="date" className="form-control ms-2" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <input type="date" className="form-control ms-2" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <span className="mx-2">to</span>
-            <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
-            <button
-              className="btn btn-primary ms-2"
-              onClick={loadDeployments}
-              disabled={loading}
-            >
+            <input type="date" className="form-control" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <button className="btn btn-primary ms-2" onClick={loadDeployments} disabled={loading}>
               <IconRefresh className="icon" />
               刷新
             </button>
@@ -102,19 +91,13 @@ const Deployments: React.FC = () => {
                 <tr key={deployment.id}>
                   <td>{deployment.id}</td>
                   <td>{deployment.version}</td>
-                  <td>{deployment.applications.join(', ')}</td>
-                  <td>{deployment.environments.join(', ')}</td>
+                  <td>{deployment.applications.join(", ")}</td>
+                  <td>{deployment.environments.join(", ")}</td>
                   <td>
-                    <span
-                      className={`badge bg-${getStatusColor(
-                        deployment.status
-                      )}-lt`}
-                    >
-                      {getStatusText(deployment.status)}
-                    </span>
+                    <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
                   </td>
                   <td>
-                    {deployment.status === 'running' && (
+                    {deployment.status === "running" && (
                       <div className="progress">
                         <div
                           className="progress-bar"
@@ -124,19 +107,14 @@ const Deployments: React.FC = () => {
                           aria-valuemin={0}
                           aria-valuemax={100}
                         >
-                          <span className="visually-hidden">
-                            {deployment.progress}% Complete
-                          </span>
+                          <span className="visually-hidden">{deployment.progress}% Complete</span>
                         </div>
                       </div>
                     )}
                   </td>
                   <td>{formatDate(deployment.createdAt)}</td>
                   <td>
-                    <button
-                      className="btn btn-sm btn-ghost-primary"
-                      onClick={() => navigate(`/deployments/${deployment.id}`)}
-                    >
+                    <button className="btn btn-sm btn-ghost-primary" onClick={() => navigate(`/deployments/${deployment.id}`)}>
                       查看详情
                     </button>
                   </td>
@@ -147,7 +125,7 @@ const Deployments: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Deployments
+export default Deployments;
