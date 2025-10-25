@@ -6,13 +6,12 @@ import (
 )
 
 func TestVersionService_ProcessTagEvent(t *testing.T) {
-	config := &Config{
+	config := &TriggerConfig{
 		WorkDir:        "/tmp/test-version-trigger",
 		DockerRegistry: "registry.example.com",
-		ManagementAPI:  "http://localhost:8080/api/v1",
 	}
 
-	service := NewVersionService(config)
+	service := NewTriggerService(config)
 
 	event := &TagEvent{
 		TagName:    "v1.0.0",

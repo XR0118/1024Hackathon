@@ -17,6 +17,8 @@ type Config struct {
 	Log      LogConfig      `mapstructure:"log"`
 	GitHub   GitHubConfig   `mapstructure:"github"`
 	K8s      K8sConfig      `mapstructure:"k8s"`
+
+	Trigger TriggerConfig `mapstructure:"trigger"`
 }
 
 // ServerConfig 服务器配置
@@ -60,6 +62,12 @@ type GitHubConfig struct {
 type K8sConfig struct {
 	ConfigPath string `mapstructure:"config_path"`
 	Namespace  string `mapstructure:"namespace"`
+}
+
+type TriggerConfig struct {
+	WebhookSecret  string `mapstructure:"webhook_secret"`
+	WorkDir        string `mapstructure:"work_dir"`
+	DockerRegistry string `mapstructure:"docker_registry"`
 }
 
 // Load 加载配置

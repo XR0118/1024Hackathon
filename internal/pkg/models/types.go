@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -13,6 +14,14 @@ type Version struct {
 	CreatedBy   string    `json:"created_by" gorm:"not null"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	Description string    `json:"description"`
+
+	AppBuilds []AppBuild `json:"app_build,omitempty" gorm:"type:jsonb"`
+}
+
+type AppBuild struct {
+	AppID       string `json:"app_id"`
+	AppName     string `json:"app_name"`
+	DockerImage string `json:"docker_image"`
 }
 
 // Application 应用信息
@@ -24,6 +33,20 @@ type Application struct {
 	Config     map[string]string `json:"config" gorm:"type:jsonb"`
 	CreatedAt  time.Time         `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt  time.Time         `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+type BuildConfig struct {
+	Dockerfile string             `json:"dockerfile"`
+	BuildArgs  map[string]*string `json:"build_args"`
+	Context    string             `json:"context"`
+}
+
+func (a *Application) GetBuildConfig() *BuildConfig {
+	var ret = BuildConfig{}
+	if s, ok := a.Config["build_config"]; ok {
+		_ = json.Unmarshal([]byte(s), &ret)
+	}
+	return &ret
 }
 
 // Environment 环境信息
@@ -128,6 +151,8 @@ type CreateVersionRequest struct {
 	GitCommit   string `json:"git_commit" binding:"required"`
 	Repository  string `json:"repository" binding:"required"`
 	Description string `json:"description"`
+
+	AppBuilds []AppBuild `json:"app_build,omitempty"`
 }
 
 // ListVersionsRequest 版本列表请求

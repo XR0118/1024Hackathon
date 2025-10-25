@@ -9,15 +9,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/boreas/internal/pkg/config"
 	"github.com/boreas/internal/pkg/database"
-	"github.com/boreas/internal/services/master/handler"
 	"github.com/boreas/internal/pkg/logger"
 	"github.com/boreas/internal/pkg/middleware"
+	"github.com/boreas/internal/pkg/utils"
+	"github.com/boreas/internal/services/master/handler"
 	"github.com/boreas/internal/services/master/repository/postgres"
 	"github.com/boreas/internal/services/master/service"
-	"github.com/boreas/internal/pkg/utils"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -61,6 +61,14 @@ func main() {
 	versionService := service.NewVersionService(versionRepo)
 	appService := service.NewApplicationService(appRepo)
 	envService := service.NewEnvironmentService(envRepo)
+	triggerService := service.NewTriggerService(&service.TriggerConfig{
+		WebhookSecret:  cfg.Trigger.WebhookSecret,
+		WorkDir:        cfg.Trigger.WorkDir,
+		DockerRegistry: cfg.Trigger.DockerRegistry,
+		Apps:           appService,
+		Version:        versionService,
+	})
+	webhookHandler := handler.NewWebhookHandler(triggerService, cfg.Trigger.WebhookSecret)
 	// TODO: 实现 WorkflowManager
 	// workflowMgr := workflow.NewWorkflowManager(workflowRepo, taskRepo)
 	// deploymentService := service.NewDeploymentService(deploymentRepo, versionRepo, appRepo, envRepo, workflowMgr)
@@ -89,6 +97,8 @@ func main() {
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
 	router.Use(middleware.CORS())
+
+	router.POST("/webhook/github", gin.WrapF(webhookHandler.HandleGitHubWebhook))
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
