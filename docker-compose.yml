@@ -84,12 +84,12 @@ services:
       - ./configs:/app/configs
       - ~/.kube:/app/.kube:ro
 
-  # Operator-Baremetal Service
-  operator-baremetal:
+  # Operator-PM Service
+  operator-pm:
     build:
       context: .
-      dockerfile: deployments/docker/operator-baremetal.Dockerfile
-    container_name: boreas-operator-baremetal
+      dockerfile: deployments/docker/operator-pm.Dockerfile
+    container_name: boreas-operator-pm
     ports:
       - "8082:8082"
     environment:
