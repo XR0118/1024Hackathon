@@ -19,6 +19,7 @@ type Config struct {
 	K8s      K8sConfig      `mapstructure:"k8s"`
 
 	Trigger TriggerConfig `mapstructure:"trigger"`
+	Agent   AgentConfig   `mapstructure:"agent"`
 }
 
 // ServerConfig 服务器配置
@@ -68,6 +69,31 @@ type TriggerConfig struct {
 	WebhookSecret  string `mapstructure:"webhook_secret"`
 	WorkDir        string `mapstructure:"work_dir"`
 	DockerRegistry string `mapstructure:"docker_registry"`
+}
+
+// AgentConfig Agent配置
+type AgentConfig struct {
+	ID       string            `mapstructure:"id"`
+	Hostname string            `mapstructure:"hostname"`
+	WorkDir  string            `mapstructure:"work_dir"`
+	Docker   DockerConfig      `mapstructure:"docker"`
+	Health   HealthConfig      `mapstructure:"health"`
+	Config   map[string]string `mapstructure:"config"`
+}
+
+// DockerConfig Docker配置
+type DockerConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	SocketPath  string `mapstructure:"socket_path"`
+	Registry    string `mapstructure:"registry"`
+	NetworkMode string `mapstructure:"network_mode"`
+}
+
+// HealthConfig 健康检查配置
+type HealthConfig struct {
+	CheckInterval int `mapstructure:"check_interval"` // 秒
+	Timeout       int `mapstructure:"timeout"`        // 秒
+	RetryCount    int `mapstructure:"retry_count"`
 }
 
 // Load 加载配置
@@ -134,6 +160,18 @@ func setDefaults() {
 	// Kubernetes配置
 	viper.SetDefault("k8s.config_path", "")
 	viper.SetDefault("k8s.namespace", "default")
+
+	// Agent配置
+	viper.SetDefault("agent.id", "")
+	viper.SetDefault("agent.hostname", "")
+	viper.SetDefault("agent.work_dir", "/var/lib/boreas-agent")
+	viper.SetDefault("agent.docker.enabled", true)
+	viper.SetDefault("agent.docker.socket_path", "/var/run/docker.sock")
+	viper.SetDefault("agent.docker.registry", "")
+	viper.SetDefault("agent.docker.network_mode", "bridge")
+	viper.SetDefault("agent.health.check_interval", 30)
+	viper.SetDefault("agent.health.timeout", 10)
+	viper.SetDefault("agent.health.retry_count", 3)
 }
 
 // overrideFromEnv 从环境变量覆盖配置
@@ -200,6 +238,44 @@ func overrideFromEnv(config *Config) {
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 		config.GitHub.Token = token
 	}
+
+	// Agent配置
+	if id := os.Getenv("AGENT_ID"); id != "" {
+		config.Agent.ID = id
+	}
+	if hostname := os.Getenv("AGENT_HOSTNAME"); hostname != "" {
+		config.Agent.Hostname = hostname
+	}
+	if workDir := os.Getenv("AGENT_WORK_DIR"); workDir != "" {
+		config.Agent.WorkDir = workDir
+	}
+	if enabled := os.Getenv("AGENT_DOCKER_ENABLED"); enabled != "" {
+		config.Agent.Docker.Enabled = enabled == "true"
+	}
+	if socketPath := os.Getenv("AGENT_DOCKER_SOCKET_PATH"); socketPath != "" {
+		config.Agent.Docker.SocketPath = socketPath
+	}
+	if registry := os.Getenv("AGENT_DOCKER_REGISTRY"); registry != "" {
+		config.Agent.Docker.Registry = registry
+	}
+	if networkMode := os.Getenv("AGENT_DOCKER_NETWORK_MODE"); networkMode != "" {
+		config.Agent.Docker.NetworkMode = networkMode
+	}
+	if checkInterval := os.Getenv("AGENT_HEALTH_CHECK_INTERVAL"); checkInterval != "" {
+		if interval, err := strconv.Atoi(checkInterval); err == nil {
+			config.Agent.Health.CheckInterval = interval
+		}
+	}
+	if timeout := os.Getenv("AGENT_HEALTH_TIMEOUT"); timeout != "" {
+		if t, err := strconv.Atoi(timeout); err == nil {
+			config.Agent.Health.Timeout = t
+		}
+	}
+	if retryCount := os.Getenv("AGENT_HEALTH_RETRY_COUNT"); retryCount != "" {
+		if retry, err := strconv.Atoi(retryCount); err == nil {
+			config.Agent.Health.RetryCount = retry
+		}
+	}
 }
 
 // GetDSN 获取数据库连接字符串
@@ -222,4 +298,38 @@ func (c *Config) GetRedisAddr() string {
 // GetServerAddr 获取服务器地址
 func (c *Config) GetServerAddr() string {
 	return fmt.Sprintf("%s:%d", c.Server.Host, c.Server.Port)
+}
+
+// GetAgentWorkDir 获取Agent工作目录
+func (c *Config) GetAgentWorkDir() string {
+	if c.Agent.WorkDir != "" {
+		return c.Agent.WorkDir
+	}
+	return "/var/lib/boreas-agent"
+}
+
+// GetAgentID 获取Agent ID
+func (c *Config) GetAgentID() string {
+	if c.Agent.ID != "" {
+		return c.Agent.ID
+	}
+	// 如果没有配置ID，使用主机名
+	if c.Agent.Hostname != "" {
+		return c.Agent.Hostname
+	}
+	// 最后使用默认值
+	return "agent-unknown"
+}
+
+// IsDockerEnabled 检查Docker是否启用
+func (c *Config) IsDockerEnabled() bool {
+	return c.Agent.Docker.Enabled
+}
+
+// GetDockerSocketPath 获取Docker Socket路径
+func (c *Config) GetDockerSocketPath() string {
+	if c.Agent.Docker.SocketPath != "" {
+		return c.Agent.Docker.SocketPath
+	}
+	return "/var/run/docker.sock"
 }

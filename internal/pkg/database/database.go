@@ -14,10 +14,14 @@ import (
 // DB 数据库实例
 var DB *gorm.DB
 
-// Init 初始化数据库
+// Init 初始化数据库（兼容旧版本）
 func Init(cfg *config.Config) error {
 	dsn := cfg.GetDSN()
+	return InitWithDSN(dsn)
+}
 
+// InitWithDSN 使用 DSN 初始化数据库
+func InitWithDSN(dsn string) error {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})

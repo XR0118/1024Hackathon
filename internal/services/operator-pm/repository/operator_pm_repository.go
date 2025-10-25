@@ -51,3 +51,12 @@ func (r *OperatorPMRepository) GetDeploymentLogs(deploymentID string) ([]*models
 	}
 	return logs, nil
 }
+
+// GetEnvironmentByID 根据ID获取环境信息
+func (r *OperatorPMRepository) GetEnvironmentByID(id string) (*models.Environment, error) {
+	var environment models.Environment
+	if err := r.db.Where("id = ?", id).First(&environment).Error; err != nil {
+		return nil, err
+	}
+	return &environment, nil
+}

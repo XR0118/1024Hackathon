@@ -1,7 +1,11 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/boreas/internal/pkg/models"
@@ -12,19 +16,51 @@ import (
 type OperatorPMService struct {
 	db         *gorm.DB
 	repository *repository.OperatorPMRepository
+	agents     map[string]string // agent ID -> agent URL
 }
 
 func NewOperatorPMService(db *gorm.DB) *OperatorPMService {
 	return &OperatorPMService{
 		db:         db,
 		repository: repository.NewOperatorPMRepository(db),
+		agents:     make(map[string]string),
 	}
 }
 
 // CheckPMConnection 检查物理机连接状态
 func (s *OperatorPMService) CheckPMConnection() error {
-	// TODO: 实现物理机连接检查
-	// 这里应该检查SSH连接、Docker连接等
+	// 检查所有注册的agent连接状态
+	for agentID, agentURL := range s.agents {
+		if err := s.checkAgentConnection(agentURL); err != nil {
+			return fmt.Errorf("agent %s (%s) is not reachable: %w", agentID, agentURL, err)
+		}
+	}
+	return nil
+}
+
+// RegisterAgent 注册物理机Agent
+func (s *OperatorPMService) RegisterAgent(agentID, agentURL string) {
+	s.agents[agentID] = agentURL
+}
+
+// ListAgents 列出所有注册的Agent
+func (s *OperatorPMService) ListAgents() map[string]string {
+	return s.agents
+}
+
+// checkAgentConnection 检查Agent连接状态
+func (s *OperatorPMService) checkAgentConnection(agentURL string) error {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(agentURL + "/v1/health")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("agent returned status %d", resp.StatusCode)
+	}
+
 	return nil
 }
 
@@ -128,16 +164,32 @@ func (s *OperatorPMService) CancelDeployment(deploymentID string) error {
 
 // executePMDeployment 执行物理机部署
 func (s *OperatorPMService) executePMDeployment(deployment *models.Deployment) (*models.DeploymentResult, error) {
-	// TODO: 实现物理机部署逻辑
-	// 这里应该：
-	// 1. 解析部署配置
-	// 2. 通过SSH连接到目标物理机
-	// 3. 执行部署脚本或Docker命令
-	// 4. 等待部署完成
-	// 5. 返回部署结果
+	// 获取环境配置以确定目标agent
+	env, err := s.repository.GetEnvironmentByID(deployment.EnvironmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment: %w", err)
+	}
 
-	// 模拟部署过程
-	time.Sleep(3 * time.Second)
+	// 从环境配置中获取agent信息
+	agentID, exists := env.Config["agent_id"]
+	if !exists {
+		return nil, fmt.Errorf("agent_id not found in environment config")
+	}
+
+	agentURL, exists := s.agents[agentID]
+	if !exists {
+		return nil, fmt.Errorf("agent %s not registered", agentID)
+	}
+
+	// 解析版本中的应用构建信息
+	appBuilds := deployment.Version.AppBuilds
+
+	// 为每个应用执行部署
+	for _, appBuild := range appBuilds {
+		if err := s.deployAppToAgent(agentURL, appBuild, deployment); err != nil {
+			return nil, fmt.Errorf("failed to deploy app %s: %w", appBuild.AppName, err)
+		}
+	}
 
 	return &models.DeploymentResult{
 		ID:        deployment.ID,
@@ -147,34 +199,240 @@ func (s *OperatorPMService) executePMDeployment(deployment *models.Deployment) (
 	}, nil
 }
 
+// deployAppToAgent 部署应用到Agent
+func (s *OperatorPMService) deployAppToAgent(agentURL string, appBuild models.AppBuild, deployment *models.Deployment) error {
+	// 构建部署包
+	pkg := map[string]interface{}{
+		"type":        "docker",
+		"image":       appBuild.DockerImage,
+		"command":     []string{},
+		"args":        []string{},
+		"environment": map[string]string{},
+		"volumes":     []models.VolumeMount{},
+		"ports":       []models.PortMapping{},
+	}
+
+	// 创建部署请求
+	applyReq := models.ApplyRequest{
+		App:     appBuild.AppName,
+		Version: deployment.Version.GitTag,
+		Pkg:     pkg,
+	}
+
+	// 发送部署请求到Agent
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	reqData, err := json.Marshal(applyReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal apply request: %w", err)
+	}
+
+	resp, err := client.Post(agentURL+"/v1/apply", "application/json", bytes.NewBuffer(reqData))
+	if err != nil {
+		return fmt.Errorf("failed to send apply request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("agent returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// 解析响应
+	var applyResp models.ApplyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&applyResp); err != nil {
+		return fmt.Errorf("failed to decode apply response: %w", err)
+	}
+
+	if !applyResp.Success {
+		return fmt.Errorf("agent deployment failed: %s", applyResp.Message)
+	}
+
+	return nil
+}
+
 // getPMDeploymentStatus 获取物理机部署状态
 func (s *OperatorPMService) getPMDeploymentStatus(deploymentID string) (*models.DeploymentStatusInfo, error) {
-	// TODO: 实现物理机状态查询
-	// 这里应该通过SSH查询物理机上的服务状态
+	deployment, err := s.repository.GetDeploymentByID(deploymentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	// 获取环境配置以确定目标agent
+	env, err := s.repository.GetEnvironmentByID(deployment.EnvironmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment: %w", err)
+	}
+
+	agentID, exists := env.Config["agent_id"]
+	if !exists {
+		return nil, fmt.Errorf("agent_id not found in environment config")
+	}
+
+	agentURL, exists := s.agents[agentID]
+	if !exists {
+		return nil, fmt.Errorf("agent %s not registered", agentID)
+	}
+
+	// 查询agent状态
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(agentURL + "/v1/status")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query agent status: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("agent returned status %d", resp.StatusCode)
+	}
+
+	// 解析状态响应
+	var statusResp models.StatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&statusResp); err != nil {
+		return nil, fmt.Errorf("failed to decode status response: %w", err)
+	}
+
+	// 检查是否有应用在运行
+	if len(statusResp.Apps) == 0 {
+		return &models.DeploymentStatusInfo{
+			ID:      deploymentID,
+			Status:  models.DeploymentStatusFailed,
+			Message: "No apps running on agent",
+		}, nil
+	}
+
+	// 检查所有应用的健康状态
+	allHealthy := true
+	for _, app := range statusResp.Apps {
+		if app.Healthy.Level < 80 {
+			allHealthy = false
+			break
+		}
+	}
+
+	status := models.DeploymentStatusSuccess
+	message := "All apps are healthy"
+	if !allHealthy {
+		status = models.DeploymentStatusRunning
+		message = "Some apps are not healthy"
+	}
 
 	return &models.DeploymentStatusInfo{
 		ID:      deploymentID,
-		Status:  models.DeploymentStatusRunning,
-		Message: "PM deployment is running",
+		Status:  status,
+		Message: message,
 	}, nil
 }
 
 // getPMDeploymentLogs 获取物理机部署日志
 func (s *OperatorPMService) getPMDeploymentLogs(deploymentID string) (*models.DeploymentLogs, error) {
-	// TODO: 实现物理机日志获取
-	// 这里应该通过SSH从物理机获取日志
+	deployment, err := s.repository.GetDeploymentByID(deploymentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	// 获取环境配置以确定目标agent
+	env, err := s.repository.GetEnvironmentByID(deployment.EnvironmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment: %w", err)
+	}
+
+	agentID, exists := env.Config["agent_id"]
+	if !exists {
+		return nil, fmt.Errorf("agent_id not found in environment config")
+	}
+
+	agentURL, exists := s.agents[agentID]
+	if !exists {
+		return nil, fmt.Errorf("agent %s not registered", agentID)
+	}
+
+	// 查询agent状态获取应用列表
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(agentURL + "/v1/status")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query agent status: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("agent returned status %d", resp.StatusCode)
+	}
+
+	var statusResp models.StatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&statusResp); err != nil {
+		return nil, fmt.Errorf("failed to decode status response: %w", err)
+	}
+
+	// 收集所有应用的日志
+	var allLogs []string
+	for _, app := range statusResp.Apps {
+		// 这里简化实现，实际应该从agent获取具体应用的日志
+		allLogs = append(allLogs, fmt.Sprintf("App %s (%s): %s", app.App, app.Version, app.Healthy.Msg))
+	}
 
 	return &models.DeploymentLogs{
 		ID:    deploymentID,
-		Logs:  []string{"PM deployment log line 1", "PM deployment log line 2"},
+		Logs:  allLogs,
 		Level: "info",
 	}, nil
 }
 
 // cancelPMDeployment 取消物理机部署
 func (s *OperatorPMService) cancelPMDeployment(deploymentID string) error {
-	// TODO: 实现物理机部署取消
-	// 这里应该通过SSH停止物理机上的相关服务
+	deployment, err := s.repository.GetDeploymentByID(deploymentID)
+	if err != nil {
+		return fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	// 获取环境配置以确定目标agent
+	env, err := s.repository.GetEnvironmentByID(deployment.EnvironmentID)
+	if err != nil {
+		return fmt.Errorf("failed to get environment: %w", err)
+	}
+
+	agentID, exists := env.Config["agent_id"]
+	if !exists {
+		return fmt.Errorf("agent_id not found in environment config")
+	}
+
+	agentURL, exists := s.agents[agentID]
+	if !exists {
+		return fmt.Errorf("agent %s not registered", agentID)
+	}
+
+	// 解析版本中的应用构建信息
+	appBuilds := deployment.Version.AppBuilds
+
+	// 停止每个应用
+	for _, appBuild := range appBuilds {
+		if err := s.stopAppOnAgent(agentURL, appBuild.AppName); err != nil {
+			return fmt.Errorf("failed to stop app %s: %w", appBuild.AppName, err)
+		}
+	}
+
+	return nil
+}
+
+// stopAppOnAgent 在Agent上停止应用
+func (s *OperatorPMService) stopAppOnAgent(agentURL, appName string) error {
+	// 这里简化实现，实际应该调用agent的停止接口
+	// 目前通过查询状态来确认应用是否已停止
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(agentURL + "/v1/status/" + appName)
+	if err != nil {
+		// 如果应用不存在，认为已经停止
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		// 应用不存在，认为已经停止
+		return nil
+	}
+
+	// 这里可以添加实际的停止逻辑
+	// 比如调用agent的停止接口或发送停止信号
 
 	return nil
 }

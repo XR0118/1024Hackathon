@@ -1,0 +1,112 @@
+# Boreas Operator PM Agent Makefile
+
+.PHONY: help build test clean run docker-build docker-run
+
+# 默认目标
+help:
+	@echo "Boreas Operator PM Agent 构建和测试工具"
+	@echo ""
+	@echo "可用命令:"
+	@echo "  build          - 编译 Agent 二进制文件"
+	@echo "  test           - 运行配置测试"
+	@echo "  run            - 运行 Agent（使用默认配置）"
+	@echo "  run-config     - 运行 Agent（使用配置文件）"
+	@echo "  clean          - 清理构建文件"
+	@echo "  docker-build   - 构建 Docker 镜像"
+	@echo "  docker-run     - 运行 Docker 容器"
+	@echo ""
+
+# 编译 Agent
+build:
+	@echo "编译 Operator PM Agent..."
+	go build -o bin/operator-pm-agent ./cmd/operator-pm-agent
+	@echo "编译完成: bin/operator-pm-agent"
+
+# 运行配置测试
+test:
+	@echo "运行配置测试..."
+	@chmod +x scripts/test-agent-config.sh
+	@./scripts/test-agent-config.sh
+
+# 运行 Agent（默认配置）
+run: build
+	@echo "启动 Agent（默认配置）..."
+	@mkdir -p /tmp/boreas-agent
+	@./bin/operator-pm-agent --work-dir /tmp/boreas-agent
+
+# 运行 Agent（配置文件）
+run-config: build
+	@echo "启动 Agent（配置文件）..."
+	@mkdir -p /tmp/boreas-agent
+	@./bin/operator-pm-agent --config cmd/operator-pm-agent/configs/agent.yaml --work-dir /tmp/boreas-agent
+
+# 清理构建文件
+clean:
+	@echo "清理构建文件..."
+	@rm -rf bin/
+	@rm -rf /tmp/boreas-agent
+	@echo "清理完成"
+
+# 构建 Docker 镜像
+docker-build:
+	@echo "构建 Docker 镜像..."
+	docker build -f deployments/docker/operator-pm-agent.Dockerfile -t boreas/operator-pm-agent:latest .
+	@echo "Docker 镜像构建完成: boreas/operator-pm-agent:latest"
+
+# 运行 Docker 容器
+docker-run: docker-build
+	@echo "启动 Docker 容器..."
+	docker run -d \
+		--name boreas-agent \
+		-p 8081:8081 \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v /tmp/boreas-agent:/var/lib/boreas-agent \
+		boreas/operator-pm-agent:latest
+	@echo "Docker 容器已启动: boreas-agent"
+	@echo "访问地址: http://localhost:8081"
+
+# 停止 Docker 容器
+docker-stop:
+	@echo "停止 Docker 容器..."
+	@docker stop boreas-agent || true
+	@docker rm boreas-agent || true
+	@echo "Docker 容器已停止"
+
+# 查看 Docker 容器日志
+docker-logs:
+	@echo "查看 Docker 容器日志..."
+	@docker logs -f boreas-agent
+
+# 测试 Agent API
+test-api:
+	@echo "测试 Agent API..."
+	@echo "1. 健康检查:"
+	@curl -s http://localhost:8081/v1/health | jq . || echo "健康检查失败"
+	@echo ""
+	@echo "2. 获取状态:"
+	@curl -s http://localhost:8081/v1/status | jq . || echo "状态查询失败"
+	@echo ""
+	@echo "3. 部署测试应用:"
+	@curl -s -X POST http://localhost:8081/v1/apply \
+		-H "Content-Type: application/json" \
+		-d '{"app": "test-app", "version": "v1.0.0", "pkg": {"type": "docker", "image": "nginx:alpine"}}' \
+		| jq . || echo "部署失败"
+
+# 完整测试流程
+test-all: clean build test
+	@echo "所有测试完成"
+
+# 开发模式（后台运行）
+dev: build
+	@echo "启动开发模式..."
+	@mkdir -p /tmp/boreas-agent
+	@./bin/operator-pm-agent --config cmd/operator-pm-agent/configs/agent.yaml --work-dir /tmp/boreas-agent &
+	@echo "Agent 已在后台启动，PID: $$!"
+	@echo "使用 'make stop-dev' 停止"
+	@echo "使用 'make test-api' 测试 API"
+
+# 停止开发模式
+stop-dev:
+	@echo "停止开发模式..."
+	@pkill -f operator-pm-agent || true
+	@echo "Agent 已停止"

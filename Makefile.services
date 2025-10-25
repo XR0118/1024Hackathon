@@ -1,0 +1,67 @@
+# Boreas 服务管理 Makefile
+
+.PHONY: help build-all test-all clean-all run-agent run-pm run-master run-k8s
+
+# 默认目标
+help:
+	@echo "Boreas 服务管理工具"
+	@echo ""
+	@echo "可用命令:"
+	@echo "  build-all       - 编译所有服务"
+	@echo "  test-all        - 测试所有服务配置"
+	@echo "  clean-all       - 清理所有构建文件"
+	@echo "  run-agent       - 运行 Agent 服务"
+	@echo "  run-pm          - 运行 Operator-PM 服务"
+	@echo "  run-master      - 运行 Master 服务"
+	@echo "  run-k8s         - 运行 Operator-K8s 服务"
+	@echo ""
+
+# 编译所有服务
+build-all:
+	@echo "编译所有服务..."
+	@go build -o bin/operator-pm-agent ./cmd/operator-pm-agent
+	@go build -o bin/operator-pm ./cmd/operator-pm
+	@go build -o bin/master-service ./cmd/master-service
+	@go build -o bin/operator-k8s ./cmd/operator-k8s
+	@echo "所有服务编译完成"
+
+# 测试所有服务配置
+test-all:
+	@echo "测试所有服务配置..."
+	@echo "测试 Agent 配置..."
+	@bin/operator-pm-agent --version
+	@echo "测试 Operator-PM 配置..."
+	@bin/operator-pm --version
+	@echo "测试 Master 配置..."
+	@bin/master-service --version
+	@echo "测试 Operator-K8s 配置..."
+	@bin/operator-k8s --version
+	@echo "所有服务配置测试完成"
+
+# 清理所有构建文件
+clean-all:
+	@echo "清理所有构建文件..."
+	@rm -rf bin/
+	@rm -rf /tmp/boreas-*
+	@echo "清理完成"
+
+# 运行 Agent 服务
+run-agent: build-all
+	@echo "启动 Agent 服务..."
+	@mkdir -p /tmp/boreas-agent
+	@bin/operator-pm-agent --config cmd/operator-pm-agent/configs/agent.yaml --work-dir /tmp/boreas-agent
+
+# 运行 Operator-PM 服务
+run-pm: build-all
+	@echo "启动 Operator-PM 服务..."
+	@bin/operator-pm --config cmd/operator-pm/configs/operator-pm.yaml
+
+# 运行 Master 服务
+run-master: build-all
+	@echo "启动 Master 服务..."
+	@bin/master-service --config cmd/master-service/configs/master.yaml
+
+# 运行 Operator-K8s 服务
+run-k8s: build-all
+	@echo "启动 Operator-K8s 服务..."
+	@bin/operator-k8s --config cmd/operator-k8s/configs/operator-k8s.yaml
