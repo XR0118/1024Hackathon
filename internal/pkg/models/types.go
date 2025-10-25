@@ -74,22 +74,22 @@ const (
 
 // Deployment 部署信息
 type Deployment struct {
-	ID             string           `json:"id" gorm:"primaryKey"`
-	VersionID      string           `json:"version_id" gorm:"not null"`
-	ApplicationIDs []string         `json:"application_ids" gorm:"type:jsonb"`
-	EnvironmentID  string           `json:"environment_id" gorm:"not null"`
-	Status         DeploymentStatus `json:"status" gorm:"default:'pending'"`
-	CreatedBy      string           `json:"created_by" gorm:"not null"`
-	CreatedAt      time.Time        `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt      time.Time        `json:"updated_at" gorm:"autoUpdateTime"`
-	StartedAt      *time.Time       `json:"started_at,omitempty"`
-	CompletedAt    *time.Time       `json:"completed_at,omitempty"`
-	ErrorMessage   string           `json:"error_message,omitempty"`
+	ID            string           `json:"id" gorm:"primaryKey"`
+	VersionID     string           `json:"version_id" gorm:"not null"`
+	MustInOrder   []string         `json:"must_in_order" gorm:"type:jsonb"` // version 中包含的 app 必须按照这个 app_id 顺序部署
+	EnvironmentID string           `json:"environment_id" gorm:"not null"`
+	Status        DeploymentStatus `json:"status" gorm:"default:'pending'"`
+	CreatedBy     string           `json:"created_by" gorm:"not null"`
+	CreatedAt     time.Time        `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt     time.Time        `json:"updated_at" gorm:"autoUpdateTime"`
+	StartedAt     *time.Time       `json:"started_at,omitempty"`
+	CompletedAt   *time.Time       `json:"completed_at,omitempty"`
+	ErrorMessage  string           `json:"error_message,omitempty"`
 
 	// 关联关系
-	Version      Version       `json:"version,omitempty" gorm:"foreignKey:VersionID"`
-	Environment  Environment   `json:"environment,omitempty" gorm:"foreignKey:EnvironmentID"`
-	Applications []Application `json:"applications,omitempty" gorm:"many2many:deployment_applications;"`
+	Version     Version     `json:"version,omitempty" gorm:"foreignKey:VersionID"`
+	Environment Environment `json:"environment,omitempty" gorm:"foreignKey:EnvironmentID"`
+	Tasks       []Task      `json:"tasks,omitempty" gorm:"foreignKey:DeploymentID"`
 }
 
 // TaskStatus 任务状态
@@ -100,12 +100,14 @@ const (
 	TaskStatusRunning TaskStatus = "running"
 	TaskStatusSuccess TaskStatus = "success"
 	TaskStatusFailed  TaskStatus = "failed"
+	TaskStatusBlocked TaskStatus = "blocked"
 )
 
 // Task 任务信息
 type Task struct {
 	ID           string     `json:"id" gorm:"primaryKey"`
 	DeploymentID string     `json:"deployment_id" gorm:"not null"`
+	AppID        string     `json:"app_id" gorm:"not null"`
 	Type         string     `json:"type" gorm:"not null"` // build, test, deploy, health_check
 	Status       TaskStatus `json:"status" gorm:"default:'pending'"`
 	Payload      string     `json:"payload" gorm:"type:text"`
@@ -116,31 +118,8 @@ type Task struct {
 	CompletedAt  *time.Time `json:"completed_at,omitempty"`
 
 	// 关联关系
-	Deployment Deployment `json:"deployment,omitempty" gorm:"foreignKey:DeploymentID"`
-}
-
-// WorkflowStatus 工作流状态
-type WorkflowStatus string
-
-const (
-	WorkflowStatusPending   WorkflowStatus = "pending"
-	WorkflowStatusRunning   WorkflowStatus = "running"
-	WorkflowStatusSuccess   WorkflowStatus = "success"
-	WorkflowStatusFailed    WorkflowStatus = "failed"
-	WorkflowStatusCancelled WorkflowStatus = "cancelled"
-)
-
-// Workflow 工作流信息
-type Workflow struct {
-	ID           string         `json:"id" gorm:"primaryKey"`
-	DeploymentID string         `json:"deployment_id" gorm:"not null"`
-	Status       WorkflowStatus `json:"status" gorm:"default:'pending'"`
-	CreatedAt    time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
-
-	// 关联关系
-	Deployment Deployment `json:"deployment,omitempty" gorm:"foreignKey:DeploymentID"`
-	Tasks      []Task     `json:"tasks,omitempty" gorm:"foreignKey:DeploymentID"`
+	Deployment  Deployment  `json:"deployment,omitempty" gorm:"foreignKey:DeploymentID"`
+	Application Application `json:"application,omitempty" gorm:"foreignKey:AppID"`
 }
 
 // 请求和响应类型
