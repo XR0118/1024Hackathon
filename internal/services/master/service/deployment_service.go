@@ -40,7 +40,7 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 	}
 
 	// 验证版本是否存在
-	_, err := s.versionRepo.GetByID(ctx, req.VersionID)
+	version, err := s.versionRepo.GetByID(ctx, req.VersionID)
 	if err != nil {
 		return nil, fmt.Errorf("version not found: %w", err)
 	}
@@ -52,10 +52,17 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 	}
 
 	// 验证应用是否存在
-	for _, appID := range req.ApplicationIDs {
-		_, err := s.appRepo.GetByID(ctx, appID)
-		if err != nil {
-			return nil, fmt.Errorf("application %s not found: %w", appID, err)
+	for _, appID := range req.MustInOrder {
+		// 验证应用是否在版本中
+		appFound := false
+		for _, app := range version.AppBuilds {
+			if app.AppID == appID {
+				appFound = true
+				break
+			}
+		}
+		if !appFound {
+			return nil, fmt.Errorf("application %s not found in version %s", appID, version.ID)
 		}
 	}
 
@@ -63,7 +70,7 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 	deployment := &models.Deployment{
 		ID:            uuid.New().String(),
 		VersionID:     req.VersionID,
-		MustInOrder:   req.ApplicationIDs,
+		MustInOrder:   req.MustInOrder,
 		EnvironmentID: req.EnvironmentID,
 		Status:        models.DeploymentStatusPending,
 		CreatedBy:     getCurrentUser(ctx),
@@ -181,4 +188,15 @@ func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, r
 	// TODO: 创建并执行回滚任务
 
 	return rollbackDeployment, nil
+}
+
+// startDeployment 启动部署
+func (s *deploymentService) StartDeployment(ctx context.Context, deployment *models.Deployment) error {
+	// 将状态置为运行中
+	deployment.Status = models.DeploymentStatusRunning
+	deployment.UpdatedAt = time.Now()
+	if err := s.deploymentRepo.Update(ctx, deployment); err != nil {
+		return fmt.Errorf("failed to update deployment status to running: %w", err)
+	}
+	return nil
 }

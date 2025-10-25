@@ -110,6 +110,7 @@ type Task struct {
 	AppID        string     `json:"app_id" gorm:"not null"`
 	Type         string     `json:"type" gorm:"not null"` // build, test, deploy, health_check
 	Status       TaskStatus `json:"status" gorm:"default:'pending'"`
+	BlockBy      string     `json:"block_by,omitempty"` // 表示被哪个 task 阻塞
 	Payload      string     `json:"payload" gorm:"type:text"`
 	Result       string     `json:"result,omitempty" gorm:"type:text"`
 	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
@@ -214,9 +215,9 @@ type EnvironmentListResponse struct {
 
 // CreateDeploymentRequest 创建部署请求
 type CreateDeploymentRequest struct {
-	VersionID      string   `json:"version_id" binding:"required"`
-	ApplicationIDs []string `json:"application_ids" binding:"required"`
-	EnvironmentID  string   `json:"environment_id" binding:"required"`
+	VersionID     string   `json:"version_id" binding:"required"`
+	MustInOrder   []string `json:"must_in_order" binding:"required"`
+	EnvironmentID string   `json:"environment_id" binding:"required"`
 }
 
 // ListDeploymentsRequest 部署列表请求
