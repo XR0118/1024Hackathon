@@ -10,15 +10,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/boreas/deployment-trigger/internal/service"
+	"github.com/boreas/internal/services/master/service"
 )
 
 type WebhookHandler struct {
-	service *service.VersionService
+	service *service.TriggerService
 	secret  string
 }
 
-func NewWebhookHandler(service *service.VersionService, secret string) *WebhookHandler {
+func NewWebhookHandler(service *service.TriggerService, secret string) *WebhookHandler {
 	return &WebhookHandler{
 		service: service,
 		secret:  secret,

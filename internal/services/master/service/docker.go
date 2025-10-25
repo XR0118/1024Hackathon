@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/boreas/internal/pkg/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
@@ -34,9 +35,9 @@ func NewDockerService(registry string) (*DockerService, error) {
 	}, nil
 }
 
-func (d *DockerService) BuildImage(ctx context.Context, appPath, appName, tag string, buildConfig *BuildConfig) (string, error) {
+func (d *DockerService) BuildImage(ctx context.Context, appPath, appName, tag string, buildConfig *models.BuildConfig) (string, error) {
 	if buildConfig == nil {
-		buildConfig = &BuildConfig{
+		buildConfig = &models.BuildConfig{
 			Dockerfile: "Dockerfile",
 			Context:    ".",
 		}
@@ -110,10 +111,4 @@ func (d *DockerService) Close() error {
 		return d.client.Close()
 	}
 	return nil
-}
-
-type BuildConfig struct {
-	Dockerfile string             `json:"dockerfile"`
-	BuildArgs  map[string]*string `json:"build_args"`
-	Context    string             `json:"context"`
 }
