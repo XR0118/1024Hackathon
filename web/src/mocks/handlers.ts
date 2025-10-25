@@ -64,6 +64,24 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
+        
+        if (method === 'POST' && url.match(/^\/versions\/.+?\/rollback$/)) {
+          const version = url.split('/')[2]
+          const found = mockVersions.find((v) => v.version === version)
+          if (found) {
+            // 模拟回滚操作
+            return Promise.reject({
+              config,
+              response: { data: { ...found }, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+          return Promise.reject({
+            config,
+            response: { data: { message: 'Version not found' }, status: 404, statusText: 'Not Found', headers: {}, config },
+            isMockResponse: true,
+          })
+        }
       }
 
       if (url.startsWith('/applications')) {

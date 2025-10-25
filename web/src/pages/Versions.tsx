@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { versionApi } from "@/services/api";
 import { formatDate } from "@/utils";
 import type { Version } from "@/types";
-import { IconSearch, IconRefresh, IconRocket } from "@tabler/icons-react";
+import { IconSearch, IconRefresh, IconRocket, IconArrowBackUp } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
 
 const Versions: React.FC = () => {
@@ -11,6 +11,9 @@ const Versions: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
+  const [rollbackVersion, setRollbackVersion] = useState<Version | null>(null);
+  const [rollbackReason, setRollbackReason] = useState("");
+  const [rollbackLoading, setRollbackLoading] = useState(false);
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -35,6 +38,22 @@ const Versions: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
+  };
+
+  const handleRollback = async () => {
+    if (!rollbackVersion) return;
+    
+    setRollbackLoading(true);
+    try {
+      await versionApi.rollback(rollbackVersion.version, rollbackReason);
+      setRollbackVersion(null);
+      setRollbackReason("");
+      loadVersions();
+    } catch (error) {
+      setError("回滚操作失败，请重试。");
+    } finally {
+      setRollbackLoading(false);
+    }
   };
 
   return (
@@ -105,15 +124,19 @@ const Versions: React.FC = () => {
                       >
                         详情
                       </button>
-                      <a
-                        href={`/deployments/${version.version}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-sm btn-ghost-secondary"
-                      >
+                      <a href={`/deployments/${version.version}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost-secondary">
                         <IconRocket size={16} className="me-1" />
                         查看任务
                       </a>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#rollbackModal"
+                        onClick={() => setRollbackVersion(version)}
+                      >
+                        <IconArrowBackUp size={16} className="me-1" />
+                        回滚
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -174,6 +197,54 @@ const Versions: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 回滚确认对话框 */}
+      <div className="modal" id="rollbackModal" tabIndex={-1}>
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">确认回滚操作</h5>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div className="modal-body">
+              {rollbackVersion && (
+                <div>
+                  <div className="alert alert-danger">
+                    <strong>警告：此操作不可撤销！</strong>
+                    <br />
+                    确定要回滚版本 <strong>{rollbackVersion.version}</strong> 吗？
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">回滚原因（必填）</label>
+                    <textarea
+                      className="form-control"
+                      rows={3}
+                      placeholder="请填写回滚原因..."
+                      value={rollbackReason}
+                      onChange={(e) => setRollbackReason(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleRollback}
+                disabled={rollbackLoading || !rollbackReason.trim()}
+                data-bs-dismiss="modal"
+              >
+                {rollbackLoading ? "回滚中..." : "确认回滚"}
+              </button>
             </div>
           </div>
         </div>

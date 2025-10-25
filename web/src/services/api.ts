@@ -38,6 +38,9 @@ export const versionApi = {
   
   create: (data: Partial<Version>) =>
     api.post<any, Version>('/versions', data),
+  
+  rollback: (version: string, reason?: string) =>
+    api.post<any, Version>(`/versions/${version}/rollback`, { reason }),
 }
 
 export const applicationApi = {
