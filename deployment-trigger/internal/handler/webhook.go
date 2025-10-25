@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/XR0118/1024Hackathon/deployment-trigger/internal/service"
+	"github.com/boreas/deployment-trigger/internal/service"
 )
 
 type WebhookHandler struct {

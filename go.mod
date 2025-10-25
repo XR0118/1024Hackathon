@@ -1,4 +1,4 @@
-module github.com/XR0118/1024Hackathon
+module github.com/boreas
 
 go 1.24.0
 

@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/XR0118/1024Hackathon/deployment-trigger/internal/handler"
-	"github.com/XR0118/1024Hackathon/deployment-trigger/internal/service"
+	"github.com/boreas/deployment-trigger/internal/handler"
+	"github.com/boreas/deployment-trigger/internal/service"
 )
 
 func main() {
