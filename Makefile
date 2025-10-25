@@ -12,17 +12,17 @@ help:
 	@echo "  build-all               - 构建所有服务"
 	@echo "  build-master            - 构建Master服务"
 	@echo "  build-operator-k8s      - 构建K8s Operator服务"
-	@echo "  build-operator-baremetal - 构建Baremetal Operator服务"
+	@echo "  build-operator-pm        - 构建PM Operator服务"
 	@echo "  build-web               - 构建Web管理界面"
 	@echo "  run-all                 - 运行所有服务"
 	@echo "  run-master              - 运行Master服务"
 	@echo "  run-operator-k8s        - 运行K8s Operator服务"
-	@echo "  run-operator-baremetal  - 运行Baremetal Operator服务"
+	@echo "  run-operator-pm         - 运行PM Operator服务"
 	@echo "  run-web                 - 运行Web管理界面"
 	@echo "  test-all                - 运行所有测试"
 	@echo "  test-master             - 运行Master服务测试"
 	@echo "  test-operator-k8s       - 运行K8s Operator测试"
-	@echo "  test-operator-baremetal - 运行Baremetal Operator测试"
+	@echo "  test-operator-pm        - 运行PM Operator测试"
 	@echo "  fmt-all                 - 格式化所有代码"
 	@echo "  lint-all                - 运行所有linter"
 	@echo "  clean-all               - 清理所有构建文件"
@@ -45,7 +45,7 @@ install-tools:
 	go install github.com/swaggo/swag/cmd/swag@latest
 
 # 构建
-build-all: build-master build-operator-k8s build-operator-baremetal build-web
+build-all: build-master build-operator-k8s build-operator-pm build-web
 
 build-master:
 	@echo "构建Master服务..."
@@ -55,16 +55,16 @@ build-operator-k8s:
 	@echo "构建K8s Operator服务..."
 	go build -o bin/operator-k8s cmd/operator-k8s/main.go
 
-build-operator-baremetal:
-	@echo "构建Baremetal Operator服务..."
-	go build -o bin/operator-baremetal cmd/operator-baremetal/main.go
+build-operator-pm:
+	@echo "构建PM Operator服务..."
+	go build -o bin/operator-pm cmd/operator-pm/main.go
 
 build-web:
 	@echo "构建Web管理界面..."
 	cd web && npm run build
 
 # 运行
-run-all: run-master run-operator-k8s run-operator-baremetal run-web
+run-all: run-master run-operator-k8s run-operator-pm run-web
 
 run-master:
 	@echo "运行Master服务..."
@@ -74,16 +74,16 @@ run-operator-k8s:
 	@echo "运行K8s Operator服务..."
 	go run cmd/operator-k8s/main.go
 
-run-operator-baremetal:
-	@echo "运行Baremetal Operator服务..."
-	go run cmd/operator-baremetal/main.go
+run-operator-pm:
+	@echo "运行PM Operator服务..."
+	go run cmd/operator-pm/main.go
 
 run-web:
 	@echo "运行Web管理界面..."
 	cd web && npm run dev
 
 # 测试
-test-all: test-master test-operator-k8s test-operator-baremetal
+test-all: test-master test-operator-k8s test-operator-pm
 
 test-master:
 	@echo "运行Master服务测试..."
@@ -93,9 +93,9 @@ test-operator-k8s:
 	@echo "运行K8s Operator测试..."
 	go test ./internal/services/operator-k8s/...
 
-test-operator-baremetal:
-	@echo "运行Baremetal Operator测试..."
-	go test ./internal/services/operator-baremetal/...
+test-operator-pm:
+	@echo "运行PM Operator测试..."
+	go test ./internal/services/operator-pm/...
 
 # 代码格式化
 fmt-all:
@@ -119,7 +119,7 @@ docker-build-all:
 	@echo "构建所有Docker镜像..."
 	docker build -f deployments/docker/master-service.Dockerfile -t boreas/master-service:latest .
 	docker build -f deployments/docker/operator-k8s.Dockerfile -t boreas/operator-k8s:latest .
-	docker build -f deployments/docker/operator-baremetal.Dockerfile -t boreas/operator-baremetal:latest .
+	docker build -f deployments/docker/operator-pm.Dockerfile -t boreas/operator-pm:latest .
 	docker build -f deployments/docker/web-management.Dockerfile -t boreas/web-management:latest .
 
 docker-run-all:

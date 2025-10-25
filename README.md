@@ -2,48 +2,6 @@
 
 Boreas 是一个基于 GitOps 的持续部署平台，采用单体仓库 + 共享库模式，支持 Kubernetes 和物理机部署，提供完整的版本管理、应用管理、环境管理和部署管理功能。
 
-## 架构概述
-
-Boreas 采用单体仓库 + 共享库模式，包含以下核心服务：
-
-### 1. Master Service (核心服务)
-作为整个系统的中枢模块，负责：
-- 上游承接时间通知，包含Git Tag等，即创建版本
-- 内部实现规划、编排部署任务
-- 运行编排好的部署任务，让下游具体操作
-- 同时监控跟踪部署状态
-
-**端口**: 8080  
-**入口**: `cmd/master-service/main.go`
-
-### 2. Operator Services (部署执行器)
-为master下游，由于K8S与裸金属环境的不同，拆分成不同服务：
-
-#### Operator-K8s
-- 执行Kubernetes环境的部署操作
-- 维持Kubernetes部署状态
-- 提供Kubernetes部署状态，供上游查询
-
-**端口**: 8081  
-**入口**: `cmd/operator-k8s/main.go`
-
-#### Operator-Baremetal
-- 执行物理机环境的部署操作
-- 维持物理机部署状态
-- 提供物理机部署状态，供上游查询
-
-**端口**: 8082  
-**入口**: `cmd/operator-baremetal/main.go`
-
-### 3. Web Management (Web管理界面)
-为master服务搭配的web管理界面，包含功能：
-- 状态查看
-- 半自动编排/编辑等
-- 人工复核确认
-
-**端口**: 3000  
-**目录**: `web/`
-
 ## 项目结构
 
 ```
@@ -54,7 +12,7 @@ boreas/
 │   │   └── webhook/            # Webhook服务入口
 │   ├── operator-k8s/            # K8s Operator入口
 │   │   └── main.go
-│   └── operator-baremetal/      # Baremetal Operator入口
+│   └── operator-pm/             # PM Operator入口
 │       └── main.go
 ├── internal/                     # 内部包
 │   ├── pkg/                     # 共享包
@@ -73,7 +31,7 @@ boreas/
 │   │   │   ├── handler/
 │   │   │   ├── service/
 │   │   │   └── repository/
-│   │   └── operator-baremetal/  # Baremetal Operator逻辑
+│   │   └── operator-pm/         # PM Operator逻辑
 │   │       ├── handler/
 │   │       ├── service/
 │   │       └── repository/
@@ -86,6 +44,12 @@ boreas/
 ├── deployments/                 # 部署配置
 │   └── docker/                  # Docker配置
 ├── docs/                        # 文档
+│   ├── summary.md              # 项目概述
+│   ├── core-models.md          # 核心模型定义
+│   ├── management-service.md   # 管理服务文档
+│   ├── webhook-service.md      # Webhook服务文档
+│   └── api/                    # API文档
+│       └── master-service.md   # Master服务API文档
 ├── migrations/                  # 数据库迁移
 ├── scripts/                     # 脚本
 ├── docker-compose.yml           # Docker Compose配置
@@ -137,8 +101,8 @@ boreas/
    # 启动K8s Operator
    make run-operator-k8s
    
-   # 启动Baremetal Operator
-   make run-operator-baremetal
+   # 启动PM Operator
+   make run-operator-pm
    ```
 
 7. **启动Web管理界面**
@@ -244,7 +208,7 @@ make test-all
 # 运行特定服务测试
 make test-master
 make test-operator-k8s
-make test-operator-baremetal
+make test-operator-pm
 ```
 
 ### 代码检查
@@ -298,6 +262,14 @@ make lint-all
 ## 许可证
 
 MIT License
+
+## 相关文档
+
+- [项目概述](docs/summary.md) - 项目的整体介绍和核心概念
+- [核心模型](docs/core-models.md) - 数据模型和类型定义
+- [管理服务](docs/management-service.md) - Master Service详细文档
+- [Webhook服务](docs/webhook-service.md) - Webhook服务文档
+- [Master Service API](docs/api/master-service.md) - Master Service API接口文档
 
 ## 联系方式
 
