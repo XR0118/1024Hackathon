@@ -5,72 +5,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/services/operator-pm-agent/repository"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 )
 
 type AgentService struct {
-	repository   *repository.AgentRepository
-	dockerClient *client.Client
-	apps         map[string]*models.AgentAppStatus
-	mutex        sync.RWMutex
-	workDir      string
+	repository *repository.AgentRepository
+	runner     Runner // 应用运行器
+	apps       map[string]*models.AgentAppStatus
+	mutex      sync.RWMutex
+	workDir    string
 }
 
+// NewAgentService 创建新的 Agent 服务
 func NewAgentService(workDir string) (*AgentService, error) {
-	// 初始化Docker客户端
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %w", err)
-	}
-
-	// 创建仓库实例
-	repo := repository.NewAgentRepository(workDir)
-
-	// 确保工作目录存在
-	if err := os.MkdirAll(workDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create work directory: %w", err)
-	}
-
-	service := &AgentService{
-		repository:   repo,
-		dockerClient: dockerClient,
-		apps:         make(map[string]*models.AgentAppStatus),
-		workDir:      workDir,
-	}
-
-	// 启动时恢复已存在的应用状态
-	if err := service.restoreAppStates(); err != nil {
-		return nil, fmt.Errorf("failed to restore app states: %w", err)
-	}
-
-	return service, nil
+	return NewAgentServiceWithConfig(workDir)
 }
 
-// NewAgentServiceWithConfig 使用配置创建Agent服务
-func NewAgentServiceWithConfig(workDir string, dockerEnabled bool, dockerSocketPath string) (*AgentService, error) {
-	var dockerClient *client.Client
-	var err error
-
-	// 只有在启用Docker时才初始化Docker客户端
-	if dockerEnabled {
-		dockerClient, err = client.NewClientWithOpts(
-			client.FromEnv,
-			client.WithAPIVersionNegotiation(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create docker client: %w", err)
-		}
-	}
-
+// NewAgentServiceWithConfig 使用配置创建 Agent 服务
+func NewAgentServiceWithConfig(workDir string) (*AgentService, error) {
 	// 创建仓库实例
 	repo := repository.NewAgentRepository(workDir)
 
@@ -79,11 +36,14 @@ func NewAgentServiceWithConfig(workDir string, dockerEnabled bool, dockerSocketP
 		return nil, fmt.Errorf("failed to create work directory: %w", err)
 	}
 
+	// 创建运行器（目前只实现 SimpleRunner）
+	runner := NewSimpleRunner()
+
 	service := &AgentService{
-		repository:   repo,
-		dockerClient: dockerClient,
-		apps:         make(map[string]*models.AgentAppStatus),
-		workDir:      workDir,
+		repository: repo,
+		runner:     runner,
+		apps:       make(map[string]*models.AgentAppStatus),
+		workDir:    workDir,
 	}
 
 	// 启动时恢复已存在的应用状态
@@ -105,19 +65,55 @@ func (s *AgentService) ApplyApp(req models.ApplyRequest) (*models.ApplyResponse,
 		return nil, fmt.Errorf("failed to parse deployment package: %w", err)
 	}
 
-	// 停止旧版本应用（如果存在）
-	if _, exists := s.apps[req.App]; exists {
-		if err := s.stopApp(req.App); err != nil {
-			return nil, fmt.Errorf("failed to stop old app: %w", err)
-		}
+	// 检查是否为有效的部署类型
+	if pkg.Type != "binary" && pkg.Type != "script" {
+		return nil, fmt.Errorf("unsupported deployment type: %s, only 'binary' and 'script' are supported", pkg.Type)
 	}
 
-	// 部署新应用
-	if err := s.deployApp(req.App, req.Version, pkg); err != nil {
-		return nil, fmt.Errorf("failed to deploy app: %w", err)
+	// 1. 创建应用目录（如果不存在）
+	appDir := filepath.Join(s.workDir, req.App)
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create app directory: %w", err)
 	}
 
-	// 更新应用状态
+	// 2. 创建版本目录
+	versionDir := filepath.Join(appDir, req.Version)
+	if err := os.MkdirAll(versionDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create version directory: %w", err)
+	}
+
+	// 3. 保存应用配置文件
+	configPath := filepath.Join(versionDir, "config.json")
+	configData := map[string]interface{}{
+		"type":        pkg.Type,
+		"command":     pkg.Command,
+		"args":        pkg.Args,
+		"environment": pkg.Environment,
+	}
+	configJSON, _ := json.MarshalIndent(configData, "", "  ")
+	if err := os.WriteFile(configPath, configJSON, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	// 4. 更新软链接指向新版本
+	currentLink := filepath.Join(appDir, "current")
+	currentDir := versionDir // current 指向新版本目录
+
+	// 删除旧的软链接
+	os.Remove(currentLink)
+
+	// 创建新的软链接
+	if err := os.Symlink(req.Version, currentLink); err != nil {
+		return nil, fmt.Errorf("failed to create symlink: %w", err)
+	}
+
+	// 5. 重启应用（Restart 会自动停止旧进程并启动新进程）
+	ctx := context.Background()
+	if err := s.runner.Restart(ctx, currentDir, req.Version, pkg); err != nil {
+		return nil, fmt.Errorf("failed to restart app: %w", err)
+	}
+
+	// 7. 更新应用状态
 	appStatus := &models.AgentAppStatus{
 		App:     req.App,
 		Version: req.Version,
@@ -127,7 +123,7 @@ func (s *AgentService) ApplyApp(req models.ApplyRequest) (*models.ApplyResponse,
 	}
 	s.apps[req.App] = appStatus
 
-	// 保存状态到文件
+	// 8. 保存状态到文件
 	if err := s.repository.SaveAppStatus(appStatus); err != nil {
 		return nil, fmt.Errorf("failed to save app status: %w", err)
 	}
@@ -146,8 +142,9 @@ func (s *AgentService) GetAllAppStatus() (*models.StatusResponse, error) {
 	defer s.mutex.RUnlock()
 
 	// 更新所有应用的实际状态
+	ctx := context.Background()
 	for appName := range s.apps {
-		if err := s.updateAppHealth(appName); err != nil {
+		if err := s.updateAppHealth(ctx, appName); err != nil {
 			// 记录错误但不中断
 			fmt.Printf("Failed to update health for app %s: %v\n", appName, err)
 		}
@@ -173,7 +170,8 @@ func (s *AgentService) GetAppStatus(appName string) (*models.AppStatusResponse, 
 	}
 
 	// 更新应用健康状态
-	if err := s.updateAppHealth(appName); err != nil {
+	ctx := context.Background()
+	if err := s.updateAppHealth(ctx, appName); err != nil {
 		return nil, fmt.Errorf("failed to update app health: %w", err)
 	}
 
@@ -199,250 +197,33 @@ func (s *AgentService) parseDeploymentPackage(pkg map[string]interface{}) (*mode
 	return &deploymentPkg, nil
 }
 
-// deployApp 部署应用
-func (s *AgentService) deployApp(appName, version string, pkg *models.DeploymentPackage) error {
-	switch pkg.Type {
-	case "docker":
-		return s.deployDockerApp(appName, version, pkg)
-	case "binary":
-		return s.deployBinaryApp(appName, version, pkg)
-	case "script":
-		return s.deployScriptApp(appName, version, pkg)
-	default:
-		return fmt.Errorf("unsupported deployment type: %s", pkg.Type)
-	}
-}
-
-// deployDockerApp 部署Docker应用
-func (s *AgentService) deployDockerApp(appName, version string, pkg *models.DeploymentPackage) error {
-	containerName := fmt.Sprintf("%s-%s", appName, version)
-
-	// 停止并删除已存在的容器
-	if err := s.stopDockerContainer(containerName); err != nil {
-		fmt.Printf("Warning: failed to stop existing container: %v\n", err)
-	}
-
-	// 拉取镜像
-	// TODO: 实现镜像拉取逻辑
-	// if err := s.pullDockerImage(pkg.Image); err != nil {
-	// 	return fmt.Errorf("failed to pull image: %w", err)
-	// }
-
-	// 创建容器配置
-	containerConfig := &container.Config{
-		Image: pkg.Image,
-		Env:   s.convertEnvVars(pkg.Environment),
-		Cmd:   pkg.Command,
-	}
-
-	hostConfig := &container.HostConfig{
-		Binds: s.convertVolumeMounts(pkg.Volumes),
-	}
-
-	// 创建容器
-	_, err := s.dockerClient.ContainerCreate(
-		context.Background(),
-		containerConfig,
-		hostConfig,
-		nil,
-		nil,
-		containerName,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create container: %w", err)
-	}
-
-	// 启动容器
-	// TODO: 实现容器启动逻辑
-	// if err := s.dockerClient.ContainerStart(
-	// 	context.Background(),
-	// 	resp.ID,
-	// 	types.ContainerStartOptions{},
-	// ); err != nil {
-	// 	return fmt.Errorf("failed to start container: %w", err)
-	// }
-
-	return nil
-}
-
-// deployBinaryApp 部署二进制应用
-func (s *AgentService) deployBinaryApp(appName, version string, pkg *models.DeploymentPackage) error {
-	appDir := filepath.Join(s.workDir, "apps", appName, version)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		return fmt.Errorf("failed to create app directory: %w", err)
-	}
-
-	// 这里应该下载二进制文件，简化实现
-	// 实际实现中需要从包管理器中下载或从镜像中提取
-
-	// 创建启动脚本
-	scriptPath := filepath.Join(appDir, "start.sh")
-	script := fmt.Sprintf(`#!/bin/bash
-cd %s
-exec %s %s
-`, appDir, strings.Join(pkg.Command, " "), strings.Join(pkg.Args, " "))
-
-	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
-		return fmt.Errorf("failed to create start script: %w", err)
-	}
-
-	// 启动应用
-	cmd := exec.Command("bash", scriptPath)
-	cmd.Dir = appDir
-	cmd.Env = s.convertEnvVars(pkg.Environment)
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start binary app: %w", err)
-	}
-
-	return nil
-}
-
-// deployScriptApp 部署脚本应用
-func (s *AgentService) deployScriptApp(appName, version string, pkg *models.DeploymentPackage) error {
-	appDir := filepath.Join(s.workDir, "apps", appName, version)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		return fmt.Errorf("failed to create app directory: %w", err)
-	}
-
-	// 创建脚本文件
-	scriptPath := filepath.Join(appDir, "script.sh")
-	script := strings.Join(pkg.Command, "\n")
-
-	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
-		return fmt.Errorf("failed to create script: %w", err)
-	}
-
-	// 启动脚本
-	cmd := exec.Command("bash", scriptPath)
-	cmd.Dir = appDir
-	cmd.Env = s.convertEnvVars(pkg.Environment)
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start script app: %w", err)
-	}
-
-	return nil
-}
-
-// stopApp 停止应用
-func (s *AgentService) stopApp(appName string) error {
-	app, exists := s.apps[appName]
-	if !exists {
-		return nil
-	}
-
-	containerName := fmt.Sprintf("%s-%s", appName, app.Version)
-	if err := s.stopDockerContainer(containerName); err != nil {
-		fmt.Printf("Warning: failed to stop docker container: %v\n", err)
-	}
-
-	// 更新状态
-	app.Status = "stopped"
-	app.Healthy = models.HealthStatus{Level: 0, Msg: "Stopped"}
-	app.Updated = time.Now()
-
-	return nil
-}
-
 // updateAppHealth 更新应用健康状态
-func (s *AgentService) updateAppHealth(appName string) error {
+func (s *AgentService) updateAppHealth(ctx context.Context, appName string) error {
 	app, exists := s.apps[appName]
 	if !exists {
 		return fmt.Errorf("app %s not found", appName)
 	}
 
-	// 检查Docker容器状态
-	containerName := fmt.Sprintf("%s-%s", appName, app.Version)
-	containerInfo, err := s.dockerClient.ContainerInspect(context.Background(), containerName)
+	// 使用 runner 获取应用状态
+	appDir := filepath.Join(s.workDir, appName)
+	status, err := s.runner.Status(ctx, appDir)
 	if err != nil {
-		// 容器不存在或出错
-		app.Status = "stopped"
-		app.Healthy = models.HealthStatus{Level: 0, Msg: "Container not found"}
+		// 记录错误但不影响状态更新
+		fmt.Printf("Warning: failed to check app status: %v\n", err)
+		status = &AppStatus{Running: false, Message: "Status check failed"}
+	}
+
+	// 更新状态
+	if status.Running {
+		app.Status = "running"
+		app.Healthy = models.HealthStatus{Level: 100, Msg: status.Message}
 	} else {
-		switch containerInfo.State.Status {
-		case "running":
-			app.Status = "running"
-			app.Healthy = models.HealthStatus{Level: 100, Msg: "Running"}
-		case "exited":
-			app.Status = "stopped"
-			app.Healthy = models.HealthStatus{Level: 0, Msg: "Exited"}
-		default:
-			app.Status = "unknown"
-			app.Healthy = models.HealthStatus{Level: 50, Msg: "Unknown status"}
-		}
+		app.Status = "stopped"
+		app.Healthy = models.HealthStatus{Level: 0, Msg: status.Message}
 	}
 
 	app.Updated = time.Now()
 	return nil
-}
-
-// stopDockerContainer 停止Docker容器
-func (s *AgentService) stopDockerContainer(containerName string) error {
-	// 尝试停止容器
-	if err := s.dockerClient.ContainerStop(context.Background(), containerName, container.StopOptions{}); err != nil {
-		// 忽略容器不存在的错误
-		if !strings.Contains(err.Error(), "No such container") {
-			return err
-		}
-	}
-
-	// 删除容器
-	// TODO: 实现容器删除逻辑
-	// if err := s.dockerClient.ContainerRemove(context.Background(), containerName, types.ContainerRemoveOptions{}); err != nil {
-	// 	if !strings.Contains(err.Error(), "No such container") {
-	// 		return err
-	// 	}
-	// }
-
-	return nil
-}
-
-// pullDockerImage 拉取Docker镜像
-func (s *AgentService) pullDockerImage(image string) error {
-	// TODO: 实现镜像拉取逻辑
-	// reader, err := s.dockerClient.ImagePull(context.Background(), image, types.ImagePullOptions{})
-	// if err != nil {
-	// 	return err
-	// }
-	// defer reader.Close()
-
-	// 读取响应以确保拉取完成
-	// _, err = io.Copy(io.Discard, reader)
-	// return err
-	return nil
-}
-
-// convertEnvVars 转换环境变量
-func (s *AgentService) convertEnvVars(env map[string]string) []string {
-	var envVars []string
-	for k, v := range env {
-		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
-	}
-	return envVars
-}
-
-// convertPortMappings 转换端口映射
-func (s *AgentService) convertPortMappings(ports []models.PortMapping) map[string][]string {
-	portBindings := make(map[string][]string)
-	for _, port := range ports {
-		key := fmt.Sprintf("%d/%s", port.ContainerPort, port.Protocol)
-		portBindings[key] = []string{fmt.Sprintf("0.0.0.0:%d", port.HostPort)}
-	}
-	return portBindings
-}
-
-// convertVolumeMounts 转换卷挂载
-func (s *AgentService) convertVolumeMounts(volumes []models.VolumeMount) []string {
-	var binds []string
-	for _, vol := range volumes {
-		bind := fmt.Sprintf("%s:%s", vol.HostPath, vol.ContainerPath)
-		if vol.ReadOnly {
-			bind += ":ro"
-		}
-		binds = append(binds, bind)
-	}
-	return binds
 }
 
 // restoreAppStates 恢复应用状态
@@ -457,6 +238,7 @@ func (s *AgentService) restoreAppStates() error {
 
 	for _, app := range apps {
 		s.apps[app.App] = app
+		// 注意：进程不会被恢复，因为它们已经退出
 	}
 
 	return nil
