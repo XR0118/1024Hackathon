@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { versionApi } from "@/services/api";
 import { formatDate } from "@/utils";
 import type { Version } from "@/types";
-import { IconSearch, IconRefresh } from "@tabler/icons-react";
+import { IconSearch, IconRefresh, IconRocket } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
 
 const Versions: React.FC = () => {
@@ -96,14 +96,25 @@ const Versions: React.FC = () => {
                   </td>
                   <td>{formatDate(version.createdAt)}</td>
                   <td>
-                    <button
-                      className="btn btn-sm btn-ghost-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#versionDetailModal"
-                      onClick={() => setSelectedVersion(version)}
-                    >
-                      详情
-                    </button>
+                    <div className="d-flex gap-2">
+                      <button
+                        className="btn btn-sm btn-ghost-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#versionDetailModal"
+                        onClick={() => setSelectedVersion(version)}
+                      >
+                        详情
+                      </button>
+                      <a
+                        href={`/deployments/${version.version}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-sm btn-ghost-secondary"
+                      >
+                        <IconRocket size={16} className="me-1" />
+                        查看任务
+                      </a>
+                    </div>
                   </td>
                 </tr>
               ))}
