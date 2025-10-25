@@ -121,7 +121,7 @@ export const mockEnvironments: Environment[] = [
 
 export const mockDeployments: Deployment[] = [
   {
-    id: 'deploy1',
+    id: 'v1.2.3',
     versionId: 'v1.2.3',
     version: 'v1.2.3',
     applicationIds: ['user-service', 'order-service'],
@@ -137,7 +137,7 @@ export const mockDeployments: Deployment[] = [
     grayscaleRatio: 50,
   },
   {
-    id: 'deploy2',
+    id: 'v1.2.2',
     versionId: 'v1.2.2',
     version: 'v1.2.2',
     applicationIds: ['user-service'],
@@ -153,7 +153,7 @@ export const mockDeployments: Deployment[] = [
     grayscaleEnabled: false,
   },
   {
-    id: 'deploy3',
+    id: 'v1.2.1',
     versionId: 'v1.2.1',
     version: 'v1.2.1',
     applicationIds: ['payment-service'],
@@ -169,7 +169,7 @@ export const mockDeployments: Deployment[] = [
     grayscaleEnabled: false,
   },
   {
-    id: 'deploy4',
+    id: 'v1.2.0',
     versionId: 'v1.2.0',
     version: 'v1.2.0',
     applicationIds: ['user-service'],
@@ -186,8 +186,8 @@ export const mockDeployments: Deployment[] = [
 ]
 
 export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
-  deploy1: {
-    id: 'deploy1',
+  'v1.2.3': {
+    id: 'v1.2.3',
     versionId: 'v1.2.3',
     version: 'v1.2.3',
     applicationIds: ['user-service', 'order-service'],
@@ -237,8 +237,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
       { timestamp: '2024-10-20T10:20:00Z', level: 'info', message: '更新中...' },
     ],
   },
-  deploy2: {
-    id: 'deploy2',
+  'v1.2.2': {
+    id: 'v1.2.2',
     versionId: 'v1.2.2',
     version: 'v1.2.2',
     applicationIds: ['user-service'],
@@ -290,8 +290,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
       { timestamp: '2024-10-19T16:00:00Z', level: 'info', message: '部署成功' },
     ],
   },
-  deploy3: {
-    id: 'deploy3',
+  'v1.2.1': {
+    id: 'v1.2.1',
     versionId: 'v1.2.1',
     version: 'v1.2.1',
     applicationIds: ['payment-service'],
@@ -339,8 +339,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
       { timestamp: '2024-10-18T09:30:00Z', level: 'error', message: '部署失败: 节点连接超时' },
     ],
   },
-  deploy4: {
-    id: 'deploy4',
+  'v1.2.0': {
+    id: 'v1.2.0',
     versionId: 'v1.2.0',
     version: 'v1.2.0',
     applicationIds: ['user-service'],
