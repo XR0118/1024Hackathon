@@ -25,7 +25,7 @@ type SimpleDeployExecutor struct {
 	client         DeployClient
 }
 
-func NewSimpleDeployExecutor(task models.Task, deploymentRepo interfaces.DeploymentRepository, client DeployClient) *SimpleDeployExecutor {
+func NewSimpleDeployExecutor(task models.Task, deploymentRepo interfaces.DeploymentRepository) *SimpleDeployExecutor {
 	return &SimpleDeployExecutor{
 		task:           task,
 		deploymentRepo: deploymentRepo,
