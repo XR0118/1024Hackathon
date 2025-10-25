@@ -9,13 +9,25 @@ export interface Version {
   applications: string[]
 }
 
+export interface ApplicationVersionInfo {
+  version: string
+  status: 'normal' | 'revert'
+  health: number
+  lastUpdatedAt: string
+  nodes?: ApplicationNodeInfo[]
+}
+
+export interface ApplicationNodeInfo {
+  name: string
+  health: number
+  lastUpdatedAt: string
+}
+
 export interface Application {
-  id: string
   name: string
   description: string
   icon?: string
-  currentVersions: Record<string, string>
-  lastDeployedAt: string
+  versions: ApplicationVersionInfo[]
 }
 
 export interface Environment {
