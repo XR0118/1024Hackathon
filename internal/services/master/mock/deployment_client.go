@@ -53,5 +53,6 @@ func (c *MockDeploymentClient) AppStatus(ctx context.Context, app string) ([]mod
 			statuses = append(statuses, status)
 		}
 	}
+
 	return statuses, nil
 }

@@ -26,12 +26,14 @@ type SimpleDeployExecutor struct {
 	client         DeployClient
 }
 
+var mockClient = mock.NewMockDeploymentClient()
+
 func NewSimpleDeployExecutor(task models.Task,
 	deploymentRepo interfaces.DeploymentRepository, versionRepo interfaces.VersionRepository) *SimpleDeployExecutor {
 	return &SimpleDeployExecutor{
 		task:           task,
 		deploymentRepo: deploymentRepo,
-		client:         mock.NewMockDeploymentClient(),
+		client:         mockClient,
 	}
 }
 
@@ -85,6 +87,7 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		for _, s := range e.task.Deployment.GetStrategy() {
 			total += s.BatchSize
 		}
+		pkg.Replicas = total
 		_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
 		if err != nil {
 			return models.TaskStatusFailed, nil

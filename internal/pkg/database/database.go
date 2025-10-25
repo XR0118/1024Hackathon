@@ -41,9 +41,9 @@ func InitWithDSN(dsn string) error {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	// 自动迁移
-	if err := autoMigrate(db); err != nil {
-		return fmt.Errorf("failed to auto migrate: %w", err)
-	}
+	// if err := autoMigrate(db); err != nil {
+	// 	return fmt.Errorf("failed to auto migrate: %w", err)
+	// }
 
 	DB = db
 	return nil

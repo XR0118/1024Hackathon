@@ -184,16 +184,19 @@ func (wc *workflowController) pendingTaskScheduler() {
 func (wc *workflowController) processPendingTasks() {
 	ctx := context.Background()
 
-	filter := &models.TaskFilter{
-		Status:   models.TaskStatusPending,
-		Page:     1,
-		PageSize: 100,
-	}
-
-	tasks, _, err := wc.taskRepo.List(ctx, filter)
-	if err != nil {
-		wc.log.Error("Failed to list pending tasks", zap.Error(err))
-		return
+	tasks := []*models.Task{}
+	for _, status := range []models.TaskStatus{models.TaskStatusPending, models.TaskStatusRunning} {
+		filter := &models.TaskFilter{
+			Status:   status,
+			Page:     1,
+			PageSize: 100,
+		}
+		ts, _, err := wc.taskRepo.List(ctx, filter)
+		if err != nil {
+			wc.log.Error("Failed to list pending tasks", zap.Error(err))
+			return
+		}
+		tasks = append(tasks, ts...)
 	}
 
 	for _, task := range tasks {
@@ -261,6 +264,12 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 		task.Result = err.Error()
 	}
 
+	err = wc.taskRepo.Update(ctx, task)
+	if err != nil {
+		wc.log.Error("Failed to update task", zap.Error(err), zap.String("task_id", task.ID))
+		return err
+	}
+
 	if task.Status.IsFinished() {
 		deployment, err := wc.deploymentRepo.GetByID(ctx, task.DeploymentID)
 		if err != nil {
@@ -292,20 +301,23 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 				}
 			}
 			if successCnt == len(deployment.Tasks) {
-				deployment.Status = models.DeploymentStatusSuccess
+				deploymentStatus = models.DeploymentStatusSuccess
 			}
 			if deploymentStatus.IsFinished() {
-				now := time.Now()
-				deployment.CompletedAt = &now
-				deployment.UpdatedAt = now
+				wc.log.Info("Deployment completed",
+					zap.String("deployment_id", deployment.ID), zap.String("status", string(deploymentStatus)))
+
+				deployment.Status = deploymentStatus
+				deployment.CompletedAt = &[]time.Time{time.Now()}[0]
 				if err := wc.deploymentRepo.Update(ctx, deployment); err != nil {
 					wc.log.Error("Failed to update deployment", zap.Error(err), zap.String("deployment_id", deployment.ID))
+					return err
 				}
 			}
 		}
 	}
 
-	return wc.taskRepo.Update(ctx, task)
+	return nil
 }
 
 func (wc *workflowController) blockedTaskScheduler() {
