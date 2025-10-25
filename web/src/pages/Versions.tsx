@@ -42,7 +42,7 @@ const Versions: React.FC = () => {
 
   const handleRollback = async () => {
     if (!rollbackVersion) return;
-    
+
     setRollbackLoading(true);
     try {
       await versionApi.rollback(rollbackVersion.version, rollbackReason);
@@ -86,7 +86,7 @@ const Versions: React.FC = () => {
             <thead>
               <tr>
                 <th>版本号</th>
-                <th>Git Tag</th>
+                <th>Git</th>
                 <th>应用信息</th>
                 <th>创建时间</th>
                 <th>操作</th>
@@ -97,9 +97,9 @@ const Versions: React.FC = () => {
                 <tr key={version.version}>
                   <td>{version.version}</td>
                   <td>
-                    <a href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`} target="_blank" rel="noopener noreferrer">
-                      {version.git.tag}
-                    </a>
+                    <div className="d-flex flex-column">
+                      <span>tag: <a href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`} target="_blank" rel="noopener noreferrer">{version.git.tag}</a></span>
+                    </div>
                   </td>
                   <td>
                     <div className="d-flex flex-column gap-1">
@@ -161,7 +161,7 @@ const Versions: React.FC = () => {
                     <strong>版本号:</strong> {selectedVersion.version}
                   </p>
                   <p>
-                    <strong>Git Tag:</strong> {selectedVersion.git.tag}
+                    <strong>Git:</strong> tag: {selectedVersion.git.tag}
                   </p>
                   <p>
                     <strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}
