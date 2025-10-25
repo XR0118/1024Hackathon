@@ -19,8 +19,8 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
 
     console.log(`[Mock API] ${method} ${url}`)
 
-    if (url?.startsWith('/versions')) {
-      if (method === 'GET' && url === '/versions') {
+    if (url?.startsWith('/api/v1/versions')) {
+      if (method === 'GET' && url === '/api/v1/versions') {
         const search = config.params?.search?.toLowerCase()
         let results = mockVersions
         if (search) {
@@ -34,8 +34,8 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.resolve({ data: results })
       }
       
-      if (method === 'GET' && url.match(/^\/versions\/.+$/)) {
-        const version = url.split('/')[2]
+      if (method === 'GET' && url.match(/^\/api\/v1\/versions\/.+$/)) {
+        const version = url.split('/')[4]
         const found = mockVersions.find((v) => v.version === version)
         if (found) {
           return Promise.resolve({ data: found })
@@ -43,7 +43,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.reject({ response: { status: 404, data: { message: 'Version not found' } } })
       }
       
-      if (method === 'POST' && url === '/versions') {
+      if (method === 'POST' && url === '/api/v1/versions') {
         const newVersion = {
           id: String(mockVersions.length + 1),
           ...config.data,
@@ -53,13 +53,13 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
     }
 
-    if (url?.startsWith('/applications')) {
-      if (method === 'GET' && url === '/applications') {
+    if (url?.startsWith('/api/v1/applications')) {
+      if (method === 'GET' && url === '/api/v1/applications') {
         return Promise.resolve({ data: mockApplications })
       }
       
-      if (method === 'GET' && url.match(/^\/applications\/.+$/)) {
-        const id = url.split('/')[2]
+      if (method === 'GET' && url.match(/^\/api\/v1\/applications\/.+$/)) {
+        const id = url.split('/')[4]
         const found = mockApplications.find((a) => a.id === id)
         if (found) {
           return Promise.resolve({ data: found })
@@ -67,7 +67,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.reject({ response: { status: 404, data: { message: 'Application not found' } } })
       }
       
-      if (method === 'POST' && url === '/applications') {
+      if (method === 'POST' && url === '/api/v1/applications') {
         const newApp = {
           id: `app${mockApplications.length + 1}`,
           ...config.data,
@@ -77,8 +77,8 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.resolve({ data: newApp })
       }
       
-      if (method === 'PUT' && url.match(/^\/applications\/.+$/)) {
-        const id = url.split('/')[2]
+      if (method === 'PUT' && url.match(/^\/api\/v1\/applications\/.+$/)) {
+        const id = url.split('/')[4]
         const found = mockApplications.find((a) => a.id === id)
         if (found) {
           const updated = {
@@ -92,13 +92,13 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
     }
 
-    if (url?.startsWith('/environments')) {
-      if (method === 'GET' && url === '/environments') {
+    if (url?.startsWith('/api/v1/environments')) {
+      if (method === 'GET' && url === '/api/v1/environments') {
         return Promise.resolve({ data: mockEnvironments })
       }
       
-      if (method === 'GET' && url.match(/^\/environments\/.+$/)) {
-        const id = url.split('/')[2]
+      if (method === 'GET' && url.match(/^\/api\/v1\/environments\/.+$/)) {
+        const id = url.split('/')[4]
         const found = mockEnvironments.find((e) => e.id === id)
         if (found) {
           return Promise.resolve({ data: found })
@@ -106,7 +106,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.reject({ response: { status: 404, data: { message: 'Environment not found' } } })
       }
       
-      if (method === 'POST' && url === '/environments') {
+      if (method === 'POST' && url === '/api/v1/environments') {
         const newEnv = {
           id: `env${mockEnvironments.length + 1}`,
           ...config.data,
@@ -116,8 +116,8 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
     }
 
-    if (url?.startsWith('/deployments')) {
-      if (method === 'GET' && url === '/deployments') {
+    if (url?.startsWith('/api/v1/deployments')) {
+      if (method === 'GET' && url === '/api/v1/deployments') {
         let results = mockDeployments
         const { status, environmentId, applicationId } = config.params || {}
         
@@ -134,8 +134,8 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.resolve({ data: results })
       }
       
-      if (method === 'GET' && url.match(/^\/deployments\/.+$/)) {
-        const id = url.split('/')[2]
+      if (method === 'GET' && url.match(/^\/api\/v1\/deployments\/.+$/)) {
+        const id = url.split('/')[4]
         const found = mockDeploymentDetails[id]
         if (found) {
           return Promise.resolve({ data: found })
@@ -143,7 +143,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.reject({ response: { status: 404, data: { message: 'Deployment not found' } } })
       }
       
-      if (method === 'POST' && url === '/deployments') {
+      if (method === 'POST' && url === '/api/v1/deployments') {
         const data = config.data as CreateDeploymentRequest
         const newDeployment = {
           id: `deploy${mockDeployments.length + 1}`,
@@ -159,8 +159,8 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         return Promise.resolve({ data: newDeployment })
       }
       
-      if (method === 'PUT' && url.match(/^\/deployments\/.+$/)) {
-        const id = url.split('/')[2]
+      if (method === 'PUT' && url.match(/^\/api\/v1\/deployments\/.+$/)) {
+        const id = url.split('/')[4]
         const found = mockDeployments.find((d) => d.id === id)
         if (found) {
           const action = config.data?.action
@@ -185,18 +185,18 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
     }
 
-    if (url?.startsWith('/dashboard')) {
-      if (url === '/dashboard/stats') {
+    if (url?.startsWith('/api/v1/dashboard')) {
+      if (url === '/api/v1/dashboard/stats') {
         return Promise.resolve({ data: mockDashboardStats })
       }
       
-      if (url === '/dashboard/trends') {
+      if (url === '/api/v1/dashboard/trends') {
         const days = config.params?.days || 7
         const trends = mockDeploymentTrends.slice(-days)
         return Promise.resolve({ data: trends })
       }
       
-      if (url === '/dashboard/recent-deployments') {
+      if (url === '/api/v1/dashboard/recent-deployments') {
         const limit = config.params?.limit || 10
         const recent = mockDeployments.slice(0, limit)
         return Promise.resolve({ data: recent })
