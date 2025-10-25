@@ -21,6 +21,9 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error.isMockResponse) {
+      return Promise.reject(error)
+    }
     console.error('API Error:', error)
     return Promise.reject(error)
   }
