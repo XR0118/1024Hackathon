@@ -12,7 +12,7 @@ import CreateDeployment from './pages/CreateDeployment'
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter future={{ v7_startTransition: true }}>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
