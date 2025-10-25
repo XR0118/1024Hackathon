@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS versions (
     repository VARCHAR(500) NOT NULL,
     created_by VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    description TEXT
+    description TEXT,
+    app_builds JSONB
 );
 
 -- 创建应用表
@@ -35,45 +36,35 @@ CREATE TABLE IF NOT EXISTS environments (
 CREATE TABLE IF NOT EXISTS deployments (
     id VARCHAR(255) PRIMARY KEY,
     version_id VARCHAR(255) NOT NULL REFERENCES versions(id),
-    application_ids JSONB NOT NULL,
+    must_in_order JSONB,
     environment_id VARCHAR(255) NOT NULL REFERENCES environments(id),
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     created_by VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
-    error_message TEXT
+    error_message TEXT,
+
+    manual_approval BOOLEAN NOT NULL DEFAULT FALSE,
+    strategy JSONB
 );
 
 -- 创建任务表
 CREATE TABLE IF NOT EXISTS tasks (
     id VARCHAR(255) PRIMARY KEY,
     deployment_id VARCHAR(255) NOT NULL REFERENCES deployments(id),
+    app_id VARCHAR(255) NOT NULL REFERENCES applications(id),
     type VARCHAR(100) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    block_by VARCHAR(255),
     payload TEXT,
     result TEXT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE
-);
-
--- 创建工作流表
-CREATE TABLE IF NOT EXISTS workflows (
-    id VARCHAR(255) PRIMARY KEY,
-    deployment_id VARCHAR(255) NOT NULL REFERENCES deployments(id),
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
--- 创建部署应用关联表
-CREATE TABLE IF NOT EXISTS deployment_applications (
-    deployment_id VARCHAR(255) NOT NULL REFERENCES deployments(id),
-    application_id VARCHAR(255) NOT NULL REFERENCES applications(id),
-    PRIMARY KEY (deployment_id, application_id)
 );
 
 -- 创建索引
@@ -88,7 +79,6 @@ CREATE INDEX IF NOT EXISTS idx_deployments_environment_id ON deployments(environ
 CREATE INDEX IF NOT EXISTS idx_deployments_version_id ON deployments(version_id);
 CREATE INDEX IF NOT EXISTS idx_deployments_created_at ON deployments(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tasks_deployment_id ON tasks(deployment_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_app_id ON tasks(app_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_type ON tasks(type);
-CREATE INDEX IF NOT EXISTS idx_workflows_deployment_id ON workflows(deployment_id);
-CREATE INDEX IF NOT EXISTS idx_workflows_status ON workflows(status);

@@ -227,7 +227,7 @@ type EnvironmentListResponse struct {
 // CreateDeploymentRequest 创建部署请求
 type CreateDeploymentRequest struct {
 	VersionID     string   `json:"version_id" binding:"required"`
-	MustInOrder   []string `json:"must_in_order" binding:"required"`
+	MustInOrder   []string `json:"must_in_order"`
 	EnvironmentID string   `json:"environment_id" binding:"required"`
 
 	Strategy       []DeploySteps `json:"strategy" binding:"required"`
