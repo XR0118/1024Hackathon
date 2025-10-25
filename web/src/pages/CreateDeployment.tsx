@@ -95,13 +95,13 @@ const CreateDeployment: React.FC = () => {
         <div className="list-group">
           {versions.map((version) => (
             <button
-              key={version.id}
+              key={version.version}
               type="button"
-              className={`list-group-item list-group-item-action ${selectedVersion === version.id ? 'active' : ''}`}
-              onClick={() => setSelectedVersion(version.id)}
+              className={`list-group-item list-group-item-action ${selectedVersion === version.version ? 'active' : ''}`}
+              onClick={() => setSelectedVersion(version.version)}
             >
               <strong>{version.version}</strong>
-              <small className="d-block text-muted">{version.gitTag} - {version.createdAt}</small>
+              <small className="d-block text-muted">{version.git.tag} - {version.createdAt}</small>
             </button>
           ))}
         </div>
@@ -179,7 +179,7 @@ const CreateDeployment: React.FC = () => {
           <div className="alert alert-info">请确认部署信息，提交后将立即开始部署流程</div>
           <div className="card">
             <div className="card-body">
-              <p><strong>版本:</strong> {versions.find((v) => v.id === selectedVersion)?.version}</p>
+              <p><strong>版本:</strong> {versions.find((v) => v.version === selectedVersion)?.version}</p>
               <p>
                 <strong>应用:</strong>{' '}
                 {selectedApps

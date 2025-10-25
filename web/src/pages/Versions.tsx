@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { versionApi } from '@/services/api'
 import { formatDate } from '@/utils'
 import type { Version } from '@/types'
-import { IconSearch, IconRefresh, IconAlertTriangle } from '@tabler/icons-react'
+import { IconSearch, IconRefresh } from '@tabler/icons-react'
 import { useErrorStore } from '@/store/error'
 
 const Versions: React.FC = () => {
@@ -10,7 +10,6 @@ const Versions: React.FC = () => {
   const [versions, setVersions] = useState<Version[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [filterRevert, setFilterRevert] = useState<string>('')
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
 
   const loadVersions = useCallback(async () => {
@@ -18,7 +17,6 @@ const Versions: React.FC = () => {
     try {
       const data = await versionApi.list({
         search: searchText || undefined,
-        isRevert: filterRevert ? filterRevert === 'true' : undefined,
       })
       setVersions(data)
     } catch (error) {
@@ -26,21 +24,17 @@ const Versions: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [searchText, filterRevert, setError])
+  }, [searchText, setError])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadVersions()
-    }, 500) // Debounce search input
+    }, 500)
     return () => clearTimeout(timer)
   }, [loadVersions])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value)
-  }
-
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterRevert(e.target.value)
   }
 
   return (
@@ -68,11 +62,6 @@ const Versions: React.FC = () => {
                 onChange={handleSearchChange}
               />
             </div>
-            <select className="form-select ms-2" value={filterRevert} onChange={handleFilterChange}>
-              <option value="">所有类型</option>
-              <option value="false">正常版本</option>
-              <option value="true">回滚版本</option>
-            </select>
             <button
               className="btn btn-primary ms-2"
               onClick={loadVersions}
@@ -89,48 +78,36 @@ const Versions: React.FC = () => {
               <tr>
                 <th>版本号</th>
                 <th>Git Tag</th>
-                <th>关联PR</th>
-                <th>状态</th>
+                <th>应用信息</th>
                 <th>创建时间</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {versions.map((version) => (
-                <tr key={version.id}>
-                  <td>
-                    {version.isRevert && (
-                      <IconAlertTriangle
-                        className="text-warning"
-                        style={{ marginRight: 8 }}
-                      />
-                    )}
-                    {version.version}
-                  </td>
+                <tr key={version.version}>
+                  <td>{version.version}</td>
                   <td>
                     <a
-                      href={`https://github.com/your-org/your-repo/releases/tag/${version.gitTag}`}
+                      href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {version.gitTag}
+                      {version.git.tag}
                     </a>
                   </td>
                   <td>
-                    {version.relatedPR ? (
-                      <a
-                        href={version.relatedPR}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        查看PR
-                      </a>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td>
-                    <span className="badge bg-success-lt">{version.status}</span>
+                    <div className="d-flex flex-column gap-1">
+                      {version.applications.map((app) => (
+                        <div key={app.name} className="d-flex align-items-center gap-2">
+                          <span className="badge bg-secondary-lt">{app.name}</span>
+                          <small className="text-muted">
+                            覆盖度: {app.coverage}% | 健康度: {app.health}% | 
+                            更新: {formatDate(app.lastUpdatedAt)}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td>{formatDate(version.createdAt)}</td>
                   <td>
@@ -162,15 +139,39 @@ const Versions: React.FC = () => {
                 <div>
                   <h3>基本信息</h3>
                   <p><strong>版本号:</strong> {selectedVersion.version}</p>
-                  <p><strong>Git Tag:</strong> {selectedVersion.gitTag}</p>
-                  <p><strong>状态:</strong> {selectedVersion.status}</p>
+                  <p><strong>Git Tag:</strong> {selectedVersion.git.tag}</p>
                   <p><strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}</p>
-                  <p><strong>回滚标记:</strong> {selectedVersion.isRevert ? '是' : '否'}</p>
 
-                  <h3 style={{ marginTop: 24 }}>包含的应用</h3>
-                  {selectedVersion.applications.map((app) => (
-                    <span className="badge bg-secondary-lt me-1" key={app}>{app}</span>
-                  ))}
+                  <h3 style={{ marginTop: 24 }}>应用信息</h3>
+                  <div className="list-group">
+                    {selectedVersion.applications.map((app) => (
+                      <div key={app.name} className="list-group-item">
+                        <div className="row align-items-center">
+                          <div className="col">
+                            <strong>{app.name}</strong>
+                          </div>
+                          <div className="col-auto">
+                            <div className="d-flex flex-column gap-1">
+                              <div>
+                                <span className="text-muted">覆盖度:</span>{' '}
+                                <span className="badge bg-info-lt">{app.coverage}%</span>
+                              </div>
+                              <div>
+                                <span className="text-muted">健康度:</span>{' '}
+                                <span className={`badge ${app.health >= 80 ? 'bg-success-lt' : app.health >= 50 ? 'bg-warning-lt' : 'bg-danger-lt'}`}>
+                                  {app.health}%
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted">最后更新:</span>{' '}
+                                {formatDate(app.lastUpdatedAt)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

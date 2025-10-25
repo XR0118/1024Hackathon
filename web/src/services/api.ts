@@ -27,11 +27,11 @@ api.interceptors.response.use(
 )
 
 export const versionApi = {
-  list: (params?: { search?: string; isRevert?: boolean }) =>
+  list: (params?: { search?: string }) =>
     api.get<any, Version[]>('/versions', { params }),
   
-  get: (id: string) =>
-    api.get<any, Version>(`/versions/${id}`),
+  get: (version: string) =>
+    api.get<any, Version>(`/versions/${version}`),
   
   create: (data: Partial<Version>) =>
     api.post<any, Version>('/versions', data),
