@@ -85,18 +85,26 @@ func main() {
 		Version:        versionService,
 	})
 	webhookHandler := handler.NewWebhookHandler(triggerService, cfg.Trigger.WebhookSecret)
-	// TODO: 实现 DeploymentService
-	// deploymentService := service.NewDeploymentService(deploymentRepo, versionRepo, appRepo, envRepo)
-	taskService := service.NewTaskService(taskRepo)
 
-	// 暂时注释掉未使用的变量
-	_ = deploymentRepo
+	// 创建工作流控制器
+	workflowController := service.NewWorkflowController(
+		taskRepo,
+		deploymentRepo,
+		versionRepo,
+		service.WorkflowConfig{},
+		logger.GetLogger(),
+	)
+	workflowController.Start()
+	defer workflowController.Stop()
+
+	deploymentService := service.NewDeploymentService(deploymentRepo, versionRepo, appRepo, envRepo, workflowController)
+	taskService := service.NewTaskService(taskRepo)
 
 	// 创建处理器
 	versionHandler := handler.NewVersionHandler(versionService)
 	appHandler := handler.NewApplicationHandler(appService)
 	envHandler := handler.NewEnvironmentHandler(envService)
-	// deploymentHandler := handler.NewDeploymentHandler(deploymentService)
+	deploymentHandler := handler.NewDeploymentHandler(deploymentService)
 	taskHandler := handler.NewTaskHandler(taskService)
 
 	// 设置 Gin 模式
@@ -179,14 +187,14 @@ func main() {
 	}
 
 	// 部署管理路由
-	// deployments := api.Group("/deployments")
-	// {
-	// 	deployments.POST("", deploymentHandler.CreateDeployment)
-	// 	deployments.GET("", deploymentHandler.GetDeploymentList)
-	// 	deployments.GET("/:id", deploymentHandler.GetDeployment)
-	// 	deployments.POST("/:id/cancel", deploymentHandler.CancelDeployment)
-	// 	deployments.POST("/:id/rollback", deploymentHandler.RollbackDeployment)
-	// }
+	deployments := api.Group("/deployments")
+	{
+		deployments.POST("", deploymentHandler.CreateDeployment)
+		deployments.GET("", deploymentHandler.GetDeploymentList)
+		deployments.GET("/:id", deploymentHandler.GetDeployment)
+		deployments.POST("/:id/rollback", deploymentHandler.RollbackDeployment)
+		deployments.POST("/:id/start", deploymentHandler.StartDeployment)
+	}
 
 	// 任务管理路由
 	tasks := api.Group("/tasks")

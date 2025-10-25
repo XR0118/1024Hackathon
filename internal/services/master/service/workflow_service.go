@@ -16,7 +16,6 @@ type WorkflowConfig struct {
 	PendingCheckInterval time.Duration
 	BlockedCheckInterval time.Duration
 	RunningCheckInterval time.Duration
-	HeartbeatInterval    time.Duration
 	TaskTimeout          time.Duration
 }
 
@@ -47,9 +46,6 @@ func NewWorkflowController(
 	if config.RunningCheckInterval == 0 {
 		config.RunningCheckInterval = 30 * time.Second
 	}
-	if config.HeartbeatInterval == 0 {
-		config.HeartbeatInterval = 10 * time.Second
-	}
 	if config.TaskTimeout == 0 {
 		config.TaskTimeout = 30 * time.Minute
 	}
@@ -70,7 +66,7 @@ func NewWorkflowController(
 func (wc *workflowController) Start() {
 	wc.log.Info("Starting workflow controller")
 
-	wc.wg.Add(4)
+	wc.wg.Add(3)
 	go wc.pendingTaskScheduler()
 	go wc.blockedTaskScheduler()
 	go wc.runningTaskScheduler()
@@ -88,9 +84,10 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 	if err != nil {
 		return fmt.Errorf("failed to get version: %w", err)
 	}
+	builds := version.GetAppBuilds()
 
 	if len(deployment.MustInOrder) == 0 {
-		for _, appBuild := range version.AppBuilds {
+		for _, appBuild := range version.GetAppBuilds() {
 			task := &models.Task{
 				ID:           uuid.New().String(),
 				DeploymentID: deployment.ID,
@@ -105,9 +102,10 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 			}
 		}
 	} else {
-		for i, appID := range deployment.MustInOrder {
+		mustInOrder := deployment.GetMustInOrder()
+		for i, appID := range mustInOrder {
 			var appBuild *models.AppBuild
-			for _, ab := range version.AppBuilds {
+			for _, ab := range builds {
 				if ab.AppID == appID {
 					appBuild = &ab
 					break
@@ -123,7 +121,7 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 				status = models.TaskStatusPending
 			} else {
 				status = models.TaskStatusBlocked
-				prevTask, err := wc.findTaskByAppID(ctx, deployment.ID, deployment.MustInOrder[i-1])
+				prevTask, err := wc.findTaskByAppID(ctx, deployment.ID, mustInOrder[i-1])
 				if err != nil {
 					return fmt.Errorf("failed to find previous task: %w", err)
 				}
@@ -142,6 +140,7 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
 			}
+
 			if err := wc.taskRepo.Create(ctx, task); err != nil {
 				return fmt.Errorf("failed to create task for app %s: %w", appID, err)
 			}
@@ -198,6 +197,9 @@ func (wc *workflowController) processPendingTasks() {
 	}
 
 	for _, task := range tasks {
+		if task.Deployment.Status == models.DeploymentStatusPending {
+			continue
+		}
 		if err := wc.executeTask(ctx, task); err != nil {
 			wc.log.Error("Failed to execute task", zap.Error(err), zap.String("task_id", task.ID))
 		}
@@ -210,54 +212,56 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 	task.StartedAt = &now
 	task.UpdatedAt = now
 
-	// TODO: 检查任务是否会因为上一个 version 而 block
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	if err := wc.taskRepo.Update(ctx, task); err != nil {
-		return fmt.Errorf("failed to update task status to running: %w", err)
+	var block bool
+	prevVersion, err := wc.versionRepo.GetPreviousByVersionAndApp(
+		ctx, task.Deployment.VersionID, task.AppID)
+	if err == nil {
+		deployments, _, err_ := wc.deploymentRepo.List(ctx, &models.DeploymentFilter{
+			VersionID: prevVersion.ID,
+		})
+		if err_ != nil {
+			wc.log.Warn("Failed to list deployments",
+				zap.Error(err_), zap.String("version_id", prevVersion.ID))
+		}
+		for _, deployment := range deployments {
+			if deployment.Status != models.DeploymentStatusRunning {
+				continue
+			}
+			for _, pt := range deployment.Tasks {
+				if pt.AppID == task.AppID {
+					task.Status = models.TaskStatusBlocked
+					task.BlockBy = pt.ID
+					block = true
+					break
+				}
+			}
+			if block {
+				break
+			}
+		}
 	}
 
-	go func() {
-		select {
-		case <-ctx.Done():
-			wc.log.Warn("ctx canceled, id: %s", zap.String("id", task.ID))
-			return
-		case <-time.After(30 * time.Second):
-			task.UpdatedAt = time.Now()
-			if err := wc.taskRepo.Update(ctx, task); err != nil {
-				wc.log.Error("Failed to update task heartbeat", zap.Error(err), zap.String("task_id", task.ID))
-				cancel()
-				return
-			}
-		}
-	}()
+	if block {
+		wc.log.Info("Task blocked",
+			zap.String("task_id", task.ID),
+			zap.String("blocking_task_id", task.BlockBy))
+		return wc.taskRepo.Update(ctx, task)
+	}
 
-	executor := NewSimpleDeployExecutor(*task, wc.deploymentRepo)
-	go func() {
-		err := executor.Apply(ctx)
-		if err != nil {
-			wc.log.Error("Task execution failed", zap.Error(err), zap.String("task_id", task.ID))
-			task.Status = models.TaskStatusFailed
-			task.Result = err.Error()
-			task.UpdatedAt = time.Now()
-			if err := wc.taskRepo.Update(ctx, task); err != nil {
-				wc.log.Error("Failed to update task report", zap.Error(err), zap.String("task_id", task.ID))
-				return
-			}
-		}
-
-		task.Status = models.TaskStatusSuccess
+	executor := NewSimpleDeployExecutor(*task, wc.deploymentRepo, wc.versionRepo)
+	status, err := executor.Apply(ctx)
+	task.Status = status
+	task.UpdatedAt = time.Now()
+	if task.Status.IsFinished() {
 		task.CompletedAt = &[]time.Time{time.Now()}[0]
-		task.UpdatedAt = time.Now()
-		if err := wc.taskRepo.Update(ctx, task); err != nil {
-			wc.log.Error("Failed to update task report", zap.Error(err), zap.String("task_id", task.ID))
-			return
-		}
-	}()
+	}
 
-	return nil
+	if err != nil {
+		wc.log.Error("Task execution failed", zap.Error(err), zap.String("task_id", task.ID))
+		task.Result = err.Error()
+	}
+
+	return wc.taskRepo.Update(ctx, task)
 }
 
 func (wc *workflowController) blockedTaskScheduler() {

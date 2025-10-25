@@ -63,6 +63,29 @@ func (r *versionRepository) List(ctx context.Context, filter *models.VersionFilt
 	return versions, int(total), nil
 }
 
+// GetPreviousByVersionAndApp returns the latest version before the target version's creation time
+// that contains the specified app_id within its app_builds JSONB array.
+func (r *versionRepository) GetPreviousByVersionAndApp(ctx context.Context, targetVersionID string, appID string) (*models.Version, error) {
+	// Fetch target version to get its created_at
+	var target models.Version
+	if err := r.db.WithContext(ctx).Where("id = ?", targetVersionID).First(&target).Error; err != nil {
+		return nil, err
+	}
+
+	var prev models.Version
+	// Use EXISTS with jsonb_array_elements on app_builds to filter by app_id
+	err := r.db.WithContext(ctx).
+		Where("created_at < ?", target.CreatedAt).
+		Where("EXISTS (SELECT 1 FROM jsonb_array_elements(app_builds) AS elem WHERE elem->>'app_id' = ?)", appID).
+		Order("created_at DESC").
+		Limit(1).
+		First(&prev).Error
+	if err != nil {
+		return nil, err
+	}
+	return &prev, nil
+}
+
 func (r *versionRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.Version{}).Error
 }

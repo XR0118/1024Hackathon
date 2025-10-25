@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -16,6 +17,8 @@ type deploymentService struct {
 	versionRepo    interfaces.VersionRepository
 	appRepo        interfaces.ApplicationRepository
 	envRepo        interfaces.EnvironmentRepository
+
+	workflow *workflowController
 }
 
 // NewDeploymentService 创建部署服务
@@ -24,12 +27,14 @@ func NewDeploymentService(
 	versionRepo interfaces.VersionRepository,
 	appRepo interfaces.ApplicationRepository,
 	envRepo interfaces.EnvironmentRepository,
+	workflow *workflowController,
 ) interfaces.DeploymentService {
 	return &deploymentService{
 		deploymentRepo: deploymentRepo,
 		versionRepo:    versionRepo,
 		appRepo:        appRepo,
 		envRepo:        envRepo,
+		workflow:       workflow,
 	}
 }
 
@@ -55,7 +60,7 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 	for _, appID := range req.MustInOrder {
 		// 验证应用是否在版本中
 		appFound := false
-		for _, app := range version.AppBuilds {
+		for _, app := range version.GetAppBuilds() {
 			if app.AppID == appID {
 				appFound = true
 				break
@@ -77,12 +82,20 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 	deployment := &models.Deployment{
 		ID:            uuid.New().String(),
 		VersionID:     req.VersionID,
-		MustInOrder:   req.MustInOrder,
 		EnvironmentID: req.EnvironmentID,
 		Status:        models.DeploymentStatusPending,
 		CreatedBy:     getCurrentUser(ctx),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
+	}
+
+	if len(req.MustInOrder) > 0 {
+		sbs, _ := json.Marshal(req.MustInOrder)
+		deployment.MustInOrder = sbs
+	}
+	if len(req.Strategy) > 0 {
+		sbs, _ := json.Marshal(req.Strategy)
+		deployment.Strategy = sbs
 	}
 
 	if err := s.deploymentRepo.Create(ctx, deployment); err != nil {
@@ -132,24 +145,20 @@ func (s *deploymentService) GetDeployment(ctx context.Context, id string) (*mode
 	return deployment, nil
 }
 
-func (s *deploymentService) CancelDeployment(ctx context.Context, id string) (*models.Deployment, error) {
+func (s *deploymentService) StartDeployment(ctx context.Context, id string) (*models.Deployment, error) {
 	// 获取部署
 	deployment, err := s.deploymentRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("deployment not found: %w", err)
 	}
 
-	// 检查状态是否可以取消
-	if deployment.Status != models.DeploymentStatusPending && deployment.Status != models.DeploymentStatusRunning {
-		return nil, fmt.Errorf("deployment cannot be cancelled in status %s", deployment.Status)
+	if err := s.workflow.CreateTasksFromDeployment(ctx, deployment); err != nil {
+		return nil, fmt.Errorf("failed to create tasks from deployment: %w", err)
 	}
 
-	// TODO: 取消部署任务
-
-	// 更新部署状态
-	deployment.Status = models.DeploymentStatusFailed
-	deployment.ErrorMessage = "Deployment cancelled by user"
-	deployment.CompletedAt = &[]time.Time{time.Now()}[0]
+	deployment.Status = models.DeploymentStatusRunning
+	deployment.StartedAt = &[]time.Time{time.Now()}[0]
+	deployment.UpdatedAt = time.Now()
 
 	if err := s.deploymentRepo.Update(ctx, deployment); err != nil {
 		return nil, fmt.Errorf("failed to update deployment: %w", err)
@@ -182,7 +191,7 @@ func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, r
 		VersionID:     req.TargetVersionID,
 		MustInOrder:   currentDeployment.MustInOrder,
 		EnvironmentID: currentDeployment.EnvironmentID,
-		Status:        models.DeploymentStatusPending,
+		Status:        models.DeploymentStatusRolledBack,
 		CreatedBy:     getCurrentUser(ctx),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -192,18 +201,5 @@ func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, r
 		return nil, fmt.Errorf("failed to create rollback deployment: %w", err)
 	}
 
-	// TODO: 创建并执行回滚任务
-
 	return rollbackDeployment, nil
-}
-
-// startDeployment 启动部署
-func (s *deploymentService) StartDeployment(ctx context.Context, deployment *models.Deployment) error {
-	// 将状态置为运行中
-	deployment.Status = models.DeploymentStatusRunning
-	deployment.UpdatedAt = time.Now()
-	if err := s.deploymentRepo.Update(ctx, deployment); err != nil {
-		return fmt.Errorf("failed to update deployment status to running: %w", err)
-	}
-	return nil
 }

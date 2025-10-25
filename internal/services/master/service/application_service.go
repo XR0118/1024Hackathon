@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -43,13 +44,14 @@ func (s *applicationService) CreateApplication(ctx context.Context, req *models.
 		}
 	}
 
+	cfg, _ := json.Marshal(req.Config)
 	// 创建应用
 	app := &models.Application{
 		ID:         uuid.New().String(),
 		Name:       req.Name,
 		Repository: req.Repository,
 		Type:       req.Type,
-		Config:     req.Config,
+		Config:     cfg,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}
@@ -118,7 +120,8 @@ func (s *applicationService) UpdateApplication(ctx context.Context, id string, r
 		app.Type = req.Type
 	}
 	if req.Config != nil {
-		app.Config = req.Config
+		bs, _ := json.Marshal(req.Config)
+		app.Config = bs
 	}
 	app.UpdatedAt = time.Now()
 

@@ -26,7 +26,7 @@ func (r *deploymentRepository) GetByID(ctx context.Context, id string) (*models.
 	err := r.db.WithContext(ctx).
 		Preload("Version").
 		Preload("Environment").
-		Preload("Applications").
+		Preload("Tasks").
 		Where("id = ?", id).
 		First(&deployment).Error
 	if err != nil {
@@ -67,7 +67,7 @@ func (r *deploymentRepository) List(ctx context.Context, filter *models.Deployme
 	query = query.Order("created_at DESC")
 
 	// 预加载关联数据
-	query = query.Preload("Version").Preload("Environment").Preload("Applications")
+	query = query.Preload("Version").Preload("Environment").Preload("Tasks")
 
 	// 查询数据
 	if err := query.Find(&deployments).Error; err != nil {
