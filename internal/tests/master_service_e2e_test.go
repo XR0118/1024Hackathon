@@ -78,27 +78,21 @@ func TestMasterServiceE2E(t *testing.T) {
 	did := startDeployment(t, client, baseURL, token, deploymentID)
 	t.Logf("started deployment: id=%s deployment=%s", deploymentID, did)
 
-	// 6) get Deployment
-	deployment := getDeploymentStatus(t, client, baseURL, token, deploymentID)
-	t.Logf("started deployment: id=%s deployment=%s", deploymentID, deployment)
+	// 6) Poll Deployment Status
+	finalStatus := pollDeploymentStatus(t, client, baseURL, token, deploymentID, 30, 5*time.Second)
+	t.Logf("deployment %s final status: %s", deploymentID, finalStatus)
 
-	// // 5) Poll Deployment Status
-	// finalStatus := pollDeploymentStatus(t, client, baseURL, token, deploymentID, 30, 5*time.Second)
-	// t.Logf("deployment %s final status: %s", deploymentID, finalStatus)
-
-	// // Assert terminal state (best-effort)
-	// switch finalStatus {
-	// case "success", "failed", "rolled_back", "cancelled":
-	// 	// OK; terminal
-	// 	return
-	// case "":
-	// 	// Unrecognized/empty; treat as non-terminal
-	// 	fallthrough
-	// default:
-	// 	t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
-	// }
-
-	t.Fatal()
+	// Assert terminal state (best-effort)
+	switch finalStatus {
+	case "success", "failed", "rolled_back", "cancelled":
+		// OK; terminal
+		return
+	case "":
+		// Unrecognized/empty; treat as non-terminal
+		fallthrough
+	default:
+		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
+	}
 }
 
 // --- Request/Response payloads ---
