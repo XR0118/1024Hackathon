@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/XR0118/1024Hackathon/internal/pkg/models"
+	"github.com/boreas/internal/pkg/models"
 )
 
 // VersionService 版本服务接口

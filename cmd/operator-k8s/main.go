@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/XR0118/1024Hackathon/internal/pkg/config"
-	"github.com/XR0118/1024Hackathon/internal/pkg/database"
-	"github.com/XR0118/1024Hackathon/internal/pkg/logger"
-	"github.com/XR0118/1024Hackathon/internal/services/operator-k8s/handler"
-	"github.com/XR0118/1024Hackathon/internal/services/operator-k8s/service"
+	"github.com/boreas/internal/pkg/config"
+	"github.com/boreas/internal/pkg/database"
+	"github.com/boreas/internal/pkg/logger"
+	"github.com/boreas/internal/services/operator-k8s/handler"
+	"github.com/boreas/internal/services/operator-k8s/service"
 	"github.com/gin-gonic/gin"
 )
 

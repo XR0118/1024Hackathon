@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/XR0118/1024Hackathon/internal/pkg/models"
-	"github.com/XR0118/1024Hackathon/internal/services/operator-k8s/repository"
+	"github.com/boreas/internal/pkg/models"
+	"github.com/boreas/internal/services/operator-k8s/repository"
 	"gorm.io/gorm"
 )
 

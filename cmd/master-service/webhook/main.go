@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/XR0118/1024Hackathon/internal/pkg/config"
-	"github.com/XR0118/1024Hackathon/internal/pkg/database"
-	"github.com/XR0118/1024Hackathon/internal/pkg/logger"
-	"github.com/XR0118/1024Hackathon/internal/pkg/middleware"
+	"github.com/boreas/internal/pkg/config"
+	"github.com/boreas/internal/pkg/database"
+	"github.com/boreas/internal/pkg/logger"
+	"github.com/boreas/internal/pkg/middleware"
 	"go.uber.org/zap"
 )
 

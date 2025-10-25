@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/XR0118/1024Hackathon/internal/pkg/utils"
-	"github.com/XR0118/1024Hackathon/internal/services/operator-baremetal/service"
+	"github.com/boreas/internal/pkg/utils"
+	"github.com/boreas/internal/services/operator-baremetal/service"
 	"github.com/gin-gonic/gin"
 )
 

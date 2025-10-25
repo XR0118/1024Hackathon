@@ -3,8 +3,8 @@ package postgres
 import (
 	"context"
 
-	"github.com/XR0118/1024Hackathon/internal/interfaces"
-	"github.com/XR0118/1024Hackathon/internal/pkg/models"
+	"github.com/boreas/internal/interfaces"
+	"github.com/boreas/internal/pkg/models"
 	"gorm.io/gorm"
 )
 

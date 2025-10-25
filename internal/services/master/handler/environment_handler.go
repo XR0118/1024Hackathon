@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/XR0118/1024Hackathon/internal/interfaces"
-	"github.com/XR0118/1024Hackathon/internal/pkg/models"
-	"github.com/XR0118/1024Hackathon/internal/pkg/utils"
+	"github.com/boreas/internal/interfaces"
+	"github.com/boreas/internal/pkg/models"
+	"github.com/boreas/internal/pkg/utils"
 )
 
 type environmentHandler struct {

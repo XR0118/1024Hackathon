@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/XR0118/1024Hackathon/internal/pkg/config"
-	"github.com/XR0118/1024Hackathon/internal/pkg/database"
-	"github.com/XR0118/1024Hackathon/internal/services/master/handler"
-	"github.com/XR0118/1024Hackathon/internal/pkg/logger"
-	"github.com/XR0118/1024Hackathon/internal/pkg/middleware"
-	"github.com/XR0118/1024Hackathon/internal/services/master/repository/postgres"
-	"github.com/XR0118/1024Hackathon/internal/services/master/service"
-	"github.com/XR0118/1024Hackathon/internal/pkg/utils"
+	"github.com/boreas/internal/pkg/config"
+	"github.com/boreas/internal/pkg/database"
+	"github.com/boreas/internal/services/master/handler"
+	"github.com/boreas/internal/pkg/logger"
+	"github.com/boreas/internal/pkg/middleware"
+	"github.com/boreas/internal/services/master/repository/postgres"
+	"github.com/boreas/internal/services/master/service"
+	"github.com/boreas/internal/pkg/utils"
 	"go.uber.org/zap"
 )
 
