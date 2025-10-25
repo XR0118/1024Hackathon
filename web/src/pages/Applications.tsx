@@ -1,51 +1,51 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { applicationApi } from '@/services/api'
-import { formatDate } from '@/utils'
-import type { Application } from '@/types'
-import { IconPlus, IconRocket, IconCircleCheck, IconAlertCircle } from '@tabler/icons-react'
-import { useErrorStore } from '@/store/error'
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { applicationApi } from "@/services/api";
+import { formatDate } from "@/utils";
+import type { Application } from "@/types";
+import { IconPlus, IconRocket, IconCircleCheck, IconAlertCircle } from "@tabler/icons-react";
+import { useErrorStore } from "@/store/error";
 
 const Applications: React.FC = () => {
-  const navigate = useNavigate()
-  const { setError } = useErrorStore()
-  const [applications, setApplications] = useState<Application[]>([])
+  const navigate = useNavigate();
+  const { setError } = useErrorStore();
+  const [applications, setApplications] = useState<Application[]>([]);
 
   const loadApplications = useCallback(async () => {
     try {
-      const data = await applicationApi.list()
-      setApplications(data)
+      const data = await applicationApi.list();
+      setApplications(data);
     } catch (error) {
-      setError('Failed to load applications.')
+      setError("Failed to load applications.");
     }
-  }, [setError])
+  }, [setError]);
 
   useEffect(() => {
-    loadApplications()
-  }, [loadApplications])
+    loadApplications();
+  }, [loadApplications]);
 
   const getHealthColor = (health: number) => {
-    if (health >= 80) return 'success'
-    if (health >= 50) return 'warning'
-    return 'danger'
-  }
+    if (health >= 80) return "success";
+    if (health >= 50) return "warning";
+    return "danger";
+  };
 
   const getHealthIcon = (health: number) => {
-    if (health >= 80) return <IconCircleCheck size={16} />
-    return <IconAlertCircle size={16} />
-  }
+    if (health >= 80) return <IconCircleCheck size={16} />;
+    return <IconAlertCircle size={16} />;
+  };
 
   return (
     <div>
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <h2 className="page-title">应用管理</h2>
+            <h2 className="page-title">应用</h2>
           </div>
           <div className="col-auto ms-auto d-print-none">
             <button className="btn btn-primary">
               <IconPlus className="icon" />
-              添加应用
+              新建应用
             </button>
           </div>
         </div>
@@ -59,12 +59,14 @@ const Applications: React.FC = () => {
                 <div className="d-flex align-items-center mb-3">
                   {app.icon && (
                     <div className="me-3">
-                      <img src={app.icon} alt={app.name} style={{ width: '40px', height: '40px' }} />
+                      <img src={app.icon} alt={app.name} style={{ width: "40px", height: "40px" }} />
                     </div>
                   )}
                   <div>
                     <h3 className="card-title mb-1">{app.name}</h3>
-                    <p className="text-muted mb-0" style={{ fontSize: '14px' }}>{app.description}</p>
+                    <p className="text-muted mb-0" style={{ fontSize: "14px" }}>
+                      {app.description}
+                    </p>
                   </div>
                 </div>
 
@@ -76,12 +78,8 @@ const Applications: React.FC = () => {
                         <div key={index} className="list-group-item px-0 py-2">
                           <div className="d-flex justify-content-between align-items-center">
                             <div className="d-flex align-items-center">
-                              <span className={`badge bg-${versionInfo.status === 'normal' ? 'blue' : 'yellow'}-lt me-2`}>
-                                {versionInfo.version}
-                              </span>
-                              {versionInfo.status === 'revert' && (
-                                <span className="badge bg-yellow me-2">回滚</span>
-                              )}
+                              <span className={`badge bg-${versionInfo.status === "normal" ? "blue" : "yellow"}-lt me-2`}>{versionInfo.version}</span>
+                              {versionInfo.status === "revert" && <span className="badge bg-yellow me-2">回滚</span>}
                             </div>
                             <div className="d-flex align-items-center">
                               <span className={`badge bg-${getHealthColor(versionInfo.health)}-lt me-2`}>
@@ -106,17 +104,11 @@ const Applications: React.FC = () => {
               </div>
               <div className="card-footer">
                 <div className="d-flex">
-                  <button
-                    className="btn btn-ghost-primary"
-                    onClick={() => navigate(`/deployments/new?appName=${app.name}`)}
-                  >
+                  <button className="btn btn-ghost-primary" onClick={() => navigate(`/deployments/new?appName=${app.name}`)}>
                     <IconRocket size={16} className="me-2" />
-                    新建部署
+                    新建任务
                   </button>
-                  <button
-                    className="btn btn-ghost-secondary ms-auto"
-                    onClick={() => navigate(`/applications/${app.name}`)}
-                  >
+                  <button className="btn btn-ghost-secondary ms-auto" onClick={() => navigate(`/applications/${app.name}`)}>
                     查看详情
                   </button>
                 </div>
@@ -132,13 +124,11 @@ const Applications: React.FC = () => {
             <IconRocket size={48} />
           </div>
           <p className="empty-title">暂无应用</p>
-          <p className="empty-subtitle text-muted">
-            点击上方"添加应用"按钮创建您的第一个应用
-          </p>
+          <p className="empty-subtitle text-muted">点击上方"新建应用"按钮创建您的第一个应用</p>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default Applications
+export default Applications;

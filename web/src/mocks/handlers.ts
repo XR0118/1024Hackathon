@@ -26,8 +26,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             results = mockVersions.filter(
               (v) =>
                 v.version.toLowerCase().includes(search) ||
-                v.message.toLowerCase().includes(search) ||
-                v.author.toLowerCase().includes(search)
+                v.git.tag.toLowerCase().includes(search)
             )
           }
           return Promise.reject({
@@ -36,7 +35,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'GET' && url.match(/^\/versions\/.+$/)) {
           const version = url.split('/')[2]
           const found = mockVersions.find((v) => v.version === version)
@@ -53,10 +52,9 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'POST' && url === '/versions') {
           const newVersion = {
-            id: String(mockVersions.length + 1),
             ...config.data,
             createdAt: new Date().toISOString(),
           }
@@ -76,10 +74,10 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'GET' && url.match(/^\/applications\/.+$/)) {
-          const id = url.split('/')[2]
-          const found = mockApplications.find((a) => a.id === id)
+          const name = url.split('/')[2]
+          const found = mockApplications.find((a) => a.name === name)
           if (found) {
             return Promise.reject({
               config,
@@ -93,13 +91,10 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'POST' && url === '/applications') {
           const newApp = {
-            id: `app${mockApplications.length + 1}`,
             ...config.data,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           }
           return Promise.reject({
             config,
@@ -107,15 +102,14 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'PUT' && url.match(/^\/applications\/.+$/)) {
-          const id = url.split('/')[2]
-          const found = mockApplications.find((a) => a.id === id)
+          const name = url.split('/')[2]
+          const found = mockApplications.find((a) => a.name === name)
           if (found) {
             const updated = {
               ...found,
               ...config.data,
-              updatedAt: new Date().toISOString(),
             }
             return Promise.reject({
               config,
@@ -139,7 +133,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'GET' && url.match(/^\/environments\/.+$/)) {
           const id = url.split('/')[2]
           const found = mockEnvironments.find((e) => e.id === id)
@@ -156,7 +150,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'POST' && url === '/environments') {
           const newEnv = {
             id: `env${mockEnvironments.length + 1}`,
@@ -175,7 +169,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         if (method === 'GET' && url === '/deployments') {
           let results = mockDeployments
           const { status, environmentId, applicationId } = config.params || {}
-          
+
           if (status) {
             results = results.filter((d) => d.status === status)
           }
@@ -185,14 +179,14 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           if (applicationId) {
             results = results.filter((d) => d.applications.includes(applicationId))
           }
-          
+
           return Promise.reject({
             config,
             response: { data: results, status: 200, statusText: 'OK', headers: {}, config },
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'GET' && url.match(/^\/deployments\/.+$/)) {
           const id = url.split('/')[2]
           const found = mockDeploymentDetails[id]
@@ -209,19 +203,24 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'POST' && url === '/deployments') {
           const data = config.data as CreateDeploymentRequest
           const newDeployment = {
             id: `deploy${mockDeployments.length + 1}`,
-            version: data.version,
+            versionId: data.versionId,
+            version: data.versionId,
+            applicationIds: data.applicationIds,
             applications: data.applicationIds,
+            environmentIds: data.environmentIds,
             environments: data.environmentIds,
             status: 'pending' as const,
             progress: 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            createdBy: '当前用户',
+            requireConfirm: data.requireConfirm,
+            grayscaleEnabled: data.grayscaleEnabled,
+            grayscaleRatio: data.grayscaleRatio,
           }
           return Promise.reject({
             config,
@@ -229,22 +228,22 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'PUT' && url.match(/^\/deployments\/.+$/)) {
           const id = url.split('/')[2]
           const found = mockDeployments.find((d) => d.id === id)
           if (found) {
             const action = config.data?.action
             let newStatus = found.status
-            
+
             if (action === 'confirm') {
               newStatus = 'running'
             } else if (action === 'rollback') {
-              newStatus = 'rolling_back'
+              newStatus = 'failed'
             } else if (action === 'cancel') {
-              newStatus = 'cancelled'
+              newStatus = 'pending'
             }
-            
+
             const updated = {
               ...found,
               status: newStatus,
@@ -272,7 +271,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (url.includes('/dashboard/trends')) {
           const days = config.params?.days || 7
           const trends = mockDeploymentTrends.slice(-days)
@@ -282,7 +281,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (url.includes('/dashboard/recent-deployments')) {
           const limit = config.params?.limit || 10
           const recent = mockDeployments.slice(0, limit)
@@ -315,6 +314,6 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
   console.log('[Mock API] Mock handlers initialized')
 }
 
-export function disableMockHandlers(apiInstance: AxiosInstance) {
+export function disableMockHandlers(_apiInstance: AxiosInstance) {
   console.log('[Mock API] Mock handlers disabled')
 }

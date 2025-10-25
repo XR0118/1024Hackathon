@@ -1,16 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  IconRocket,
-  IconApps,
-  IconCloud,
-  IconTag,
-  IconRefresh,
-} from '@tabler/icons-react'
-import { dashboardApi } from '@/services/api'
-import { formatDate, getStatusColor, getStatusText } from '@/utils'
-import type { Deployment, DashboardStats } from '@/types'
-import { useErrorStore } from '@/store/error'
+import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { IconRocket, IconApps, IconCloud, IconTag, IconRefresh } from "@tabler/icons-react";
+import { dashboardApi } from "@/services/api";
+import { formatDate, getStatusColor, getStatusText } from "@/utils";
+import type { Deployment, DashboardStats } from "@/types";
+import { useErrorStore } from "@/store/error";
 
 const Dashboard: React.FC = () => {
   const { setError } = useErrorStore();
@@ -19,44 +13,37 @@ const Dashboard: React.FC = () => {
     runningDeployments: 0,
     totalApplications: 0,
     totalEnvironments: 0,
-  })
-  const [recentDeployments, setRecentDeployments] = useState<Deployment[]>([])
-  const [loading, setLoading] = useState(false)
+  });
+  const [recentDeployments, setRecentDeployments] = useState<Deployment[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const loadData = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const [statsData, deploymentsData] = await Promise.all([
-        dashboardApi.getStats(),
-        dashboardApi.getRecentDeployments(10),
-      ])
-      setStats(statsData)
-      setRecentDeployments(deploymentsData)
+      const [statsData, deploymentsData] = await Promise.all([dashboardApi.getStats(), dashboardApi.getRecentDeployments(10)]);
+      setStats(statsData);
+      setRecentDeployments(deploymentsData);
     } catch (error) {
-      setError('Failed to load dashboard data.')
+      setError("Failed to load dashboard data.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [setError])
+  }, [setError]);
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    loadData();
+  }, [loadData]);
 
   return (
     <div>
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <h2 className="page-title">仪表板</h2>
+            <h2 className="page-title">首页</h2>
           </div>
           <div className="col-auto ms-auto d-print-none">
             <div className="btn-list">
-              <button
-                className="btn btn-primary d-none d-sm-inline-block"
-                onClick={loadData}
-                disabled={loading}
-              >
+              <button className="btn btn-primary d-none d-sm-inline-block" onClick={loadData} disabled={loading}>
                 <IconRefresh className="icon" />
                 刷新
               </button>
@@ -132,23 +119,14 @@ const Dashboard: React.FC = () => {
               {recentDeployments.map((deployment) => (
                 <tr key={deployment.id}>
                   <td>{deployment.version}</td>
-                  <td>{deployment.applications.join(', ')}</td>
-                  <td>{deployment.environments.join(', ')}</td>
+                  <td>{deployment.applications.join(", ")}</td>
+                  <td>{deployment.environments.join(", ")}</td>
                   <td>
-                    <span
-                      className={`badge bg-${getStatusColor(
-                        deployment.status
-                      )}-lt`}
-                    >
-                      {getStatusText(deployment.status)}
-                    </span>
+                    <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
                   </td>
                   <td>{formatDate(deployment.createdAt)}</td>
                   <td>
-                    <Link
-                      to={`/deployments/${deployment.id}`}
-                      className="btn btn-sm btn-ghost-primary"
-                    >
+                    <Link to={`/deployments/${deployment.id}`} className="btn btn-sm btn-ghost-primary">
                       查看详情
                     </Link>
                   </td>
@@ -159,7 +137,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Dashboard
+export default Dashboard;

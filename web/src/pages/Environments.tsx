@@ -1,37 +1,37 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { environmentApi } from '@/services/api'
-import type { Environment } from '@/types'
-import { IconCloud, IconPlus } from '@tabler/icons-react'
-import { useErrorStore } from '@/store/error'
+import React, { useEffect, useState, useCallback } from "react";
+import { environmentApi } from "@/services/api";
+import type { Environment } from "@/types";
+import { IconCloud, IconPlus } from "@tabler/icons-react";
+import { useErrorStore } from "@/store/error";
 
 const Environments: React.FC = () => {
   const { setError } = useErrorStore();
-  const [environments, setEnvironments] = useState<Environment[]>([])
+  const [environments, setEnvironments] = useState<Environment[]>([]);
 
   const loadEnvironments = useCallback(async () => {
     try {
-      const data = await environmentApi.list()
-      setEnvironments(data)
+      const data = await environmentApi.list();
+      setEnvironments(data);
     } catch (error) {
-      setError('Failed to load environments.')
+      setError("Failed to load environments.");
     }
-  }, [setError])
+  }, [setError]);
 
   useEffect(() => {
-    loadEnvironments()
-  }, [loadEnvironments])
+    loadEnvironments();
+  }, [loadEnvironments]);
 
   return (
     <div>
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <h2 className="page-title">环境管理</h2>
+            <h2 className="page-title">运行环境</h2>
           </div>
           <div className="col-auto ms-auto d-print-none">
             <button className="btn btn-primary">
               <IconPlus className="icon" />
-              添加环境
+              新建环境
             </button>
           </div>
         </div>
@@ -57,28 +57,14 @@ const Environments: React.FC = () => {
                     {env.name}
                   </td>
                   <td>
-                    <span
-                      className={`badge bg-${
-                        env.type === 'k8s' ? 'primary' : 'success'
-                      }-lt`}
-                    >
-                      {env.type === 'k8s' ? 'Kubernetes' : '物理机'}
-                    </span>
+                    <span className={`badge bg-${env.type === "k8s" ? "primary" : "success"}-lt`}>{env.type === "k8s" ? "Kubernetes" : "物理机"}</span>
                   </td>
                   <td>
-                    <span
-                      className={`badge bg-${
-                        env.status === 'active' ? 'success' : 'secondary'
-                      }-lt`}
-                    >
-                      {env.status === 'active' ? '运行中' : '已停止'}
-                    </span>
+                    <span className={`badge bg-${env.status === "active" ? "success" : "secondary"}-lt`}>{env.status === "active" ? "运行中" : "已停止"}</span>
                   </td>
                   <td>{env.applicationCount}</td>
                   <td>
-                    <button className="btn btn-sm btn-ghost-primary">
-                      查看详情
-                    </button>
+                    <button className="btn btn-sm btn-ghost-primary">查看详情</button>
                   </td>
                 </tr>
               ))}
@@ -87,7 +73,7 @@ const Environments: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Environments
+export default Environments;

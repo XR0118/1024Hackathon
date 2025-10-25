@@ -1,42 +1,36 @@
-import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import {
-  IconDashboard,
-  IconTag,
-  IconApps,
-  IconCloud,
-  IconRocket,
-} from '@tabler/icons-react';
-import ErrorMessage from './ErrorMessage';
-import { useErrorStore } from '@/store/error';
+import React from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { IconDashboard, IconTag, IconApps, IconCloud, IconRocket } from "@tabler/icons-react";
+import ErrorMessage from "./ErrorMessage";
+import { useErrorStore } from "@/store/error";
 
 const Layout: React.FC = () => {
   const { errorMessage, clearError } = useErrorStore();
   const menuItems = [
     {
-      key: '/',
+      key: "/",
       icon: <IconDashboard />,
-      label: '仪表板',
+      label: "首页",
     },
     {
-      key: '/versions',
-      icon: <IconTag />,
-      label: '版本管理',
-    },
-    {
-      key: '/applications',
-      icon: <IconApps />,
-      label: '应用管理',
-    },
-    {
-      key: '/environments',
-      icon: <IconCloud />,
-      label: '环境管理',
-    },
-    {
-      key: '/deployments',
+      key: "/deployments",
       icon: <IconRocket />,
-      label: '部署管理',
+      label: "部署任务",
+    },
+    {
+      key: "/applications",
+      icon: <IconApps />,
+      label: "应用",
+    },
+    {
+      key: "/versions",
+      icon: <IconTag />,
+      label: "版本",
+    },
+    {
+      key: "/environments",
+      icon: <IconCloud />,
+      label: "运行环境",
     },
   ];
 
@@ -44,9 +38,7 @@ const Layout: React.FC = () => {
     <div className="page">
       <header className="navbar navbar-expand-md d-print-none">
         <div className="container-xl">
-          <h1 className="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-            部署平台
-          </h1>
+          <h1 className="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">Boreas</h1>
         </div>
       </header>
       <div className="navbar-expand-md">
@@ -57,9 +49,7 @@ const Layout: React.FC = () => {
                 {menuItems.map((item) => (
                   <li className="nav-item" key={item.key}>
                     <NavLink className="nav-link" to={item.key} end>
-                      <span className="nav-link-icon d-md-none d-lg-inline-block">
-                        {item.icon}
-                      </span>
+                      <span className="nav-link-icon d-md-none d-lg-inline-block">{item.icon}</span>
                       <span className="nav-link-title">{item.label}</span>
                     </NavLink>
                   </li>
