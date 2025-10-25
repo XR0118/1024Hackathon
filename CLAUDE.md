@@ -28,11 +28,17 @@
 
 ## 开发指南
 
+### 中间件
+
+1. 数据库使用 `PostgreSQL`
+2. 缓存使用 `redis`
+
 ### 后端 (Go)
 1. 确保安装了 Go 开发环境
 2. 克隆项目后，使用 `go mod tidy` 安装依赖
 3. 提交前请确保代码通过 `go fmt` 格式化
 4. 提交前请确保代码通过 `go vet` 检查
+5. 后端 web 框架使用 `Gin`
 
 ### 前端 (TypeScript + React)
 1. 确保安装了 Node.js 18+ 和 npm/yarn/pnpm
