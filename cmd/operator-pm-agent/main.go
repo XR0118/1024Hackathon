@@ -70,11 +70,7 @@ func main() {
 	}
 
 	// 初始化服务
-	agentService, err := service.NewAgentServiceWithConfig(
-		agentWorkDir,
-		cfg.IsDockerEnabled(),
-		cfg.GetDockerSocketPath(),
-	)
+	agentService, err := service.NewAgentServiceWithConfig(agentWorkDir)
 	if err != nil {
 		log.Fatal("Failed to initialize agent service:", err)
 	}
@@ -98,7 +94,6 @@ func main() {
 	log.Printf("Boreas Operator PM Agent starting on %s", serverAddr)
 	log.Printf("Agent ID: %s", cfg.GetAgentID())
 	log.Printf("Work directory: %s", agentWorkDir)
-	log.Printf("Docker enabled: %v", cfg.IsDockerEnabled())
 	log.Printf("Version: %s", version)
 
 	// 优雅关闭
