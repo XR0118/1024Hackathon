@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -53,6 +54,11 @@ func (s *versionService) CreateVersion(ctx context.Context, req *models.CreateVe
 		CreatedBy:   getCurrentUser(ctx),
 		CreatedAt:   time.Now(),
 		Description: req.Description,
+	}
+
+	if len(req.AppBuilds) > 0 {
+		bs, _ := json.Marshal(req.AppBuilds)
+		version.AppBuilds = bs
 	}
 
 	if err := s.versionRepo.Create(ctx, version); err != nil {

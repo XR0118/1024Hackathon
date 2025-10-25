@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 // Version 版本信息
@@ -15,7 +17,13 @@ type Version struct {
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	Description string    `json:"description"`
 
-	AppBuilds []AppBuild `json:"app_build,omitempty" gorm:"type:jsonb"`
+	AppBuilds datatypes.JSON `json:"app_build,omitempty" gorm:"type:jsonb"`
+}
+
+func (v *Version) GetAppBuilds() []AppBuild {
+	var builds []AppBuild
+	_ = json.Unmarshal(v.AppBuilds, &builds)
+	return builds
 }
 
 type AppBuild struct {
@@ -26,13 +34,13 @@ type AppBuild struct {
 
 // Application 应用信息
 type Application struct {
-	ID         string            `json:"id" gorm:"primaryKey"`
-	Name       string            `json:"name" gorm:"uniqueIndex;not null"`
-	Repository string            `json:"repository" gorm:"not null"`
-	Type       string            `json:"type" gorm:"not null"` // microservice, monolith
-	Config     map[string]string `json:"config" gorm:"type:jsonb"`
-	CreatedAt  time.Time         `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt  time.Time         `json:"updated_at" gorm:"autoUpdateTime"`
+	ID         string         `json:"id" gorm:"primaryKey"`
+	Name       string         `json:"name" gorm:"uniqueIndex;not null"`
+	Repository string         `json:"repository" gorm:"not null"`
+	Type       string         `json:"type" gorm:"not null"` // microservice, monolith
+	Config     datatypes.JSON `json:"config" gorm:"type:jsonb"`
+	CreatedAt  time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 type BuildConfig struct {
@@ -43,7 +51,10 @@ type BuildConfig struct {
 
 func (a *Application) GetBuildConfig() *BuildConfig {
 	var ret = BuildConfig{}
-	if s, ok := a.Config["build_config"]; ok {
+	var config map[string]string
+	b, _ := a.Config.MarshalJSON()
+	_ = json.Unmarshal(b, &config)
+	if s, ok := config["build_config"]; ok {
 		_ = json.Unmarshal([]byte(s), &ret)
 	}
 	return &ret
@@ -51,13 +62,13 @@ func (a *Application) GetBuildConfig() *BuildConfig {
 
 // Environment 环境信息
 type Environment struct {
-	ID        string            `json:"id" gorm:"primaryKey"`
-	Name      string            `json:"name" gorm:"uniqueIndex;not null"`
-	Type      string            `json:"type" gorm:"not null"` // kubernetes, physical
-	Config    map[string]string `json:"config" gorm:"type:jsonb"`
-	IsActive  bool              `json:"is_active" gorm:"default:true"`
-	CreatedAt time.Time         `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time         `json:"updated_at" gorm:"autoUpdateTime"`
+	ID        string         `json:"id" gorm:"primaryKey"`
+	Name      string         `json:"name" gorm:"uniqueIndex;not null"`
+	Type      string         `json:"type" gorm:"not null"` // kubernetes, physical
+	Config    datatypes.JSON `json:"config" gorm:"type:jsonb"`
+	IsActive  bool           `json:"is_active" gorm:"default:true"`
+	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // DeploymentStatus 部署状态
@@ -72,11 +83,16 @@ const (
 	DeploymentStatusCancelled  DeploymentStatus = "cancelled"
 )
 
+func (d DeploymentStatus) IsFinished() bool {
+	return d == DeploymentStatusSuccess || d == DeploymentStatusFailed ||
+		d == DeploymentStatusRolledBack || d == DeploymentStatusCancelled
+}
+
 // Deployment 部署信息
 type Deployment struct {
 	ID            string           `json:"id" gorm:"primaryKey"`
 	VersionID     string           `json:"version_id" gorm:"not null"`
-	MustInOrder   []string         `json:"must_in_order" gorm:"type:jsonb"` // version 中包含的 app 必须按照这个 app_id 顺序部署
+	MustInOrder   datatypes.JSON   `json:"must_in_order" gorm:"type:jsonb"` // version 中包含的 app 必须按照这个 app_id 顺序部署
 	EnvironmentID string           `json:"environment_id" gorm:"not null"`
 	Status        DeploymentStatus `json:"status" gorm:"default:'pending'"`
 	CreatedBy     string           `json:"created_by" gorm:"not null"`
@@ -86,13 +102,25 @@ type Deployment struct {
 	CompletedAt   *time.Time       `json:"completed_at,omitempty"`
 	ErrorMessage  string           `json:"error_message,omitempty"`
 
-	ManualApproval bool          `json:"manual_approval"`
-	Strategy       []DeploySteps `json:"strategy" gorm:"type:jsonb"`
+	ManualApproval bool           `json:"manual_approval"`
+	Strategy       datatypes.JSON `json:"strategy" gorm:"type:jsonb"`
 
 	// 关联关系
 	Version     Version     `json:"version,omitempty" gorm:"foreignKey:VersionID"`
 	Environment Environment `json:"environment,omitempty" gorm:"foreignKey:EnvironmentID"`
 	Tasks       []Task      `json:"tasks,omitempty" gorm:"foreignKey:DeploymentID"`
+}
+
+func (d *Deployment) GetMustInOrder() []string {
+	var ret []string
+	_ = json.Unmarshal(d.MustInOrder, &ret)
+	return ret
+}
+
+func (d *Deployment) GetStrategy() []DeploySteps {
+	var ret []DeploySteps
+	_ = json.Unmarshal(d.Strategy, &ret)
+	return ret
 }
 
 type DeploySteps struct {
@@ -107,12 +135,18 @@ type DeploySteps struct {
 type TaskStatus string
 
 const (
-	TaskStatusPending TaskStatus = "pending"
-	TaskStatusRunning TaskStatus = "running"
-	TaskStatusSuccess TaskStatus = "success"
-	TaskStatusFailed  TaskStatus = "failed"
-	TaskStatusBlocked TaskStatus = "blocked"
+	TaskStatusPending    TaskStatus = "pending"
+	TaskStatusRunning    TaskStatus = "running"
+	TaskStatusSuccess    TaskStatus = "success"
+	TaskStatusFailed     TaskStatus = "failed"
+	TaskStatusBlocked    TaskStatus = "blocked"
+	TaskStatusCancelled  TaskStatus = "cancelled"
+	TaskStatusRolledBack TaskStatus = "rolled_back"
 )
+
+func (s TaskStatus) IsFinished() bool {
+	return s == TaskStatusSuccess || s == TaskStatusFailed || s == TaskStatusCancelled || s == TaskStatusRolledBack
+}
 
 // Task 任务信息
 type Task struct {
@@ -253,7 +287,7 @@ type DeploymentListResponse struct {
 
 // RollbackRequest 回滚请求
 type RollbackRequest struct {
-	TargetVersionID string `json:"target_version_id" binding:"required"`
+	TargetVersionID string `json:"target_version_id"`
 }
 
 // ListTasksRequest 任务列表请求

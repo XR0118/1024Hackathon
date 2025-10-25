@@ -22,137 +22,136 @@ type DeployClient interface {
 type SimpleDeployExecutor struct {
 	task           models.Task
 	deploymentRepo interfaces.DeploymentRepository
+	versionRepo    interfaces.VersionRepository
 	client         DeployClient
 }
 
-func NewSimpleDeployExecutor(task models.Task, deploymentRepo interfaces.DeploymentRepository) *SimpleDeployExecutor {
+var mockClient = mock.NewMockDeploymentClient()
+
+func NewSimpleDeployExecutor(task models.Task,
+	deploymentRepo interfaces.DeploymentRepository, versionRepo interfaces.VersionRepository) *SimpleDeployExecutor {
 	return &SimpleDeployExecutor{
 		task:           task,
 		deploymentRepo: deploymentRepo,
-		client:         mock.NewMockDeploymentClient(),
+		client:         mockClient,
 	}
 }
 
-func (e *SimpleDeployExecutor) Apply(ctx context.Context) error {
-	status := func() (int, map[string]int, []models.AgentAppStatus) {
-		appStatus, _ := e.client.AppStatus(ctx, e.task.AppID)
-		total := 0
-		versionMap := make(map[string]int)
-		for _, s := range appStatus {
-			total += s.Replicas
-			versionMap[s.Version] += s.Replicas
-		}
-		return total, versionMap, appStatus
+func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, error) {
+	deployment, err := e.deploymentRepo.GetByID(ctx, e.task.DeploymentID)
+	if err != nil {
+		return models.TaskStatusFailed, err
+	}
+
+	if deployment.Status == models.DeploymentStatusCancelled {
+		return models.TaskStatusCancelled, nil
+	}
+	if deployment.Status == models.DeploymentStatusFailed {
+		return models.TaskStatusFailed, nil
+	}
+
+	appStatus, _ := e.client.AppStatus(ctx, e.task.AppID)
+	total := 0
+	versionMap := make(map[string]int)
+	for _, s := range appStatus {
+		total += s.Replicas
+		versionMap[s.Version] += s.Replicas
 	}
 
 	pkg := models.DeploymentPackage{}
 	_ = json.Unmarshal([]byte(e.task.Payload), &pkg)
 
-	total, versionMap, _ := status()
+	if deployment.Status == models.DeploymentStatusRolledBack {
+		// 回滚到当前 app 的上一个版本
+		prevVersion, err_ := e.versionRepo.GetPreviousByVersionAndApp(ctx, e.task.Deployment.VersionID, e.task.AppID)
+		if err_ != nil {
+			return models.TaskStatusFailed, err_
+		}
+		versionMap[prevVersion.ID] += versionMap[e.task.Deployment.VersionID]
+		versionMap[e.task.Deployment.VersionID] = 0
+
+		pkg.Replicas = versionMap[prevVersion.ID]
+		_, err = e.client.Apply(ctx, e.task.AppID, prevVersion.ID, pkg)
+		if err != nil {
+			return models.TaskStatusFailed, err
+		}
+		pkg.Replicas = 0
+		_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.VersionID, pkg)
+		if err != nil {
+			return models.TaskStatusFailed, err
+		}
+		return models.TaskStatusRolledBack, nil
+	}
+
 	if total == 0 {
-		for _, s := range e.task.Deployment.Strategy {
+		for _, s := range e.task.Deployment.GetStrategy() {
 			total += s.BatchSize
 		}
-		_, err := e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
-		return err
+		pkg.Replicas = total
+		_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
+		if err != nil {
+			return models.TaskStatusFailed, nil
+		}
+		return models.TaskStatusRunning, nil
 	}
 
 	if versionMap[e.task.Deployment.ID] == total {
-		return nil
+		return models.TaskStatusSuccess, nil
 	}
 
-	ticker := time.NewTicker(time.Second * 10)
-	defer ticker.Stop()
+	ss := e.task.Deployment.GetStrategy()
+	step, idx := func() (models.DeploySteps, int) {
+		replicas := versionMap[e.task.Deployment.VersionID]
+		raito := float64(replicas) / float64(total)
+		i := 0
+		for j, s := range ss {
+			if raito < s.CanaryRatio || replicas < s.BatchSize {
+				return s, j
+			}
+			i = j
+		}
+		s := ss[i]
+		return s, i
+	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			deployment, err := e.deploymentRepo.GetByID(ctx, e.task.DeploymentID)
-			if err != nil {
-				return err
-			}
-			if deployment.Status == models.DeploymentStatusFailed ||
-				deployment.Status == models.DeploymentStatusCancelled {
-				return nil
-			}
-
-			total, versionMap, appStatus := status()
-			if deployment.Status == models.DeploymentStatusRolledBack {
-				// todo: 找到最近版本回滚
-				v := ""
-				for k := range versionMap {
-					if k != e.task.Deployment.ID {
-						v = k
-						break
-					}
-				}
-				versionMap[v] += versionMap[deployment.ID]
-				versionMap[deployment.ID] = 0
-				pkg.Replicas = 0
-				_, err := e.client.Apply(ctx, e.task.AppID, deployment.ID, pkg)
-				if err != nil {
-					return err
-				}
-				pkg.Replicas = versionMap[v]
-				_, err = e.client.Apply(ctx, e.task.AppID, v, pkg)
-				return err
-			}
-			if versionMap[e.task.Deployment.ID] == total {
-				return nil
-			}
-
-			s, idx := func() (models.DeploySteps, int) {
-				replicas := versionMap[e.task.Deployment.ID]
-				raito := float64(replicas) / float64(total)
-				i := 0
-				for j, s := range e.task.Deployment.Strategy {
-					if raito < s.CanaryRatio || replicas < s.BatchSize {
-						return s, j
-					}
-					i = j
-				}
-				s := e.task.Deployment.Strategy[i]
-				return s, i
-			}()
-
-			var unhealthy bool
-			var lastUpdate time.Time
-			for _, status := range appStatus {
-				if status.Version == e.task.Deployment.ID {
-					lastUpdate = status.Updated
-					if status.Healthy.Level < 80 {
-						unhealthy = true
-						break
-					}
-				}
-			}
-			if unhealthy && s.AutoRollback {
-				deployment.Status = models.DeploymentStatusRolledBack
-				_ = e.deploymentRepo.Update(ctx, deployment)
-				continue
-			}
-
-			if time.Since(lastUpdate).Seconds() < float64(s.BatchInterval) ||
-				s.ManualApprovalStatus != nil && !*s.ManualApprovalStatus {
-				continue
-			}
-
-			if idx == len(e.task.Deployment.Strategy)-1 {
-				continue
-			}
-
-			ns := e.task.Deployment.Strategy[idx+1]
-			if ns.BatchSize > 0 {
-				pkg.Replicas = ns.BatchSize
-			} else {
-				pkg.Replicas = int(float64(total) * ns.CanaryRatio)
-			}
-			_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
-			if err != nil {
-				return err
+	var unhealthy bool
+	var lastUpdate time.Time
+	for _, status := range appStatus {
+		if status.Version == e.task.Deployment.ID {
+			lastUpdate = status.Updated
+			if status.Healthy.Level < 80 {
+				unhealthy = true
+				break
 			}
 		}
 	}
+	if unhealthy && step.AutoRollback {
+		deployment.Status = models.DeploymentStatusRolledBack
+		_ = e.deploymentRepo.Update(ctx, deployment)
+		return models.TaskStatusRolledBack, nil
+	}
+
+	if time.Since(lastUpdate).Seconds() < float64(step.BatchInterval) ||
+		step.ManualApprovalStatus != nil && !*step.ManualApprovalStatus {
+		return models.TaskStatusRunning, nil
+	}
+
+	if idx == len(ss)-1 {
+		// 没有下一个阶段, 等待全量结束
+		// 判断 live = expect
+		return models.TaskStatusRunning, nil
+	}
+
+	ns := ss[idx+1]
+	if ns.BatchSize > 0 {
+		pkg.Replicas = ns.BatchSize
+	} else {
+		pkg.Replicas = int(float64(total) * ns.CanaryRatio)
+	}
+	_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
+	if err != nil {
+		return models.TaskStatusFailed, err
+	}
+
+	return models.TaskStatusRunning, nil
 }

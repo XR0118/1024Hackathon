@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -43,12 +44,13 @@ func (s *environmentService) CreateEnvironment(ctx context.Context, req *models.
 		}
 	}
 
+	bs, _ := json.Marshal(req.Config)
 	// 创建环境
 	env := &models.Environment{
 		ID:        uuid.New().String(),
 		Name:      req.Name,
 		Type:      req.Type,
-		Config:    req.Config,
+		Config:    bs,
 		IsActive:  req.IsActive,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -118,7 +120,8 @@ func (s *environmentService) UpdateEnvironment(ctx context.Context, id string, r
 		env.Type = req.Type
 	}
 	if req.Config != nil {
-		env.Config = req.Config
+		bs, _ := json.Marshal(req.Config)
+		env.Config = bs
 	}
 	if req.IsActive != nil {
 		env.IsActive = *req.IsActive

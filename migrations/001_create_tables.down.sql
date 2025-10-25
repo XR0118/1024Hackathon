@@ -11,6 +11,7 @@ DROP INDEX IF EXISTS idx_environments_is_active;
 DROP INDEX IF EXISTS idx_environments_type;
 DROP INDEX IF EXISTS idx_applications_type;
 DROP INDEX IF EXISTS idx_applications_repository;
+DROP INDEX IF EXISTS idx_versions_app_builds_gin;
 DROP INDEX IF EXISTS idx_versions_created_at;
 DROP INDEX IF EXISTS idx_versions_repository;
 

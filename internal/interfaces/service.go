@@ -37,7 +37,7 @@ type DeploymentService interface {
 	CreateDeployment(ctx context.Context, req *models.CreateDeploymentRequest) (*models.Deployment, error)
 	GetDeploymentList(ctx context.Context, req *models.ListDeploymentsRequest) (*models.DeploymentListResponse, error)
 	GetDeployment(ctx context.Context, id string) (*models.Deployment, error)
-	CancelDeployment(ctx context.Context, id string) (*models.Deployment, error)
+	StartDeployment(ctx context.Context, id string) (*models.Deployment, error)
 	RollbackDeployment(ctx context.Context, id string, req *models.RollbackRequest) (*models.Deployment, error)
 }
 

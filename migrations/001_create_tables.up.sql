@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_versions_repository ON versions(repository);
 CREATE INDEX IF NOT EXISTS idx_versions_created_at ON versions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_versions_app_builds_gin ON versions USING gin (app_builds jsonb_path_ops);
 CREATE INDEX IF NOT EXISTS idx_applications_repository ON applications(repository);
 CREATE INDEX IF NOT EXISTS idx_applications_type ON applications(type);
 CREATE INDEX IF NOT EXISTS idx_environments_type ON environments(type);

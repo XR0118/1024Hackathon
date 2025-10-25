@@ -84,17 +84,17 @@ func (h *deploymentHandler) GetDeployment(c *gin.Context) {
 	utils.Success(c, deployment)
 }
 
-// CancelDeployment 取消部署
-func (h *deploymentHandler) CancelDeployment(c *gin.Context) {
+// StartDeployment 开始部署
+func (h *deploymentHandler) StartDeployment(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		utils.BadRequest(c, "deployment id is required")
 		return
 	}
 
-	deployment, err := h.deploymentService.CancelDeployment(c.Request.Context(), id)
+	deployment, err := h.deploymentService.StartDeployment(c.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "DEPLOYMENT_CANCEL_FAILED", err.Error(), nil)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "DEPLOYMENT_START_FAILED", err.Error(), nil)
 		return
 	}
 
