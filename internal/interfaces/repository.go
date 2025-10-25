@@ -48,11 +48,3 @@ type TaskRepository interface {
 	Update(ctx context.Context, task *models.Task) error
 	GetByDeploymentID(ctx context.Context, deploymentID string) ([]*models.Task, error)
 }
-
-// WorkflowRepository 工作流仓库接口
-type WorkflowRepository interface {
-	Create(ctx context.Context, workflow *models.Workflow) error
-	GetByID(ctx context.Context, id string) (*models.Workflow, error)
-	GetByDeploymentID(ctx context.Context, deploymentID string) (*models.Workflow, error)
-	Update(ctx context.Context, workflow *models.Workflow) error
-}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/boreas/internal/interfaces"
 	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/pkg/utils"
+	"github.com/google/uuid"
 )
 
 type deploymentService struct {
@@ -16,7 +16,6 @@ type deploymentService struct {
 	versionRepo    interfaces.VersionRepository
 	appRepo        interfaces.ApplicationRepository
 	envRepo        interfaces.EnvironmentRepository
-	workflowMgr    interfaces.WorkflowManager
 }
 
 // NewDeploymentService 创建部署服务
@@ -25,14 +24,12 @@ func NewDeploymentService(
 	versionRepo interfaces.VersionRepository,
 	appRepo interfaces.ApplicationRepository,
 	envRepo interfaces.EnvironmentRepository,
-	workflowMgr interfaces.WorkflowManager,
 ) interfaces.DeploymentService {
 	return &deploymentService{
 		deploymentRepo: deploymentRepo,
 		versionRepo:    versionRepo,
 		appRepo:        appRepo,
 		envRepo:        envRepo,
-		workflowMgr:    workflowMgr,
 	}
 }
 
@@ -64,39 +61,21 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 
 	// 创建部署
 	deployment := &models.Deployment{
-		ID:             uuid.New().String(),
-		VersionID:      req.VersionID,
-		ApplicationIDs: req.ApplicationIDs,
-		EnvironmentID:  req.EnvironmentID,
-		Status:         models.DeploymentStatusPending,
-		CreatedBy:      getCurrentUser(ctx),
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:            uuid.New().String(),
+		VersionID:     req.VersionID,
+		MustInOrder:   req.ApplicationIDs,
+		EnvironmentID: req.EnvironmentID,
+		Status:        models.DeploymentStatusPending,
+		CreatedBy:     getCurrentUser(ctx),
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	if err := s.deploymentRepo.Create(ctx, deployment); err != nil {
 		return nil, fmt.Errorf("failed to create deployment: %w", err)
 	}
 
-	// 创建工作流
-	workflow, err := s.workflowMgr.CreateWorkflow(ctx, deployment)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create workflow: %w", err)
-	}
-
-	// 异步执行工作流
-	go func() {
-		ctx := context.Background()
-		if err := s.workflowMgr.ExecuteWorkflow(ctx, workflow.ID); err != nil {
-			// 更新部署状态为失败
-			s.deploymentRepo.Update(ctx, &models.Deployment{
-				ID:           deployment.ID,
-				Status:       models.DeploymentStatusFailed,
-				ErrorMessage: err.Error(),
-				CompletedAt:  &[]time.Time{time.Now()}[0],
-			})
-		}
-	}()
+	// TODO: 创建并执行部署任务
 
 	return deployment, nil
 }
@@ -151,10 +130,7 @@ func (s *deploymentService) CancelDeployment(ctx context.Context, id string) (*m
 		return nil, fmt.Errorf("deployment cannot be cancelled in status %s", deployment.Status)
 	}
 
-	// 取消工作流
-	if err := s.workflowMgr.CancelWorkflow(ctx, id); err != nil {
-		return nil, fmt.Errorf("failed to cancel workflow: %w", err)
-	}
+	// TODO: 取消部署任务
 
 	// 更新部署状态
 	deployment.Status = models.DeploymentStatusFailed
@@ -188,39 +164,21 @@ func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, r
 
 	// 创建回滚部署
 	rollbackDeployment := &models.Deployment{
-		ID:             uuid.New().String(),
-		VersionID:      req.TargetVersionID,
-		ApplicationIDs: currentDeployment.ApplicationIDs,
-		EnvironmentID:  currentDeployment.EnvironmentID,
-		Status:         models.DeploymentStatusPending,
-		CreatedBy:      getCurrentUser(ctx),
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:            uuid.New().String(),
+		VersionID:     req.TargetVersionID,
+		MustInOrder:   currentDeployment.MustInOrder,
+		EnvironmentID: currentDeployment.EnvironmentID,
+		Status:        models.DeploymentStatusPending,
+		CreatedBy:     getCurrentUser(ctx),
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	if err := s.deploymentRepo.Create(ctx, rollbackDeployment); err != nil {
 		return nil, fmt.Errorf("failed to create rollback deployment: %w", err)
 	}
 
-	// 创建工作流
-	workflow, err := s.workflowMgr.CreateWorkflow(ctx, rollbackDeployment)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create workflow: %w", err)
-	}
-
-	// 异步执行工作流
-	go func() {
-		ctx := context.Background()
-		if err := s.workflowMgr.ExecuteWorkflow(ctx, workflow.ID); err != nil {
-			// 更新部署状态为失败
-			s.deploymentRepo.Update(ctx, &models.Deployment{
-				ID:           rollbackDeployment.ID,
-				Status:       models.DeploymentStatusFailed,
-				ErrorMessage: err.Error(),
-				CompletedAt:  &[]time.Time{time.Now()}[0],
-			})
-		}
-	}()
+	// TODO: 创建并执行回滚任务
 
 	return rollbackDeployment, nil
 }

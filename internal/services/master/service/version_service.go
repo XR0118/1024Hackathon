@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/boreas/internal/interfaces"
 	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/pkg/utils"
+	"github.com/google/uuid"
 )
 
 type versionService struct {

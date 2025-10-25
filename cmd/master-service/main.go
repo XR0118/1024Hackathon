@@ -55,7 +55,6 @@ func main() {
 	envRepo := postgres.NewEnvironmentRepository(database.GetDB())
 	deploymentRepo := postgres.NewDeploymentRepository(database.GetDB())
 	taskRepo := postgres.NewTaskRepository(database.GetDB())
-	workflowRepo := postgres.NewWorkflowRepository(database.GetDB())
 
 	// 创建服务
 	versionService := service.NewVersionService(versionRepo)
@@ -69,14 +68,12 @@ func main() {
 		Version:        versionService,
 	})
 	webhookHandler := handler.NewWebhookHandler(triggerService, cfg.Trigger.WebhookSecret)
-	// TODO: 实现 WorkflowManager
-	// workflowMgr := workflow.NewWorkflowManager(workflowRepo, taskRepo)
-	// deploymentService := service.NewDeploymentService(deploymentRepo, versionRepo, appRepo, envRepo, workflowMgr)
+	// TODO: 实现 DeploymentService
+	// deploymentService := service.NewDeploymentService(deploymentRepo, versionRepo, appRepo, envRepo)
 	taskService := service.NewTaskService(taskRepo)
 
 	// 暂时注释掉未使用的变量
 	_ = deploymentRepo
-	_ = workflowRepo
 
 	// 创建处理器
 	versionHandler := handler.NewVersionHandler(versionService)

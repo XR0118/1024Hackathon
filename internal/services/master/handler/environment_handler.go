@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/boreas/internal/interfaces"
 	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/pkg/utils"
+	"github.com/gin-gonic/gin"
 )
 
 type environmentHandler struct {

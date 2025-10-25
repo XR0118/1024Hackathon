@@ -54,15 +54,6 @@ type WebhookService interface {
 	VerifySignature(payload []byte, signature string) error
 }
 
-// WorkflowManager 工作流管理器接口
-type WorkflowManager interface {
-	CreateWorkflow(ctx context.Context, deployment *models.Deployment) (*models.Workflow, error)
-	ExecuteWorkflow(ctx context.Context, workflowID string) error
-	GetWorkflowStatus(ctx context.Context, workflowID string) (*models.WorkflowStatus, error)
-	CancelWorkflow(ctx context.Context, workflowID string) error
-	RetryFailedTasks(ctx context.Context, workflowID string) error
-}
-
 // TaskScheduler 任务调度器接口
 type TaskScheduler interface {
 	ScheduleTask(ctx context.Context, task *models.Task) error
