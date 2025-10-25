@@ -53,7 +53,6 @@ func autoMigrate(db *gorm.DB) error {
 		&models.Environment{},
 		&models.Deployment{},
 		&models.Task{},
-		&models.Workflow{},
 	)
 }
 
