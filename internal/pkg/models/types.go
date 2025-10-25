@@ -86,10 +86,21 @@ type Deployment struct {
 	CompletedAt   *time.Time       `json:"completed_at,omitempty"`
 	ErrorMessage  string           `json:"error_message,omitempty"`
 
+	ManualApproval bool          `json:"manual_approval"`
+	Strategy       []DeploySteps `json:"strategy" gorm:"type:jsonb"`
+
 	// 关联关系
 	Version     Version     `json:"version,omitempty" gorm:"foreignKey:VersionID"`
 	Environment Environment `json:"environment,omitempty" gorm:"foreignKey:EnvironmentID"`
 	Tasks       []Task      `json:"tasks,omitempty" gorm:"foreignKey:DeploymentID"`
+}
+
+type DeploySteps struct {
+	BatchSize            int     `json:"batch_size"`
+	BatchInterval        int     `json:"batch_interval"`
+	CanaryRatio          float64 `json:"canary_ratio"`
+	AutoRollback         bool    `json:"auto_rollback"`
+	ManualApprovalStatus *bool   `json:"manual_approval_status"`
 }
 
 // TaskStatus 任务状态
@@ -218,6 +229,9 @@ type CreateDeploymentRequest struct {
 	VersionID     string   `json:"version_id" binding:"required"`
 	MustInOrder   []string `json:"must_in_order" binding:"required"`
 	EnvironmentID string   `json:"environment_id" binding:"required"`
+
+	Strategy       []DeploySteps `json:"strategy" binding:"required"`
+	ManualApproval bool          `json:"manual_approval"`
 }
 
 // ListDeploymentsRequest 部署列表请求

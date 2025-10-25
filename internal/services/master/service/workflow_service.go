@@ -234,7 +234,28 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 		}
 	}()
 
-	// TODO: 执行发布
+	executor := NewSimpleDeployExecutor(*task, wc.deploymentRepo)
+	go func() {
+		err := executor.Apply(ctx)
+		if err != nil {
+			wc.log.Error("Task execution failed", zap.Error(err), zap.String("task_id", task.ID))
+			task.Status = models.TaskStatusFailed
+			task.Result = err.Error()
+			task.UpdatedAt = time.Now()
+			if err := wc.taskRepo.Update(ctx, task); err != nil {
+				wc.log.Error("Failed to update task report", zap.Error(err), zap.String("task_id", task.ID))
+				return
+			}
+		}
+
+		task.Status = models.TaskStatusSuccess
+		task.CompletedAt = &[]time.Time{time.Now()}[0]
+		task.UpdatedAt = time.Now()
+		if err := wc.taskRepo.Update(ctx, task); err != nil {
+			wc.log.Error("Failed to update task report", zap.Error(err), zap.String("task_id", task.ID))
+			return
+		}
+	}()
 
 	return nil
 }

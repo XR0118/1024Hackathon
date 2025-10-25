@@ -66,6 +66,13 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 		}
 	}
 
+	if req.ManualApproval {
+		defaultStat := false
+		for i := range req.Strategy {
+			req.Strategy[i].ManualApprovalStatus = &defaultStat
+		}
+	}
+
 	// 创建部署
 	deployment := &models.Deployment{
 		ID:            uuid.New().String(),
