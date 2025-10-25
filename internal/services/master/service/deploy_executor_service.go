@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/boreas/internal/interfaces"
@@ -34,6 +35,7 @@ func NewSimpleDeployExecutor(task models.Task,
 		task:           task,
 		deploymentRepo: deploymentRepo,
 		client:         mockClient,
+		versionRepo:    versionRepo,
 	}
 }
 
@@ -54,6 +56,9 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 	total := 0
 	versionMap := make(map[string]int)
 	for _, s := range appStatus {
+		if s.Replicas == 0 {
+			continue
+		}
 		total += s.Replicas
 		versionMap[s.Version] += s.Replicas
 	}
@@ -88,14 +93,24 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 			total += s.BatchSize
 		}
 		pkg.Replicas = total
-		_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
+		_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.VersionID, pkg)
 		if err != nil {
 			return models.TaskStatusFailed, nil
 		}
 		return models.TaskStatusRunning, nil
 	}
 
-	if versionMap[e.task.Deployment.ID] == total {
+	var versions []*models.Version
+	for vid := range versionMap {
+		ver, _ := e.versionRepo.GetByID(ctx, vid)
+		versions = append(versions, ver)
+	}
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].CreatedAt.Before(versions[j].CreatedAt)
+	})
+
+	// 没有比自己更旧的版本则说明发布成功
+	if versions[0].ID == e.task.Deployment.VersionID {
 		return models.TaskStatusSuccess, nil
 	}
 
@@ -103,15 +118,13 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 	step, idx := func() (models.DeploySteps, int) {
 		replicas := versionMap[e.task.Deployment.VersionID]
 		raito := float64(replicas) / float64(total)
-		i := 0
 		for j, s := range ss {
 			if raito < s.CanaryRatio || replicas < s.BatchSize {
 				return s, j
 			}
-			i = j
 		}
-		s := ss[i]
-		return s, i
+		// 返回最后一个 step 只用配置
+		return ss[len(ss)-1], len(ss)
 	}()
 
 	var unhealthy bool
@@ -136,21 +149,75 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		return models.TaskStatusRunning, nil
 	}
 
-	if idx == len(ss)-1 {
-		// 没有下一个阶段, 等待全量结束
-		// 判断 live = expect
+	if idx == len(ss) {
+		// 没有下一个阶段, 开始全量
+		increase := 0
+		idx_ := 0
+		for i, version := range versions {
+			if version.ID == e.task.Deployment.VersionID {
+				idx_ = i
+				break
+			}
+			increase += versionMap[version.ID]
+		}
+		if idx_ == 0 || increase == 0 {
+			return models.TaskStatusRunning, nil
+		}
+
+		pkg.Replicas = versionMap[e.task.Deployment.VersionID] + increase
+		_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.VersionID, pkg)
+		if err != nil {
+			return models.TaskStatusFailed, err
+		}
+		for j := 0; j < idx; j++ {
+			version := versions[j]
+			pkg.Replicas = 0
+			_, err = e.client.Apply(ctx, e.task.AppID, version.ID, pkg)
+			if err != nil {
+				return models.TaskStatusFailed, err
+			}
+		}
+
 		return models.TaskStatusRunning, nil
 	}
 
-	ns := ss[idx+1]
+	ns := ss[idx]
 	if ns.BatchSize > 0 {
 		pkg.Replicas = ns.BatchSize
 	} else {
 		pkg.Replicas = int(float64(total) * ns.CanaryRatio)
 	}
-	_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.ID, pkg)
+
+	increaseNum := pkg.Replicas - versionMap[e.task.Deployment.VersionID]
+	var decreaseMap = map[string]int{}
+	for _, version := range versions {
+		if version.ID == e.task.Deployment.VersionID {
+			break
+		}
+
+		if increaseNum < versionMap[version.ID] {
+			decreaseMap[version.ID] = increaseNum
+			increaseNum = 0
+		} else {
+			decreaseMap[version.ID] = versionMap[version.ID]
+			increaseNum -= versionMap[version.ID]
+		}
+
+		if increaseNum <= 0 {
+			break
+		}
+	}
+	pkg.Replicas -= increaseNum
+	_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.VersionID, pkg)
 	if err != nil {
 		return models.TaskStatusFailed, err
+	}
+	for vid, replicas := range decreaseMap {
+		pkg.Replicas = versionMap[vid] - replicas
+		_, err = e.client.Apply(ctx, e.task.AppID, vid, pkg)
+		if err != nil {
+			return models.TaskStatusFailed, err
+		}
 	}
 
 	return models.TaskStatusRunning, nil
