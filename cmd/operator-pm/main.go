@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/boreas/internal/pkg/database"
 	"github.com/boreas/internal/pkg/logger"
 	"github.com/boreas/internal/services/operator-pm/config"
 	"github.com/boreas/internal/services/operator-pm/handler"
@@ -44,14 +43,8 @@ func main() {
 	// 初始化日志
 	logger.Init(cfg.Log.Level, cfg.Log.Format)
 
-	// 初始化数据库
-	err = database.InitWithDSN(cfg.GetDSN())
-	if err != nil {
-		log.Fatal("Failed to initialize database:", err)
-	}
-
 	// 初始化服务
-	operatorService := service.NewOperatorPMService(database.GetDB())
+	operatorService := service.NewOperatorPMService(cfg)
 
 	// 初始化处理器
 	operatorHandler := handler.NewOperatorPMHandler(operatorService)

@@ -40,8 +40,17 @@ pm:
     retry_interval: 30 # 重试间隔（秒）
     status_check: 30 # 状态检查间隔（秒）
 
-  # 自定义配置
-  config:
-    # 可以添加自定义的键值对配置
-    # 例如：
-    # custom_setting: "value"
+  # Agent服务配置
+  agent:
+    port: 8081 # Agent服务端口
+    path: "/v1" # Agent服务路径前缀
+
+  # 配置文件路径配置
+  config_paths:
+    app_to_nodes: "./cmd/operator-pm/configs/app-to-nodes.yaml" # 应用->节点映射配置文件路径
+    node_to_ip: "./cmd/operator-pm/configs/node-to-ip.yaml" # 节点->IP地址映射配置文件路径
+
+
+  # 注意：应用->节点映射和节点->IP地址映射已移至独立配置文件
+  # - app-to-nodes.yaml: 应用->机器节点映射
+  # - node-to-ip.yaml: 机器节点->IP地址映射（类似于 /etc/hosts 或 DNS）

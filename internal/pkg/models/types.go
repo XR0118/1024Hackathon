@@ -326,3 +326,51 @@ type DeploymentStatusInfo struct {
 	Status  DeploymentStatus `json:"status"`
 	Message string           `json:"message"`
 }
+
+// 核心API数据结构
+
+// ApplyDeploymentRequest 应用部署请求（Operator PM API）
+type ApplyDeploymentRequest struct {
+	App      string              `json:"app" binding:"required"`
+	Versions []VersionDeployment `json:"versions" binding:"required"`
+}
+
+// VersionDeployment 版本部署信息
+type VersionDeployment struct {
+	Version string                 `json:"version" binding:"required"`
+	Percent float64                `json:"percent" binding:"required,min=0,max=1"`
+	Pkg     map[string]interface{} `json:"pkg" binding:"required"`
+}
+
+// ApplyDeploymentResponse 应用部署响应（Operator PM API）
+type ApplyDeploymentResponse struct {
+	App     string `json:"app"`
+	Message string `json:"message"`
+	Success bool   `json:"success"`
+}
+
+// ApplicationStatusResponse 应用状态响应（Operator PM API）
+type ApplicationStatusResponse struct {
+	App      string          `json:"app"`
+	Healthy  HealthInfo      `json:"healthy"`
+	Versions []VersionStatus `json:"versions"`
+}
+
+// VersionStatus 版本状态
+type VersionStatus struct {
+	Version string       `json:"version"`
+	Percent float64      `json:"percent"`
+	Healthy HealthInfo   `json:"healthy"`
+	Nodes   []NodeStatus `json:"nodes"`
+}
+
+// NodeStatus 节点状态
+type NodeStatus struct {
+	Node    string     `json:"node"`
+	Healthy HealthInfo `json:"healthy"`
+}
+
+// HealthInfo 健康状态信息
+type HealthInfo struct {
+	Level int `json:"level"` // 0-100
+}
