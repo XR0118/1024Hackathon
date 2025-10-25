@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +30,21 @@ var (
 )
 
 func main() {
+	// 命令行参数
+	var (
+		showVersion = flag.Bool("version", false, "显示版本信息")
+	)
+	flag.Parse()
+
+	// 显示版本信息
+	if *showVersion {
+		fmt.Printf("Boreas Master Service\n")
+		fmt.Printf("Version: %s\n", Version)
+		fmt.Printf("Build Time: %s\n", BuildTime)
+		fmt.Printf("Go Version: %s\n", GoVersion)
+		os.Exit(0)
+	}
+
 	// 加载配置
 	cfg, err := config.Load()
 	if err != nil {

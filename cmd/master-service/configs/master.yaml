@@ -1,7 +1,11 @@
+# Boreas Master 服务配置文件
+
+# 服务器配置
 server:
   host: "0.0.0.0"
   port: 8080
 
+# 数据库配置
 database:
   host: "localhost"
   port: 5432
@@ -10,21 +14,31 @@ database:
   name: "boreas"
   ssl_mode: "disable"
 
+# Redis配置
 redis:
   host: "localhost"
   port: 6379
   password: ""
   db: 0
 
+# 日志配置
 log:
   level: "info"
   format: "json"
   output: "stdout"
 
+# GitHub配置
 github:
   webhook_secret: ""
   token: ""
 
+# Kubernetes配置
 k8s:
   config_path: ""
   namespace: "default"
+
+# 触发器配置
+trigger:
+  webhook_secret: ""
+  work_dir: "/var/lib/boreas"
+  docker_registry: ""

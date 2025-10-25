@@ -24,6 +24,10 @@ func (h *OperatorPMHandler) RegisterRoutes(r *gin.Engine) {
 		api.GET("/health", h.HealthCheck)
 		api.GET("/ready", h.ReadyCheck)
 
+		// Agent管理API
+		api.POST("/agents", h.RegisterAgent)
+		api.GET("/agents", h.ListAgents)
+
 		// 部署相关API
 		deploy := api.Group("/deploy")
 		{
@@ -109,5 +113,35 @@ func (h *OperatorPMHandler) CancelDeployment(c *gin.Context) {
 
 	utils.Success(c, gin.H{
 		"message": "Deployment cancelled successfully",
+	})
+}
+
+// RegisterAgent 注册Agent
+func (h *OperatorPMHandler) RegisterAgent(c *gin.Context) {
+	var req struct {
+		AgentID  string `json:"agent_id" binding:"required"`
+		AgentURL string `json:"agent_url" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+		return
+	}
+
+	// 注册Agent
+	h.operatorService.RegisterAgent(req.AgentID, req.AgentURL)
+
+	utils.Success(c, gin.H{
+		"message":   "Agent registered successfully",
+		"agent_id":  req.AgentID,
+		"agent_url": req.AgentURL,
+	})
+}
+
+// ListAgents 列出所有Agent
+func (h *OperatorPMHandler) ListAgents(c *gin.Context) {
+	agents := h.operatorService.ListAgents()
+	utils.Success(c, gin.H{
+		"agents": agents,
 	})
 }
