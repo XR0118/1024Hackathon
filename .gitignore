@@ -9,12 +9,6 @@
 *.dylib
 
 # Project specific binaries
-master-service
-operator-k8s
-operator-pm
-webhook-service
-management-service
-main
 bin/
 
 # Test binary, built with `go test -c`
