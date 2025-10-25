@@ -21,7 +21,6 @@ type WorkflowConfig struct {
 }
 
 type workflowController struct {
-	taskService    interfaces.TaskService
 	taskRepo       interfaces.TaskRepository
 	deploymentRepo interfaces.DeploymentRepository
 	versionRepo    interfaces.VersionRepository
@@ -33,7 +32,6 @@ type workflowController struct {
 }
 
 func NewWorkflowController(
-	taskService interfaces.TaskService,
 	taskRepo interfaces.TaskRepository,
 	deploymentRepo interfaces.DeploymentRepository,
 	versionRepo interfaces.VersionRepository,
@@ -59,7 +57,6 @@ func NewWorkflowController(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &workflowController{
-		taskService:    taskService,
 		taskRepo:       taskRepo,
 		deploymentRepo: deploymentRepo,
 		versionRepo:    versionRepo,
@@ -77,7 +74,6 @@ func (wc *workflowController) Start() {
 	go wc.pendingTaskScheduler()
 	go wc.blockedTaskScheduler()
 	go wc.runningTaskScheduler()
-	go wc.heartbeatScheduler()
 }
 
 func (wc *workflowController) Stop() {
@@ -214,52 +210,33 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 	task.StartedAt = &now
 	task.UpdatedAt = now
 
+	// TODO: 检查任务是否会因为上一个 version 而 block
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	if err := wc.taskRepo.Update(ctx, task); err != nil {
 		return fmt.Errorf("failed to update task status to running: %w", err)
 	}
 
-	return nil
-}
-
-func (wc *workflowController) heartbeatScheduler() {
-	defer wc.wg.Done()
-	ticker := time.NewTicker(wc.config.HeartbeatInterval)
-	defer ticker.Stop()
-
-	wc.log.Info("Heartbeat scheduler started")
-
-	for {
+	go func() {
 		select {
-		case <-wc.ctx.Done():
-			wc.log.Info("Heartbeat scheduler stopped")
+		case <-ctx.Done():
+			wc.log.Warn("ctx canceled, id: %s", zap.String("id", task.ID))
 			return
-		case <-ticker.C:
-			wc.processHeartbeat()
+		case <-time.After(30 * time.Second):
+			task.UpdatedAt = time.Now()
+			if err := wc.taskRepo.Update(ctx, task); err != nil {
+				wc.log.Error("Failed to update task heartbeat", zap.Error(err), zap.String("task_id", task.ID))
+				cancel()
+				return
+			}
 		}
-	}
-}
+	}()
 
-func (wc *workflowController) processHeartbeat() {
-	ctx := context.Background()
+	// TODO: 执行发布
 
-	filter := &models.TaskFilter{
-		Status:   models.TaskStatusRunning,
-		Page:     1,
-		PageSize: 100,
-	}
-
-	tasks, _, err := wc.taskRepo.List(ctx, filter)
-	if err != nil {
-		wc.log.Error("Failed to list running tasks for heartbeat", zap.Error(err))
-		return
-	}
-
-	for _, task := range tasks {
-		task.UpdatedAt = time.Now()
-		if err := wc.taskRepo.Update(ctx, task); err != nil {
-			wc.log.Error("Failed to update task heartbeat", zap.Error(err), zap.String("task_id", task.ID))
-		}
-	}
+	return nil
 }
 
 func (wc *workflowController) blockedTaskScheduler() {
