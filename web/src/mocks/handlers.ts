@@ -265,7 +265,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
 
       if (url.startsWith('/dashboard')) {
-        if (url === '/dashboard/stats') {
+        if (url.includes('/dashboard/stats')) {
           return Promise.reject({
             config,
             response: { data: mockDashboardStats, status: 200, statusText: 'OK', headers: {}, config },
@@ -273,7 +273,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
         
-        if (url === '/dashboard/trends') {
+        if (url.includes('/dashboard/trends')) {
           const days = config.params?.days || 7
           const trends = mockDeploymentTrends.slice(-days)
           return Promise.reject({
@@ -283,7 +283,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
         
-        if (url === '/dashboard/recent-deployments') {
+        if (url.includes('/dashboard/recent-deployments')) {
           const limit = config.params?.limit || 10
           const recent = mockDeployments.slice(0, limit)
           return Promise.reject({
