@@ -261,6 +261,50 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 		task.Result = err.Error()
 	}
 
+	if task.Status.IsFinished() {
+		deployment, err := wc.deploymentRepo.GetByID(ctx, task.DeploymentID)
+		if err != nil {
+			wc.log.Error("Failed to get deployment", zap.Error(err), zap.String("deployment_id", task.DeploymentID))
+		}
+		if !deployment.Status.IsFinished() {
+			var deploymentStatus models.DeploymentStatus
+			var successCnt int
+			for _, dt := range deployment.Tasks {
+				var done bool
+				switch dt.Status {
+				case models.TaskStatusCancelled:
+					deploymentStatus = models.DeploymentStatusCancelled
+					done = true
+				case models.TaskStatusFailed:
+					deploymentStatus = models.DeploymentStatusFailed
+					done = true
+				case models.TaskStatusRolledBack:
+					deploymentStatus = models.DeploymentStatusRolledBack
+					done = true
+				case models.TaskStatusSuccess:
+					successCnt++
+				default:
+					deploymentStatus = models.DeploymentStatusRunning
+					done = true
+				}
+				if done {
+					break
+				}
+			}
+			if successCnt == len(deployment.Tasks) {
+				deployment.Status = models.DeploymentStatusSuccess
+			}
+			if deploymentStatus.IsFinished() {
+				now := time.Now()
+				deployment.CompletedAt = &now
+				deployment.UpdatedAt = now
+				if err := wc.deploymentRepo.Update(ctx, deployment); err != nil {
+					wc.log.Error("Failed to update deployment", zap.Error(err), zap.String("deployment_id", deployment.ID))
+				}
+			}
+		}
+	}
+
 	return wc.taskRepo.Update(ctx, task)
 }
 

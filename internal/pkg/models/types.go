@@ -83,6 +83,11 @@ const (
 	DeploymentStatusCancelled  DeploymentStatus = "cancelled"
 )
 
+func (d DeploymentStatus) IsFinished() bool {
+	return d == DeploymentStatusSuccess || d == DeploymentStatusFailed ||
+		d == DeploymentStatusRolledBack || d == DeploymentStatusCancelled
+}
+
 // Deployment 部署信息
 type Deployment struct {
 	ID            string           `json:"id" gorm:"primaryKey"`
