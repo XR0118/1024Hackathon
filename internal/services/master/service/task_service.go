@@ -85,3 +85,20 @@ func (s *taskService) RetryTask(ctx context.Context, id string) (*models.Task, e
 
 	return task, nil
 }
+
+func (s *taskService) CreateTask(ctx context.Context, task *models.Task) (*models.Task, error) {
+	// 参数校验
+	if task.DeploymentID == "" {
+		return nil, fmt.Errorf("deployment_id is required")
+	}
+	if task.AppID == "" {
+		return nil, fmt.Errorf("task app_id is required")
+	}
+
+	// 创建任务
+	if err := s.taskRepo.Create(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	return task, nil
+}
