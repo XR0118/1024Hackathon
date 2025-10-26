@@ -1,46 +1,56 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { applicationApi } from '@/services/api'
-import { formatDate } from '@/utils'
-import type { Application } from '@/types'
-import { IconArrowLeft, IconCircleCheck, IconAlertCircle, IconServer } from '@tabler/icons-react'
-import { useErrorStore } from '@/store/error'
+import React, { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { applicationApi } from "@/services/api";
+import { formatDate } from "@/utils";
+import type { Application } from "@/types";
+import { IconArrowLeft, IconCircleCheck, IconAlertCircle, IconServer } from "@tabler/icons-react";
+import { useErrorStore } from "@/store/error";
 
 const ApplicationDetail: React.FC = () => {
-  const { name } = useParams<{ name: string }>()
-  const navigate = useNavigate()
-  const { setError } = useErrorStore()
-  const [application, setApplication] = useState<Application | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { name } = useParams<{ name: string }>();
+  const navigate = useNavigate();
+  const { setError } = useErrorStore();
+  const [application, setApplication] = useState<Application | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const loadApplication = useCallback(async () => {
-    if (!name) return
-    
-    try {
-      setLoading(true)
-      const data = await applicationApi.get(name)
-      setApplication(data)
-    } catch (error) {
-      setError('Failed to load application details.')
-    } finally {
-      setLoading(false)
-    }
-  }, [name, setError])
+  const loadApplication = useCallback(
+    async (isInitialLoad = false) => {
+      if (!name) return;
+
+      try {
+        if (isInitialLoad) {
+          setLoading(true);
+        }
+        const data = await applicationApi.get(name);
+        setApplication(data);
+      } catch (error) {
+        setError("Failed to load application details.");
+      } finally {
+        if (isInitialLoad) {
+          setLoading(false);
+        }
+      }
+    },
+    [name, setError]
+  );
 
   useEffect(() => {
-    loadApplication()
-  }, [loadApplication])
+    loadApplication(true);
+    // 每5秒自动刷新一次
+    const interval = setInterval(() => loadApplication(false), 5000);
+    return () => clearInterval(interval);
+  }, [loadApplication]);
 
   const getHealthColor = (health: number) => {
-    if (health >= 80) return 'success'
-    if (health >= 50) return 'warning'
-    return 'danger'
-  }
+    if (health >= 80) return "success";
+    if (health >= 50) return "warning";
+    return "danger";
+  };
 
   const getHealthIcon = (health: number) => {
-    if (health >= 80) return <IconCircleCheck size={16} />
-    return <IconAlertCircle size={16} />
-  }
+    if (health >= 80) return <IconCircleCheck size={16} />;
+    return <IconAlertCircle size={16} />;
+  };
 
   if (loading) {
     return (
@@ -53,7 +63,7 @@ const ApplicationDetail: React.FC = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!application) {
@@ -63,14 +73,14 @@ const ApplicationDetail: React.FC = () => {
           <div className="empty">
             <p className="empty-title">应用不存在</p>
             <div className="empty-action">
-              <button className="btn btn-primary" onClick={() => navigate('/applications')}>
+              <button className="btn btn-primary" onClick={() => navigate("/applications")}>
                 返回应用列表
               </button>
             </div>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -79,12 +89,10 @@ const ApplicationDetail: React.FC = () => {
         <div className="row align-items-center">
           <div className="col">
             <div className="d-flex align-items-center">
-              <button className="btn btn-ghost-secondary me-3" onClick={() => navigate('/applications')}>
+              <button className="btn btn-ghost-secondary me-3" onClick={() => navigate("/applications")}>
                 <IconArrowLeft size={20} />
               </button>
-              {application.icon && (
-                <img src={application.icon} alt={application.name} style={{ width: '40px', height: '40px' }} className="me-3" />
-              )}
+              {application.icon && <img src={application.icon} alt={application.name} style={{ width: "40px", height: "40px" }} className="me-3" />}
               <div>
                 <h2 className="page-title mb-0">{application.name}</h2>
                 <p className="text-muted mb-0">{application.description}</p>
@@ -109,7 +117,7 @@ const ApplicationDetail: React.FC = () => {
                         <div className="accordion-item" key={index}>
                           <h2 className="accordion-header" id={`heading${index}`}>
                             <button
-                              className={`accordion-button ${index !== 0 ? 'collapsed' : ''}`}
+                              className={`accordion-button ${index !== 0 ? "collapsed" : ""}`}
                               type="button"
                               data-bs-toggle="collapse"
                               data-bs-target={`#collapse${index}`}
@@ -118,28 +126,25 @@ const ApplicationDetail: React.FC = () => {
                             >
                               <div className="d-flex justify-content-between align-items-center w-100 me-3">
                                 <div className="d-flex align-items-center">
-                                  <span className={`badge bg-${versionInfo.status === 'normal' ? 'blue' : 'yellow'} me-3`}>
-                                    {versionInfo.version}
+                                  <span className={`badge bg-${versionInfo.status === "normal" ? "blue" : "yellow"} me-3`}>{versionInfo.version}</span>
+                                  {versionInfo.status === "revert" && <span className="badge bg-yellow me-3">回滚版本</span>}
+                                  <span className={`badge bg-${versionInfo.status === "revert" ? "warning" : "info"}-lt me-3`}>
+                                    覆盖率: {versionInfo.coverage}%
                                   </span>
-                                  {versionInfo.status === 'revert' && (
-                                    <span className="badge bg-yellow me-3">回滚版本</span>
-                                  )}
                                 </div>
                                 <div className="d-flex align-items-center">
                                   <span className={`badge bg-${getHealthColor(versionInfo.health)}-lt me-3`}>
                                     {getHealthIcon(versionInfo.health)}
                                     <span className="ms-1">健康度: {versionInfo.health}%</span>
                                   </span>
-                                  <small className="text-muted">
-                                    最后更新: {formatDate(versionInfo.lastUpdatedAt)}
-                                  </small>
+                                  <small className="text-muted">最后更新: {formatDate(versionInfo.lastUpdatedAt)}</small>
                                 </div>
                               </div>
                             </button>
                           </h2>
                           <div
                             id={`collapse${index}`}
-                            className={`accordion-collapse collapse ${index === 0 ? 'show' : ''}`}
+                            className={`accordion-collapse collapse ${index === 0 ? "show" : ""}`}
                             aria-labelledby={`heading${index}`}
                             data-bs-parent="#versionsAccordion"
                           >
@@ -171,9 +176,7 @@ const ApplicationDetail: React.FC = () => {
                                               <span className="ms-1">{node.health}%</span>
                                             </span>
                                           </td>
-                                          <td className="text-muted">
-                                            {formatDate(node.lastUpdatedAt)}
-                                          </td>
+                                          <td className="text-muted">{formatDate(node.lastUpdatedAt)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -201,7 +204,7 @@ const ApplicationDetail: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ApplicationDetail
+export default ApplicationDetail;
