@@ -20,7 +20,7 @@ func NewOperatorMockHandler(mockService *service.MockDeploymentClient) *Operator
 }
 
 func (h *OperatorMockHandler) RegisterRoutes(r *gin.Engine) {
-	api := r.Group("/api/v1")
+	api := r.Group("/v1")
 	{
 		api.POST("/apply", h.ApplyDeployment)
 		api.GET("/status", h.GetStatus)
@@ -28,32 +28,17 @@ func (h *OperatorMockHandler) RegisterRoutes(r *gin.Engine) {
 }
 
 func (h *OperatorMockHandler) ApplyDeployment(c *gin.Context) {
-	var req models.ApplyRequest
+	var req struct {
+		App     string                   `json:"app" binding:"required"`
+		Version string                   `json:"version" binding:"required"`
+		Pkg     models.DeploymentPackage `json:"pkg" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
 
-	pkg, ok := req.Pkg["deployment"].(map[string]interface{})
-	if !ok {
-		utils.Error(c, http.StatusBadRequest, "Invalid deployment package format")
-		return
-	}
-
-	deployPkg := models.DeploymentPackage{}
-	if replicas, ok := pkg["replicas"].(float64); ok {
-		deployPkg.Replicas = int(replicas)
-	}
-	if env, ok := pkg["environment"].(map[string]interface{}); ok {
-		deployPkg.Environment = make(map[string]string)
-		for k, v := range env {
-			if strVal, ok := v.(string); ok {
-				deployPkg.Environment[k] = strVal
-			}
-		}
-	}
-
-	result, err := h.mockService.Apply(c.Request.Context(), req.App, req.Version, deployPkg)
+	result, err := h.mockService.Apply(c.Request.Context(), req.App, req.Version, req.Pkg)
 	if err != nil {
 		utils.Error(c, http.StatusInternalServerError, "Failed to apply deployment: "+err.Error())
 		return
@@ -78,15 +63,13 @@ func (h *OperatorMockHandler) GetStatus(c *gin.Context) {
 		return
 	}
 
-	h.mockService.RLock()
-	defer h.mockService.RUnlock()
-
-	var allApps []models.AgentAppStatus
-	for _, app := range h.mockService.Instances {
-		allApps = append(allApps, app)
+	allStatuses, err := h.mockService.AllStatus(c.Request.Context())
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, "Failed to get all status: "+err.Error())
+		return
 	}
 
 	utils.Success(c, models.StatusResponse{
-		Apps: allApps,
+		Apps: allStatuses,
 	})
 }

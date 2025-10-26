@@ -70,3 +70,19 @@ func (c *MockDeploymentClient) AppStatus(ctx context.Context, app string) ([]mod
 
 	return statuses, nil
 }
+
+func (c *MockDeploymentClient) AllStatus(ctx context.Context) ([]models.AgentAppStatus, error) {
+	c.RLock()
+	defer c.RUnlock()
+
+	logger.GetLogger().Info("all instances status",
+		zap.Any("instances", c.Instances),
+	)
+
+	var statuses []models.AgentAppStatus
+	for _, status := range c.Instances {
+		statuses = append(statuses, status)
+	}
+
+	return statuses, nil
+}

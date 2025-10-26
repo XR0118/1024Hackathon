@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/boreas/internal/pkg/logger"
-	"github.com/boreas/internal/services/operator-mock/config"
 	"github.com/boreas/internal/services/operator-mock/handler"
 	"github.com/boreas/internal/services/operator-mock/service"
 	"github.com/gin-gonic/gin"
@@ -20,8 +19,10 @@ var (
 
 func main() {
 	var (
-		configPath  = flag.String("config", "", "配置文件路径")
 		showVersion = flag.Bool("version", false, "显示版本信息")
+		port        = flag.String("port", "8082", "服务端口")
+		logLevel    = flag.String("log-level", "info", "日志级别")
+		logFormat   = flag.String("log-format", "json", "日志格式")
 	)
 	flag.Parse()
 
@@ -32,12 +33,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		log.Fatal("Failed to load config:", err)
-	}
-
-	logger.Init(cfg.Log.Level, cfg.Log.Format)
+	logger.Init(*logLevel, *logFormat)
 
 	mockService := service.MockAgent
 
@@ -51,8 +47,9 @@ func main() {
 
 	mockHandler.RegisterRoutes(r)
 
-	log.Printf("Operator-Mock service starting on %s", cfg.GetServerAddr())
-	if err := r.Run(cfg.GetServerAddr()); err != nil {
+	addr := ":" + *port
+	log.Printf("Operator-Mock service starting on %s", addr)
+	if err := r.Run(addr); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
