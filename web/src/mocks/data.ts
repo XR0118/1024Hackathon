@@ -3,6 +3,7 @@ import type {
   Application,
   ApplicationVersionsSummaryResponse,
   ApplicationVersionsDetailResponse,
+  VersionCoverageResponse,
   Environment,
   Deployment,
   DashboardStats,
@@ -113,6 +114,19 @@ const stagingEnv: Environment = {
   config: {
     cluster: 'staging-cluster',
     namespace: 'staging',
+  },
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-10-20T10:00:00Z',
+}
+
+const testEnv: Environment = {
+  id: 'env4',
+  name: 'test',
+  type: 'kubernetes',
+  is_active: true,
+  config: {
+    cluster: 'test-cluster',
+    namespace: 'test',
   },
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-10-20T10:00:00Z',
@@ -902,6 +916,338 @@ export const mockApplicationVersionsDetail: Record<string, ApplicationVersionsDe
             coverage: 100,
             last_updated_at: '2024-10-21T14:30:00Z',
           },
+        ],
+      },
+    ],
+  },
+}
+
+// Mock 版本覆盖率数据（累积覆盖率）
+// key 格式: "appName:version"
+export const mockVersionCoverage: Record<string, VersionCoverageResponse> = {
+  'user-service:v1.2.5': {
+    application_id: 'app-001',
+    application_name: 'user-service',
+    target_version: 'v1.2.5',
+    total_environments: 4,
+    covered_environments: 3,
+    coverage_percent: 75.0,
+    environments: [
+      {
+        environment: devEnv,
+        is_covered: true,
+        current_version: 'v1.3.0',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.3.0', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: testEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 4,
+        covered_instances: 2,
+        coverage_percent: 50.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+          { version: 'v1.1.0', instance_count: 2, is_covered: false },
+        ],
+      },
+      {
+        environment: prodEnv,
+        is_covered: false,
+        current_version: 'v1.1.0',
+        total_instances: 10,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.1.0', instance_count: 10, is_covered: false },
+        ],
+      },
+    ],
+  },
+  'user-service:v1.2.4': {
+    application_id: 'app-001',
+    application_name: 'user-service',
+    target_version: 'v1.2.4',
+    total_environments: 4,
+    covered_environments: 4,
+    coverage_percent: 100.0,
+    environments: [
+      {
+        environment: devEnv,
+        is_covered: true,
+        current_version: 'v1.3.0',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.3.0', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: testEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 4,
+        covered_instances: 4,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+          { version: 'v1.2.4', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: prodEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 10,
+        covered_instances: 10,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 10, is_covered: true },
+        ],
+      },
+    ],
+  },
+  'order-service:v1.2.5': {
+    application_id: 'app-002',
+    application_name: 'order-service',
+    target_version: 'v1.2.5',
+    total_environments: 4,
+    covered_environments: 2,
+    coverage_percent: 50.0,
+    environments: [
+      {
+        environment: devEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: testEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        is_covered: false,
+        current_version: 'v1.2.0',
+        total_instances: 4,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.2.0', instance_count: 4, is_covered: false },
+        ],
+      },
+      {
+        environment: prodEnv,
+        is_covered: false,
+        current_version: 'v1.1.5',
+        total_instances: 10,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.1.5', instance_count: 10, is_covered: false },
+        ],
+      },
+    ],
+  },
+  'payment-service:v1.2.5': {
+    application_id: 'app-003',
+    application_name: 'payment-service',
+    target_version: 'v1.2.5',
+    total_environments: 4,
+    covered_environments: 4,
+    coverage_percent: 100.0,
+    environments: [
+      {
+        environment: devEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: testEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 4,
+        covered_instances: 4,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 4, is_covered: true },
+        ],
+      },
+      {
+        environment: prodEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 10,
+        covered_instances: 10,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 10, is_covered: true },
+        ],
+      },
+    ],
+  },
+  'notification-service:v1.2.5': {
+    application_id: 'app-004',
+    application_name: 'notification-service',
+    target_version: 'v1.2.5',
+    total_environments: 4,
+    covered_environments: 3,
+    coverage_percent: 75.0,
+    environments: [
+      {
+        environment: devEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: testEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 4,
+        covered_instances: 3,
+        coverage_percent: 75.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 3, is_covered: true },
+          { version: 'v1.2.0', instance_count: 1, is_covered: false },
+        ],
+      },
+      {
+        environment: prodEnv,
+        is_covered: false,
+        current_version: 'v1.2.0',
+        total_instances: 10,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.2.0', instance_count: 10, is_covered: false },
+        ],
+      },
+    ],
+  },
+  'analytics-service:v1.2.5': {
+    application_id: 'app-005',
+    application_name: 'analytics-service',
+    target_version: 'v1.2.5',
+    total_environments: 4,
+    covered_environments: 1,
+    coverage_percent: 25.0,
+    environments: [
+      {
+        environment: devEnv,
+        is_covered: true,
+        current_version: 'v1.2.5',
+        total_instances: 2,
+        covered_instances: 2,
+        coverage_percent: 100.0,
+        version_distribution: [
+          { version: 'v1.2.5', instance_count: 2, is_covered: true },
+        ],
+      },
+      {
+        environment: testEnv,
+        is_covered: false,
+        current_version: 'v1.2.0',
+        total_instances: 2,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.2.0', instance_count: 2, is_covered: false },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        is_covered: false,
+        current_version: 'v1.1.5',
+        total_instances: 4,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.1.5', instance_count: 4, is_covered: false },
+        ],
+      },
+      {
+        environment: prodEnv,
+        is_covered: false,
+        current_version: 'v1.1.0',
+        total_instances: 10,
+        covered_instances: 0,
+        coverage_percent: 0.0,
+        version_distribution: [
+          { version: 'v1.1.0', instance_count: 10, is_covered: false },
         ],
       },
     ],

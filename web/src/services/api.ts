@@ -4,6 +4,7 @@ import type {
   Application,
   ApplicationVersionsSummaryResponse,
   ApplicationVersionsDetailResponse,
+  VersionCoverageResponse,
   Environment,
   Deployment,
   DeploymentDetail,
@@ -105,6 +106,10 @@ export const applicationApi = {
   // 获取应用版本概要
   getVersionsSummary: (name: string) =>
     api.get<any, ApplicationVersionsSummaryResponse>(`/applications/${name}/versions/summary`),
+
+  // 获取应用指定版本的覆盖率（累积覆盖率）
+  getVersionCoverage: (name: string, version: string) =>
+    api.get<any, VersionCoverageResponse>(`/applications/${name}/versions/${version}/coverage`),
 
   create: (data: Partial<Application>) =>
     api.post<any, Application>('/applications', data),

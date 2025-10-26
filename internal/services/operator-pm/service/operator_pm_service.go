@@ -157,7 +157,6 @@ func (s *OperatorPMService) GetApplicationStatus(appName string) (*models.Applic
 		Versions: []models.VersionStatus{
 			{
 				Version: "latest", // 简化版本，实际应该从Agent获取
-				Percent: 1.0,
 				Healthy: models.HealthInfo{Level: overallHealthy},
 				Nodes:   allNodeStatuses,
 			},

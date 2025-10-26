@@ -4,6 +4,7 @@ import {
   mockApplications,
   mockApplicationVersionsSummary,
   mockApplicationVersionsDetail,
+  mockVersionCoverage,
   mockEnvironments,
   mockDeployments,
   mockDeploymentDetails,
@@ -155,6 +156,44 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
                 application_id: '',
                 application_name: name,
                 versions: [],
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config,
+            },
+            isMockResponse: true,
+          })
+        }
+
+        // 版本覆盖率（匹配 /applications/:name/versions/:version/coverage）
+        if (method === 'GET' && url.match(/^\/applications\/[^/]+\/versions\/[^/]+\/coverage$/)) {
+          const parts = url.split('/')
+          const name = parts[2]
+          const version = parts[4]
+          const cacheKey = `${name}:${version}`
+          const coverageInfo = mockVersionCoverage[cacheKey]
+
+          if (coverageInfo) {
+            return Promise.reject({
+              config,
+              response: { data: coverageInfo, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+
+          // 如果没有覆盖率信息，返回空结构
+          return Promise.reject({
+            config,
+            response: {
+              data: {
+                application_id: '',
+                application_name: name,
+                target_version: version,
+                total_environments: 0,
+                covered_environments: 0,
+                coverage_percent: 0,
+                environments: [],
               },
               status: 200,
               statusText: 'OK',
