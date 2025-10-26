@@ -82,7 +82,7 @@ const DeploymentDetailPage: React.FC = () => {
               <button className="btn btn-ghost-secondary btn-sm" onClick={() => navigate("/deployments")}>
                 <IconArrowLeft size={18} />
               </button>
-              <h2 className="page-title mb-0">任务详情 #{deployment.id}</h2>
+              <h2 className="page-title mb-0">部署详情 #{deployment.id}</h2>
               <span className={`badge bg-${getStatusColor(deployment.status)}`}>{getStatusText(deployment.status)}</span>
               {deployment.grayscaleEnabled && <span className="badge bg-azure-lt">灰度 {deployment.grayscaleRatio}%</span>}
             </div>
