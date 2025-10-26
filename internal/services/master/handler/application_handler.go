@@ -7,17 +7,20 @@ import (
 	"github.com/boreas/internal/interfaces"
 	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/pkg/utils"
+	"github.com/boreas/internal/services/master/mock"
 	"github.com/gin-gonic/gin"
 )
 
 type applicationHandler struct {
 	applicationService interfaces.ApplicationService
+	versionService     interfaces.VersionService
 }
 
 // NewApplicationHandler 创建应用处理器
-func NewApplicationHandler(applicationService interfaces.ApplicationService) *applicationHandler {
+func NewApplicationHandler(applicationService interfaces.ApplicationService, versionService interfaces.VersionService) *applicationHandler {
 	return &applicationHandler{
 		applicationService: applicationService,
+		versionService:     versionService,
 	}
 }
 
@@ -133,17 +136,45 @@ func (h *applicationHandler) GetApplicationVersions(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现从 Operator 查询应用的版本部署信息
-	// 1. 根据应用名称查询所有相关的 Deployment
-	// 2. 调用 Operator API 获取实时部署状态
-	// 3. 聚合部署信息，计算健康度、覆盖率等
-	// 4. 返回版本列表
+	app, err := h.applicationService.GetApplicationByName(c, name)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "APPLICATION_NOT_FOUND", err.Error(), nil)
+		return
+	}
 
-	// 暂时返回空列表
+	appStatus, err := mock.MockAgent.AppStatus(c, name)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "APPLICATION_STATUS_FAILED", err.Error(), nil)
+		return
+	}
+
+	var versions = []models.ApplicationVersionInfo{}
+	var total int
+	var replicas = []int{}
+	// 从 appStatus 中提取版本信息
+	for _, status := range appStatus {
+		tmpV, _ := h.versionService.GetVersion(c, status.Version)
+		if tmpV == nil {
+			continue
+		}
+		versions = append(versions, models.ApplicationVersionInfo{
+			Version:       status.Version,
+			Status:        tmpV.Status,
+			Health:        status.Healthy.Level,
+			LastUpdatedAt: status.Updated.Format("2006-01-02 15:04:05"),
+		})
+		total += status.Replicas
+		replicas = append(replicas, status.Replicas)
+	}
+
+	for i := range versions {
+		versions[i].Coverage = int(float64(replicas[i]) / float64(total) * 100)
+	}
+
 	response := models.ApplicationVersionsResponse{
-		ApplicationID: "", // 后续从查询结果获取
+		ApplicationID: app.ID, // 后续从查询结果获取
 		Name:          name,
-		Versions:      []models.ApplicationVersionInfo{},
+		Versions:      versions,
 	}
 
 	utils.Success(c, response)

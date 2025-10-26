@@ -102,7 +102,7 @@ func main() {
 
 	// 创建处理器
 	versionHandler := handler.NewVersionHandler(versionService)
-	appHandler := handler.NewApplicationHandler(appService)
+	appHandler := handler.NewApplicationHandler(appService, versionService)
 	envHandler := handler.NewEnvironmentHandler(envService)
 	deploymentHandler := handler.NewDeploymentHandler(deploymentService)
 	taskHandler := handler.NewTaskHandler(taskService)
