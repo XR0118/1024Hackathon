@@ -168,15 +168,15 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 			zap.Any("version_status", versionMap),
 		)
 		increase := 0
-		idx_ := 0
-		for i, version := range versions {
+		decrease := []string{}
+		for _, version := range versions {
 			if version.ID == e.task.Deployment.VersionID {
-				idx_ = i
 				break
 			}
 			increase += versionMap[version.ID]
+			decrease = append(decrease, version.ID)
 		}
-		if idx_ == 0 || increase == 0 {
+		if increase == 0 {
 			return models.TaskStatusRunning, nil
 		}
 
@@ -185,10 +185,9 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		if err != nil {
 			return models.TaskStatusFailed, err
 		}
-		for j := 0; j < idx; j++ {
-			version := versions[j]
+		for _, k := range decrease {
 			pkg.Replicas = 0
-			_, err = e.client.Apply(ctx, e.task.AppID, version.ID, pkg)
+			_, err = e.client.Apply(ctx, e.task.AppID, k, pkg)
 			if err != nil {
 				return models.TaskStatusFailed, err
 			}

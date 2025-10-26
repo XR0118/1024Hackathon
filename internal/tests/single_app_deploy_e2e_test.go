@@ -15,7 +15,7 @@ import (
 // - BASE_URL (default: http://localhost:8080)
 // - TOKEN (optional, adds Authorization: Bearer <TOKEN>)
 
-func TestMasterServiceE2E(t *testing.T) {
+func TestSingleAppE2E(t *testing.T) {
 	baseURL := getenvDefault("BASE_URL", "http://localhost:8080")
 	token := "test"
 
@@ -184,6 +184,139 @@ func TestMasterServiceE2E(t *testing.T) {
 	default:
 		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
 	}
+
+}
+
+func TestSingleAppMultiVersionE2E(t *testing.T) {
+	baseURL := getenvDefault("BASE_URL", "http://localhost:8080")
+	token := "test"
+
+	client := &http.Client{Timeout: 15 * time.Second}
+
+	// Unique suffix to avoid collisions
+	uniq := time.Now().UnixNano()
+	appName := fmt.Sprintf("e2e-app-%d", uniq)
+	envName := fmt.Sprintf("e2e-env-%d", uniq)
+
+	// 1) Create Application
+	appID := createApplication(t, client, baseURL, token, ApplicationCreateRequest{
+		Name:       appName,
+		Repository: "https://github.com/example/repo",
+		Type:       "microservice",
+		Config: map[string]string{
+			"port":         "8080",
+			"health_check": "/health",
+		},
+	})
+	t.Logf("created application: id=%s name=%s", appID, appName)
+
+	// 2) Create Environment
+	envID := createEnvironment(t, client, baseURL, token, EnvironmentCreateRequest{
+		Name:     envName,
+		Type:     "kubernetes",
+		IsActive: true,
+		Config: map[string]string{
+			"namespace": "production",
+			"cluster":   "prod-cluster",
+		},
+	})
+	t.Logf("created environment: id=%s name=%s", envID, envName)
+
+	// 3) Create Version (with app_builds)
+	versionID := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		GitTag:      fmt.Sprintf("v-e2e-%d", uniq),
+		GitCommit:   "e2e-commit-sha",
+		Repository:  "https://github.com/example/repo",
+		Description: "E2E test version",
+		AppBuild: []AppBuildItem{
+			{AppID: appID, AppName: appName, DockerImage: fmt.Sprintf("registry.local/%s:%d", appName, uniq)},
+		},
+	})
+	t.Logf("created version: id=%s", versionID)
+
+	// 4) Create First Deployment
+	deploymentID := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
+		VersionID:      versionID,
+		MustInOrder:    []string{appID},
+		EnvironmentID:  envID,
+		ManualApproval: false,
+		Strategy: []StrategyItem{
+			{BatchSize: 10, BatchInterval: 10, CanaryRatio: 0, AutoRollback: true, ManualApprovalStatus: nil},
+		},
+	})
+	t.Logf("created deployment: id=%s", deploymentID)
+
+	// 5) Start Deployment
+	did := startDeployment(t, client, baseURL, token, deploymentID)
+	t.Logf("started deployment: id=%s deployment=%s", deploymentID, did)
+
+	// 6) Poll Deployment Status
+	finalStatus := pollDeploymentStatus(t, client, baseURL, token, deploymentID, 30, 5*time.Second)
+	t.Logf("deployment %s final status: %s", deploymentID, finalStatus)
+
+	// Assert deployment state (best-effort)
+	switch finalStatus {
+	case "success":
+		// OK; terminal
+		break
+	case "failed", "rolled_back", "cancelled":
+		// Unrecognized/empty; treat as non-terminal
+		fallthrough
+	default:
+		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
+	}
+
+	// 7) Create Multi Version (with app_builds)
+	versionID2 := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+10),
+		GitCommit:   "e2e-commit-sha",
+		Repository:  "https://github.com/example/repo",
+		Description: "E2E test version",
+		AppBuild: []AppBuildItem{
+			{AppID: appID, AppName: appName, DockerImage: fmt.Sprintf("registry.local/%s:%d", appName, uniq+10)},
+		},
+	})
+	t.Logf("created version2: id=%s", versionID)
+
+	versionID3 := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+100),
+		GitCommit:   "e2e-commit-sha",
+		Repository:  "https://github.com/example/repo",
+		Description: "E2E test version",
+		AppBuild: []AppBuildItem{
+			{AppID: appID, AppName: appName, DockerImage: fmt.Sprintf("registry.local/%s:%d", appName, uniq+100)},
+		},
+	})
+	t.Logf("created version3: id=%s", versionID)
+
+	// 8) Create multi Deployment, Update From First Version (include grayscale strategy)
+	deploymentID2 := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
+		VersionID:      versionID2,
+		EnvironmentID:  envID,
+		ManualApproval: false,
+		Strategy: []StrategyItem{
+			{BatchSize: 3, BatchInterval: 10, CanaryRatio: 0, AutoRollback: true},
+			{BatchSize: 6, BatchInterval: 30, CanaryRatio: 0, AutoRollback: true},
+		},
+	})
+	t.Logf("created deployment2: id=%s", deploymentID2)
+
+	deploymentID3 := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
+		VersionID:      versionID3,
+		EnvironmentID:  envID,
+		ManualApproval: false,
+		Strategy: []StrategyItem{
+			{BatchSize: 3, BatchInterval: 40, CanaryRatio: 0, AutoRollback: true},
+			{BatchSize: 6, BatchInterval: 30, CanaryRatio: 0, AutoRollback: true},
+		},
+	})
+	t.Logf("created deployment3: id=%s", deploymentID2)
+
+	// 9) Start Multi Deployment
+	did2 := startDeployment(t, client, baseURL, token, deploymentID2)
+	t.Logf("started deployment2: id=%s deployment=%s", deploymentID2, did2)
+	did3 := startDeployment(t, client, baseURL, token, deploymentID3)
+	t.Logf("started deployment2: id=%s deployment=%s", deploymentID3, did3)
 
 }
 
