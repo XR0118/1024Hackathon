@@ -75,6 +75,10 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		versionMap[prevVersion.ID] += versionMap[e.task.Deployment.VersionID]
 		versionMap[e.task.Deployment.VersionID] = 0
 
+		logger.GetLogger().Info("rollback to previous version",
+			zap.String("app_id", e.task.AppID),
+			zap.String("prev_version", prevVersion.ID))
+
 		pkg.Replicas = versionMap[prevVersion.ID]
 		_, err = e.client.Apply(ctx, e.task.AppID, prevVersion.ID, pkg)
 		if err != nil {
