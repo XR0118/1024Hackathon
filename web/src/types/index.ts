@@ -141,11 +141,11 @@ export interface Environment {
 export interface Deployment {
   id: string
   version_id: string
-  version?: string // 从 Version 关联获取
-  must_in_order?: string[] // 应用部署顺序（应用名称数组）
+  version?: string | Version // 可以是版本号字符串或完整的 Version 对象
   environment_id: string
   environment?: Environment // 从 Environment 关联获取
   status: 'pending' | 'running' | 'paused' | 'completed'
+  rollback?: boolean
   created_by: string
   created_at: string
   updated_at: string

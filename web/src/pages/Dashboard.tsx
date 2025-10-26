@@ -45,7 +45,7 @@ const Dashboard: React.FC = () => {
             // 记录所属部署
             deployment_id: deployment.id,
             // 在任务名称中添加部署标识
-            name: `[${deployment.version || deployment.version_id}] ${task.name}`,
+            name: `[${typeof deployment.version === "string" ? deployment.version : deployment.version?.version || deployment.version_id}] ${task.name}`,
           });
         });
       });
@@ -165,13 +165,16 @@ const Dashboard: React.FC = () => {
                     const completedTasks = deployment.tasks?.filter((t) => t.status === "success").length || 0;
                     const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-                    // 获取应用列表
-                    const apps = deployment.must_in_order || [];
+                    // 从 version.app_builds 中获取应用列表
+                    const apps =
+                      typeof deployment.version === "object" && deployment.version?.app_builds
+                        ? deployment.version.app_builds.map((build) => build.app_name)
+                        : [];
 
                     return (
                       <tr key={deployment.id}>
                         <td>
-                          <strong>{deployment.version || deployment.version_id}</strong>
+                          <strong>{typeof deployment.version === "string" ? deployment.version : deployment.version?.version || deployment.version_id}</strong>
                         </td>
                         <td>
                           <span className="text-muted" style={{ fontSize: "0.875rem" }}>
