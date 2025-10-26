@@ -1,61 +1,22 @@
 # Boreas - 基于 GitOps 的多服务持续部署平台
 
-Boreas 是一个基于 GitOps 的持续部署平台，采用单体仓库 + 共享库模式，支持 Kubernetes 和物理机部署，提供完整的版本管理、应用管理、环境管理和部署管理功能。
+Boreas 是一个基于 GitOps 的持续部署平台，支持 Kubernetes 和物理机等多种部署环境，提供自动化的版本管理、应用管理和部署编排功能。
 
-## 项目结构
+## 📚 文档
 
-```
-boreas/
-├── cmd/                          # 应用入口
-│   ├── master-service/          # 核心服务入口
-│   │   ├── main.go             # 主服务入口
-│   │   └── webhook/            # Webhook服务入口
-│   ├── operator-k8s/            # K8s Operator入口
-│   │   └── main.go
-│   └── operator-pm/             # PM Operator入口
-│       └── main.go
-├── internal/                     # 内部包
-│   ├── pkg/                     # 共享包
-│   │   ├── config/              # 配置管理
-│   │   ├── database/            # 数据库连接
-│   │   ├── logger/              # 日志管理
-│   │   ├── middleware/          # 中间件
-│   │   ├── models/              # 数据模型
-│   │   └── utils/               # 工具函数
-│   ├── services/                # 各服务特有逻辑
-│   │   ├── master/              # Master服务逻辑
-│   │   │   ├── handler/         # HTTP处理器
-│   │   │   ├── service/         # 业务逻辑
-│   │   │   └── repository/      # 数据访问层
-│   │   ├── operator-k8s/        # K8s Operator逻辑
-│   │   │   ├── handler/
-│   │   │   ├── service/
-│   │   │   └── repository/
-│   │   └── operator-pm/         # PM Operator逻辑
-│   │       ├── handler/
-│   │       ├── service/
-│   │       └── repository/
-│   └── interfaces/              # 接口定义
-├── web/                         # 前端管理界面
-├── api/                         # API定义
-│   ├── proto/                   # gRPC定义
-│   └── openapi/                 # REST API定义
-├── configs/                     # 配置文件
-├── deployments/                 # 部署配置
-│   └── docker/                  # Docker配置
-├── docs/                        # 文档
-│   ├── summary.md              # 项目概述
-│   ├── core-models.md          # 核心模型定义
-│   ├── management-service.md   # 管理服务文档
-│   ├── webhook-service.md      # Webhook服务文档
-│   └── api/                    # API文档
-│       └── master-service.md   # Master服务API文档
-├── migrations/                  # 数据库迁移
-├── scripts/                     # 脚本
-├── docker-compose.yml           # Docker Compose配置
-├── go.mod                       # Go模块定义
-└── Makefile                     # 构建脚本
-```
+- [项目概述](docs/summary.md) - 核心概念、架构概述、业务流程图
+- [架构设计](docs/architecture.md) - 系统整体架构、核心组件、数据模型、业务流程
+- [部署工作流设计](docs/deployment-workflow-design.md) - 部署任务流程、工作流可视化、前后端交互
+- [Operator-PM 设计](docs/operator-pm-design.md) - 物理机部署组件架构、API 设计、部署指南
+- [Master Service API](docs/api/master-service.md) - RESTful API 接口文档
+
+## ✨ 核心特性
+
+- **GitOps 驱动**: Git 事件自动触发部署流程，保持代码与部署状态一致
+- **多环境支持**: 支持 Kubernetes、物理机等多种运行环境
+- **智能编排**: 支持顺序部署、依赖管理、自动回滚
+- **可视化管理**: Web 界面展示部署流程和状态
+- **灵活扩展**: 插件化的 Operator 架构
 
 ## 快速开始
 
@@ -127,37 +88,33 @@ boreas/
    make docker-stop-all
    ```
 
-## 服务间通信
+## 系统架构
 
-### Master Service API
-- **端口**: 8080
-- **功能**: 版本管理、应用管理、环境管理、部署编排
-- **健康检查**: `GET /health`
-- **就绪检查**: `GET /ready`
+```
+Git 仓库 ──Webhook──> Master Service ──部署指令──> Operator-K8s/PM/Mock
+                         │                              │
+                         │                              │
+                    PostgreSQL                    目标环境 (K8s/PM)
+                      Redis
+                         │
+                         │
+                   Web Dashboard (React)
+```
 
-### Operator-K8s API
-- **端口**: 8081
-- **功能**: Kubernetes部署执行、状态查询
-- **健康检查**: `GET /health`
-- **就绪检查**: `GET /ready`
-- **部署执行**: `POST /api/v1/deploy/{id}/execute`
-- **状态查询**: `GET /api/v1/deploy/{id}/status`
-- **日志获取**: `GET /api/v1/deploy/{id}/logs`
-- **取消部署**: `POST /api/v1/deploy/{id}/cancel`
+### 核心组件
 
-### Operator-Baremetal API
-- **端口**: 8082
-- **功能**: 物理机部署执行、状态查询
-- **健康检查**: `GET /health`
-- **就绪检查**: `GET /ready`
-- **部署执行**: `POST /api/v1/deploy/{id}/execute`
-- **状态查询**: `GET /api/v1/deploy/{id}/status`
-- **日志获取**: `GET /api/v1/deploy/{id}/logs`
-- **取消部署**: `POST /api/v1/deploy/{id}/cancel`
+| 组件 | 端口 | 职责 |
+|------|------|------|
+| **Master Service** | 8080 | 核心业务逻辑、任务调度 |
+| **Web Dashboard** | 3000 | 用户界面、工作流可视化 |
+| **Operator-K8s** | 8081 | Kubernetes 部署执行 |
+| **Operator-PM** | 8082 | 物理机部署主控 |
+| **Operator-PM-Agent** | 8081 | 物理机节点代理 |
+| **Operator-Mock** | 8083 | 模拟部署（测试） |
 
-### Web Management
-- **端口**: 3000
-- **功能**: 管理界面、状态查看、人工复核
+> ⚠️ **注意**：Operator 服务的实际端口需要与 Master Service 配置文件中的 `operator.k8s_operator_url` 和 `operator.pm_operator_url` 保持一致。
+
+> 📖 详细架构设计请参阅 [架构设计文档](docs/architecture.md)
 
 ## 配置说明
 
@@ -179,45 +136,62 @@ boreas/
 
 ### 配置文件
 
-配置文件位于 `configs/config.yaml`，支持 YAML 格式配置。
+各服务配置文件位置：
+- Master Service: `cmd/master-service/configs/master.yaml`
+- Operator-K8s: `cmd/operator-k8s/configs/operator-k8s.yaml`
+- Operator-PM: `cmd/operator-pm/configs/operator-pm.yaml`
+- Operator-PM-Agent: `cmd/operator-pm-agent/configs/agent.yaml`
+
+## 核心概念
+
+- **Version (版本)**: 对应 Git Tag/Commit，包含应用构建信息
+- **Application (应用)**: 部署的最小单元，可关联多个环境
+- **Environment (环境)**: 部署目标 (K8s/物理机)
+- **Deployment (部署)**: 将版本部署到环境的任务
+- **Task (任务)**: 部署的执行单元，支持依赖关系
+
+> 详细说明请参阅 [项目概述](docs/summary.md) 和 [架构设计](docs/architecture.md)
 
 ## 开发指南
 
-### 代码结构
+### 项目结构
 
-- `internal/pkg/` - 共享包，所有服务都可以使用
-- `internal/services/` - 各服务特有的业务逻辑
-- `internal/interfaces/` - 接口定义
-- `cmd/` - 各服务的入口点
-
-### 添加新功能
-
-1. 在 `internal/pkg/models/` 中定义数据模型
-2. 在 `internal/interfaces/` 中定义接口
-3. 在对应服务的 `repository/` 中实现数据访问
-4. 在对应服务的 `service/` 中实现业务逻辑
-5. 在对应服务的 `handler/` 中实现HTTP处理
-6. 在 `cmd/` 中注册路由
-
-### 测试
-
-```bash
-# 运行所有测试
-make test-all
-
-# 运行特定服务测试
-make test-master
-make test-operator-k8s
-make test-operator-pm
 ```
+boreas/
+├── cmd/                    # 应用入口
+│   ├── master-service/    # 核心服务 + Webhook
+│   ├── operator-k8s/      # K8s Operator
+│   ├── operator-pm/       # PM Operator 主控
+│   ├── operator-pm-agent/ # PM Agent
+│   └── operator-mock/     # Mock Operator
+├── internal/
+│   ├── pkg/               # 共享库 (models, database, logger, client)
+│   ├── services/          # 服务逻辑 (handler, service, repository)
+│   └── interfaces/        # 接口定义
+├── web/                   # React 前端
+├── migrations/            # 数据库迁移
+└── docs/                  # 文档
+```
+
+### 开发流程
+
+1. 定义数据模型 (`internal/pkg/models/`)
+2. 定义接口 (`internal/interfaces/`)
+3. 实现数据访问 (`service/repository/`)
+4. 实现业务逻辑 (`service/service/`)
+5. 实现 HTTP 处理 (`service/handler/`)
+6. 注册路由 (`cmd/*/main.go`)
 
 ### 代码检查
 
 ```bash
-# 格式化所有代码
+# 运行测试
+make test-all
+
+# 代码格式化
 make fmt-all
 
-# 运行所有linter
+# 运行 linter
 make lint-all
 ```
 
@@ -231,9 +205,10 @@ make lint-all
    - 配置物理机环境（如果使用Baremetal部署）
 
 2. **配置应用**
-   - 修改 `configs/config.yaml` 或设置环境变量
-   - 配置GitHub Webhook密钥
-   - 配置Kubernetes认证信息
+   - 修改各服务配置文件（位于 `cmd/*/configs/`）或设置环境变量
+   - 配置 GitHub Webhook 密钥
+   - 配置 Kubernetes 认证信息（kubeconfig）
+   - 配置物理机节点映射（Operator-PM）
 
 3. **部署服务**
    ```bash
@@ -246,33 +221,39 @@ make lint-all
 
 ### 监控和日志
 
-- 健康检查端点: `/health`
-- 就绪检查端点: `/ready`
+- 健康检查端点: `/v1/health`
+- 就绪检查端点: `/v1/ready`
 - 日志格式: JSON
-- 日志级别: 可配置
+- 日志级别: 可配置 (debug, info, warn, error)
 
-## 贡献指南
+## 部署流程
 
-1. Fork项目
-2. 创建功能分支
-3. 提交更改
-4. 推送到分支
-5. 创建Pull Request
+```
+1. Git 事件触发 → Webhook → 创建 Version
+2. 创建 Deployment → 生成 Task 列表（按 MustInOrder 顺序）
+3. Workflow Controller 调度 Task 执行
+   - Pending Task Scheduler: 执行无依赖的任务
+   - Blocked Task Scheduler: 检查依赖，解除阻塞
+4. 调用 Operator 执行具体部署
+5. 更新 Task 和 Deployment 状态
+```
+
+**任务依赖处理示例**:
+```yaml
+MustInOrder: ["user-service", "order-service", "payment-service"]
+
+生成任务:
+- Task 1: user-service    (无依赖)
+- Task 2: order-service   (依赖 Task 1)
+- Task 3: payment-service (依赖 Task 2)
+```
+
+> 详细流程请参阅 [部署工作流设计](docs/deployment-workflow-design.md)
 
 ## 许可证
 
 MIT License
 
-## 相关文档
+## 联系
 
-- [项目概述](docs/summary.md) - 项目的整体介绍和核心概念
-- [核心模型](docs/core-models.md) - 数据模型和类型定义
-- [管理服务](docs/management-service.md) - Master Service详细文档
-- [Webhook服务](docs/webhook-service.md) - Webhook服务文档
-- [Master Service API](docs/api/master-service.md) - Master Service API接口文档
-
-## 联系方式
-
-- 项目地址: [GitHub Repository]
-- 问题反馈: [GitHub Issues]
-- 文档: [Project Documentation]
+- 问题反馈: GitHub Issues
