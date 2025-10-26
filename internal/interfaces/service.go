@@ -11,7 +11,7 @@ type VersionService interface {
 	CreateVersion(ctx context.Context, req *models.CreateVersionRequest) (*models.Version, error)
 	GetVersionList(ctx context.Context, req *models.ListVersionsRequest) (*models.VersionListResponse, error)
 	GetVersion(ctx context.Context, version string) (*models.Version, error) // 通过版本号查询
-	DeleteVersion(ctx context.Context, version string) error                 // 通过版本号删除
+	DeleteVersion(ctx context.Context, version string) error                // 通过版本号删除
 }
 
 // ApplicationService 应用服务接口
@@ -19,7 +19,6 @@ type ApplicationService interface {
 	CreateApplication(ctx context.Context, req *models.CreateApplicationRequest) (*models.Application, error)
 	GetApplicationList(ctx context.Context, req *models.ListApplicationsRequest) (*models.ApplicationListResponse, error)
 	GetApplication(ctx context.Context, id string) (*models.Application, error)
-	GetApplicationByName(ctx context.Context, name string) (*models.Application, error)
 	UpdateApplication(ctx context.Context, id string, req *models.UpdateApplicationRequest) (*models.Application, error)
 	DeleteApplication(ctx context.Context, id string) error
 }

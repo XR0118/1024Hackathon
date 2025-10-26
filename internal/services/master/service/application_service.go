@@ -100,13 +100,6 @@ func (s *applicationService) GetApplication(ctx context.Context, id string) (*mo
 	}
 	return app, nil
 }
-func (s *applicationService) GetApplicationByName(ctx context.Context, name string) (*models.Application, error) {
-	app, err := s.appRepo.GetByName(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get application: %w", err)
-	}
-	return app, nil
-}
 
 func (s *applicationService) UpdateApplication(ctx context.Context, id string, req *models.UpdateApplicationRequest) (*models.Application, error) {
 	// 验证请求
