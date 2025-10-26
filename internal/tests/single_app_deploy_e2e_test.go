@@ -15,7 +15,7 @@ import (
 // - BASE_URL (default: http://localhost:8080)
 // - TOKEN (optional, adds Authorization: Bearer <TOKEN>)
 
-func TestMasterServiceE2E(t *testing.T) {
+func TestSingleAppE2E(t *testing.T) {
 	baseURL := getenvDefault("BASE_URL", "http://localhost:8080")
 	token := "test"
 
