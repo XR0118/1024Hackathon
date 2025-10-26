@@ -1,179 +1,215 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/boreas/internal/pkg/models"
-	"github.com/boreas/internal/services/operator-k8s/repository"
-	"gorm.io/gorm"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type OperatorK8sService struct {
-	db         *gorm.DB
-	repository *repository.OperatorK8sRepository
+	clientset *kubernetes.Clientset
+	namespace string
+	timeout   time.Duration
 }
 
-func NewOperatorK8sService(db *gorm.DB) *OperatorK8sService {
+func NewOperatorK8sService(kubeconfig, namespace string, timeout int) (*OperatorK8sService, error) {
+	var config *rest.Config
+	var err error
+
+	if kubeconfig != "" {
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+	} else {
+		config, err = rest.InClusterConfig()
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to build kubernetes config: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	if timeout <= 0 {
+		timeout = 30
+	}
+
 	return &OperatorK8sService{
-		db:         db,
-		repository: repository.NewOperatorK8sRepository(db),
-	}
+		clientset: clientset,
+		namespace: namespace,
+		timeout:   time.Duration(timeout) * time.Second,
+	}, nil
 }
 
-// CheckK8sConnection 检查Kubernetes连接状态
 func (s *OperatorK8sService) CheckK8sConnection() error {
-	// TODO: 实现Kubernetes连接检查
-	// 这里应该检查kubectl是否可以连接到K8s集群
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	defer cancel()
+
+	_, err := s.clientset.CoreV1().Namespaces().Get(ctx, s.namespace, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to connect to kubernetes: %w", err)
+	}
+
 	return nil
 }
 
-// ExecuteDeployment 执行Kubernetes部署
-func (s *OperatorK8sService) ExecuteDeployment(deploymentID string) (*models.DeploymentResult, error) {
-	// 获取部署信息
-	deployment, err := s.repository.GetDeploymentByID(deploymentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment: %w", err)
+func (s *OperatorK8sService) Apply(req *models.ApplyRequest) (*models.ApplyResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	defer cancel()
+
+	pkg, ok := req.Pkg["type"].(string)
+	if !ok {
+		return nil, fmt.Errorf("package type is required")
 	}
 
-	// 更新部署状态为执行中
-	deployment.Status = models.DeploymentStatusRunning
-	deployment.StartedAt = &time.Time{}
-	*deployment.StartedAt = time.Now()
-	if err := s.repository.UpdateDeployment(deployment); err != nil {
-		return nil, fmt.Errorf("failed to update deployment status: %w", err)
+	switch pkg {
+	case "docker":
+		return s.applyDockerDeployment(ctx, req)
+	default:
+		return nil, fmt.Errorf("unsupported package type: %s", pkg)
 	}
-
-	// 执行Kubernetes部署
-	result, err := s.executeK8sDeployment(deployment)
-	if err != nil {
-		// 更新部署状态为失败
-		deployment.Status = models.DeploymentStatusFailed
-		deployment.CompletedAt = &time.Time{}
-		*deployment.CompletedAt = time.Now()
-		deployment.ErrorMessage = err.Error()
-		s.repository.UpdateDeployment(deployment)
-		return nil, fmt.Errorf("failed to execute deployment: %w", err)
-	}
-
-	// 更新部署状态为成功
-	deployment.Status = models.DeploymentStatusSuccess
-	deployment.CompletedAt = &time.Time{}
-	*deployment.CompletedAt = time.Now()
-	if err := s.repository.UpdateDeployment(deployment); err != nil {
-		return nil, fmt.Errorf("failed to update deployment status: %w", err)
-	}
-
-	return result, nil
 }
 
-// GetDeploymentStatus 获取部署状态
-func (s *OperatorK8sService) GetDeploymentStatus(deploymentID string) (*models.DeploymentStatusInfo, error) {
-	deployment, err := s.repository.GetDeploymentByID(deploymentID)
+func (s *OperatorK8sService) GetStatus(app string) (*models.AppStatusResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	defer cancel()
+
+	deployment, err := s.clientset.AppsV1().Deployments(s.namespace).Get(ctx, app, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
 	}
 
-	// 如果部署正在运行，检查Kubernetes中的实际状态
-	if deployment.Status == models.DeploymentStatusRunning {
-		k8sStatus, err := s.getK8sDeploymentStatus(deploymentID)
+	healthy := models.HealthStatus{
+		Level: 0,
+		Msg:   "Not healthy",
+	}
+
+	if deployment.Status.ReadyReplicas == deployment.Status.Replicas && deployment.Status.Replicas > 0 {
+		healthy.Level = 100
+		healthy.Msg = "Healthy"
+	} else if deployment.Status.ReadyReplicas > 0 {
+		healthy.Level = int(float64(deployment.Status.ReadyReplicas) / float64(deployment.Status.Replicas) * 100)
+		healthy.Msg = fmt.Sprintf("%d/%d replicas ready", deployment.Status.ReadyReplicas, deployment.Status.Replicas)
+	}
+
+	version := ""
+	if deployment.Spec.Template.Spec.Containers != nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		version = deployment.Spec.Template.Spec.Containers[0].Image
+	}
+
+	return &models.AppStatusResponse{
+		App:     app,
+		Version: version,
+		Healthy: healthy,
+	}, nil
+}
+
+func (s *OperatorK8sService) applyDockerDeployment(ctx context.Context, req *models.ApplyRequest) (*models.ApplyResponse, error) {
+	image, ok := req.Pkg["image"].(string)
+	if !ok {
+		return nil, fmt.Errorf("image is required for docker deployment")
+	}
+
+	replicas := int32(1)
+	if r, ok := req.Pkg["replicas"].(float64); ok {
+		replicas = int32(r)
+	}
+
+	deploymentSpec := s.buildDeploymentSpec(req.App, req.Version, image, replicas, req.Pkg)
+
+	_, err := s.clientset.AppsV1().Deployments(s.namespace).Get(ctx, req.App, metav1.GetOptions{})
+	if err != nil {
+		_, err = s.clientset.AppsV1().Deployments(s.namespace).Create(ctx, deploymentSpec, metav1.CreateOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get k8s deployment status: %w", err)
+			return nil, fmt.Errorf("failed to create deployment: %w", err)
 		}
-		return k8sStatus, nil
+		return &models.ApplyResponse{
+			Success: true,
+			Message: fmt.Sprintf("Deployment %s created successfully", req.App),
+			App:     req.App,
+			Version: req.Version,
+		}, nil
 	}
 
-	return &models.DeploymentStatusInfo{
-		ID:      deployment.ID,
-		Status:  deployment.Status,
-		Message: deployment.ErrorMessage,
+	_, err = s.clientset.AppsV1().Deployments(s.namespace).Update(ctx, deploymentSpec, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update deployment: %w", err)
+	}
+
+	return &models.ApplyResponse{
+		Success: true,
+		Message: fmt.Sprintf("Deployment %s updated successfully", req.App),
+		App:     req.App,
+		Version: req.Version,
 	}, nil
 }
 
-// GetDeploymentLogs 获取部署日志
-func (s *OperatorK8sService) GetDeploymentLogs(deploymentID string) (*models.DeploymentLogs, error) {
-	// 从Kubernetes获取Pod日志
-	logs, err := s.getK8sDeploymentLogs(deploymentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get k8s deployment logs: %w", err)
+func (s *OperatorK8sService) buildDeploymentSpec(name, version, image string, replicas int32, pkg map[string]interface{}) *appsv1.Deployment {
+	labels := map[string]string{
+		"app":     name,
+		"version": version,
 	}
 
-	return logs, nil
-}
-
-// CancelDeployment 取消部署
-func (s *OperatorK8sService) CancelDeployment(deploymentID string) error {
-	deployment, err := s.repository.GetDeploymentByID(deploymentID)
-	if err != nil {
-		return fmt.Errorf("failed to get deployment: %w", err)
+	container := corev1.Container{
+		Name:  name,
+		Image: image,
 	}
 
-	// 如果部署正在运行，取消Kubernetes中的部署
-	if deployment.Status == models.DeploymentStatusRunning {
-		if err := s.cancelK8sDeployment(deploymentID); err != nil {
-			return fmt.Errorf("failed to cancel k8s deployment: %w", err)
+	if ports, ok := pkg["ports"].([]interface{}); ok {
+		for _, p := range ports {
+			if portMap, ok := p.(map[string]interface{}); ok {
+				if containerPort, ok := portMap["container_port"].(float64); ok {
+					container.Ports = append(container.Ports, corev1.ContainerPort{
+						ContainerPort: int32(containerPort),
+					})
+				}
+			}
 		}
 	}
 
-	// 更新部署状态为取消
-	deployment.Status = models.DeploymentStatusCancelled
-	deployment.CompletedAt = &time.Time{}
-	*deployment.CompletedAt = time.Now()
-	if err := s.repository.UpdateDeployment(deployment); err != nil {
-		return fmt.Errorf("failed to update deployment status: %w", err)
+	if env, ok := pkg["environment"].(map[string]interface{}); ok {
+		for k, v := range env {
+			if vStr, ok := v.(string); ok {
+				container.Env = append(container.Env, corev1.EnvVar{
+					Name:  k,
+					Value: vStr,
+				})
+			}
+		}
 	}
 
-	return nil
-}
-
-// executeK8sDeployment 执行Kubernetes部署
-func (s *OperatorK8sService) executeK8sDeployment(deployment *models.Deployment) (*models.DeploymentResult, error) {
-	// TODO: 实现Kubernetes部署逻辑
-	// 这里应该：
-	// 1. 解析部署配置
-	// 2. 创建或更新Kubernetes资源
-	// 3. 等待部署完成
-	// 4. 返回部署结果
-
-	// 模拟部署过程
-	time.Sleep(2 * time.Second)
-
-	return &models.DeploymentResult{
-		ID:        deployment.ID,
-		Status:    models.DeploymentStatusSuccess,
-		Message:   "Deployment completed successfully",
-		Timestamp: time.Now(),
-	}, nil
-}
-
-// getK8sDeploymentStatus 获取Kubernetes部署状态
-func (s *OperatorK8sService) getK8sDeploymentStatus(deploymentID string) (*models.DeploymentStatusInfo, error) {
-	// TODO: 实现Kubernetes状态查询
-	// 这里应该查询Kubernetes中对应资源的实际状态
-
-	return &models.DeploymentStatusInfo{
-		ID:      deploymentID,
-		Status:  models.DeploymentStatusRunning,
-		Message: "Deployment is running",
-	}, nil
-}
-
-// getK8sDeploymentLogs 获取Kubernetes部署日志
-func (s *OperatorK8sService) getK8sDeploymentLogs(deploymentID string) (*models.DeploymentLogs, error) {
-	// TODO: 实现Kubernetes日志获取
-	// 这里应该从Kubernetes Pod中获取日志
-
-	return &models.DeploymentLogs{
-		ID:    deploymentID,
-		Logs:  []string{"Deployment log line 1", "Deployment log line 2"},
-		Level: "info",
-	}, nil
-}
-
-// cancelK8sDeployment 取消Kubernetes部署
-func (s *OperatorK8sService) cancelK8sDeployment(deploymentID string) error {
-	// TODO: 实现Kubernetes部署取消
-	// 这里应该删除或停止Kubernetes中的相关资源
-
-	return nil
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: s.namespace,
+			Labels:    labels,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{container},
+				},
+			},
+		},
+	}
 }
