@@ -16,6 +16,7 @@ import (
 	"github.com/boreas/internal/pkg/database"
 	"github.com/boreas/internal/pkg/logger"
 	"github.com/boreas/internal/pkg/middleware"
+	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/pkg/utils"
 	masterconfig "github.com/boreas/internal/services/master/config"
 	"github.com/boreas/internal/services/master/handler"
@@ -83,7 +84,7 @@ func main() {
 
 	// 初始化 Operator Manager
 	logger.GetLogger().Info("Initializing operator manager")
-	envList, _, err := envRepo.List(context.Background(), nil)
+	envList, _, err := envRepo.List(context.Background(), &models.EnvironmentFilter{})
 	if err != nil {
 		logger.GetLogger().Fatal("Failed to list environments", zap.Error(err))
 	}
@@ -131,8 +132,8 @@ func main() {
 	taskService := service.NewTaskService(taskRepo)
 
 	// 创建处理器
-	versionHandler := handler.NewVersionHandler(versionService)
 	appHandler := handler.NewApplicationHandler(appService)
+	versionHandler := handler.NewVersionHandler(versionService, deploymentService)
 	envHandler := handler.NewEnvironmentHandler(envService)
 	deploymentHandler := handler.NewDeploymentHandler(deploymentService)
 	taskHandler := handler.NewTaskHandler(taskService)
@@ -231,6 +232,7 @@ func main() {
 		deployments.POST("/:id/start", deploymentHandler.StartDeployment)
 		deployments.POST("/:id/pause", deploymentHandler.PauseDeployment)
 		deployments.POST("/:id/resume", deploymentHandler.ResumeDeployment)
+		deployments.POST("/:id/rollback", deploymentHandler.RollbackDeployment)
 	}
 
 	// 任务管理路由

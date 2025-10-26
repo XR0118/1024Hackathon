@@ -56,6 +56,7 @@ func (v *Version) SetAppBuilds(builds []AppBuild) error {
 
 // AppBuild 应用构建信息
 type AppBuild struct {
+	AppID       string `json:"app_id"`
 	AppName     string `json:"app_name"`     // 应用名称（唯一标识）
 	DockerImage string `json:"docker_image"` // Docker 镜像地址
 }
@@ -139,8 +140,8 @@ type Deployment struct {
 	CompletedAt   *time.Time       `json:"completed_at,omitempty"`
 	ErrorMessage  string           `json:"error_message,omitempty"`
 
-	ManualApproval bool           `json:"manual_approval"`
-	Strategy       datatypes.JSON `json:"strategy" gorm:"type:jsonb"`
+	Rollback bool           `json:"rollback"`
+	Strategy datatypes.JSON `json:"strategy" gorm:"type:jsonb"`
 
 	// 关联关系
 	Version     Version     `json:"version,omitempty" gorm:"foreignKey:VersionID"`
@@ -396,8 +397,8 @@ type CreateVersionRequest struct {
 // ListVersionsRequest 版本列表请求
 type ListVersionsRequest struct {
 	Repository string `form:"repository"`
-	Page       int    `form:"page" binding:"min=1"`
-	PageSize   int    `form:"page_size" binding:"min=1,max=100"`
+	Page       int    `form:"page"`
+	PageSize   int    `form:"page_size"`
 }
 
 // VersionListResponse 版本列表响应
@@ -434,8 +435,8 @@ type UpdateApplicationRequest struct {
 type ListApplicationsRequest struct {
 	Repository string `form:"repository"`
 	Type       string `form:"type"`
-	Page       int    `form:"page" binding:"min=1"`
-	PageSize   int    `form:"page_size" binding:"min=1,max=100"`
+	Page       int    `form:"page"`
+	PageSize   int    `form:"page_size"`
 }
 
 // ApplicationListResponse 应用列表响应
@@ -543,8 +544,8 @@ type UpdateEnvironmentRequest struct {
 type ListEnvironmentsRequest struct {
 	Type     string `form:"type"`
 	IsActive *bool  `form:"is_active"`
-	Page     int    `form:"page" binding:"min=1"`
-	PageSize int    `form:"page_size" binding:"min=1,max=100"`
+	Page     int    `form:"page"`
+	PageSize int    `form:"page_size"`
 }
 
 // EnvironmentListResponse 环境列表响应
@@ -570,8 +571,8 @@ type ListDeploymentsRequest struct {
 	Status        string `form:"status"`
 	EnvironmentID string `form:"environment_id"`
 	VersionID     string `form:"version_id"`
-	Page          int    `form:"page" binding:"min=1"`
-	PageSize      int    `form:"page_size" binding:"min=1,max=100"`
+	Page          int    `form:"page"`
+	PageSize      int    `form:"page_size"`
 }
 
 // DeploymentListResponse 部署列表响应
@@ -592,8 +593,8 @@ type ListTasksRequest struct {
 	DeploymentID string `form:"deployment_id"`
 	Status       string `form:"status"`
 	Type         string `form:"type"`
-	Page         int    `form:"page" binding:"min=1"`
-	PageSize     int    `form:"page_size" binding:"min=1,max=100"`
+	Page         int    `form:"page"`
+	PageSize     int    `form:"page_size"`
 }
 
 // TaskListResponse 任务列表响应

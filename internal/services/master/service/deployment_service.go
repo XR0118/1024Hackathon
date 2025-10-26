@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/boreas/internal/interfaces"
@@ -61,7 +62,7 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 		// 验证应用是否在版本中
 		appFound := false
 		for _, app := range version.GetAppBuilds() {
-			if app.AppName == appID {
+			if app.AppID == appID {
 				appFound = true
 				break
 			}
@@ -102,7 +103,9 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 		return nil, fmt.Errorf("failed to create deployment: %w", err)
 	}
 
-	// TODO: 创建并执行部署任务
+	if err := s.workflow.CreateTasksFromDeployment(ctx, deployment); err != nil {
+		return nil, fmt.Errorf("failed to create tasks from deployment: %w", err)
+	}
 
 	return deployment, nil
 }
@@ -116,17 +119,24 @@ func (s *deploymentService) GetDeploymentList(ctx context.Context, req *models.L
 		req.PageSize = 20
 	}
 
-	filter := &models.DeploymentFilter{
-		Status:        models.DeploymentStatus(req.Status),
-		EnvironmentID: req.EnvironmentID,
-		VersionID:     req.VersionID,
-		Page:          req.Page,
-		PageSize:      req.PageSize,
-	}
+	var total int
+	var deployments []*models.Deployment
+	ss := strings.Split(req.Status, ",")
+	for _, status := range ss {
+		filter := &models.DeploymentFilter{
+			Status:        models.DeploymentStatus(status),
+			EnvironmentID: req.EnvironmentID,
+			VersionID:     req.VersionID,
+			Page:          req.Page,
+			PageSize:      req.PageSize,
+		}
 
-	deployments, total, err := s.deploymentRepo.List(ctx, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list deployments: %w", err)
+		d, t, err := s.deploymentRepo.List(ctx, filter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list deployments: %w", err)
+		}
+		total += t
+		deployments = append(deployments, d...)
 	}
 
 	return &models.DeploymentListResponse{
@@ -152,10 +162,6 @@ func (s *deploymentService) StartDeployment(ctx context.Context, id string) (*mo
 		return nil, fmt.Errorf("deployment not found: %w", err)
 	}
 
-	if err := s.workflow.CreateTasksFromDeployment(ctx, deployment); err != nil {
-		return nil, fmt.Errorf("failed to create tasks from deployment: %w", err)
-	}
-
 	deployment.Status = models.DeploymentStatusRunning
 	deployment.StartedAt = &[]time.Time{time.Now()}[0]
 	deployment.UpdatedAt = time.Now()
@@ -174,8 +180,7 @@ func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, r
 		return fmt.Errorf("deployment not found: %w", err)
 	}
 
-	// TODO: 回滚逻辑需要重新设计
-	currentDeployment.Status = models.DeploymentStatusCompleted // 回滚后标记为已完成
+	currentDeployment.Rollback = true
 	currentDeployment.UpdatedAt = time.Now()
 
 	if err := s.deploymentRepo.Update(ctx, currentDeployment); err != nil {

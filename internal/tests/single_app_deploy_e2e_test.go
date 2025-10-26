@@ -52,6 +52,7 @@ func TestSingleAppE2E(t *testing.T) {
 
 	// 3) Create Version (with app_builds)
 	versionID := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		Version:     fmt.Sprintf("version-e2e-%d", uniq),
 		GitTag:      fmt.Sprintf("v-e2e-%d", uniq),
 		GitCommit:   "e2e-commit-sha",
 		Repository:  "https://github.com/example/repo",
@@ -84,7 +85,7 @@ func TestSingleAppE2E(t *testing.T) {
 
 	// Assert deployment state (best-effort)
 	switch finalStatus {
-	case "success":
+	case "completed":
 		// OK; terminal
 		break
 	case "failed", "rolled_back", "cancelled":
@@ -96,6 +97,7 @@ func TestSingleAppE2E(t *testing.T) {
 
 	// 7) Create Second Version (with app_builds)
 	versionID2 := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		Version:     fmt.Sprintf("v-e2e-%d", uniq+10),
 		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+10),
 		GitCommit:   "e2e-commit-sha",
 		Repository:  "https://github.com/example/repo",
@@ -127,7 +129,7 @@ func TestSingleAppE2E(t *testing.T) {
 
 	// Assert deployment state (best-effort)
 	switch finalStatus2 {
-	case "success":
+	case "completed":
 		// OK; terminal
 	case "failed", "rolled_back", "cancelled":
 		// Unrecognized/empty; treat as non-terminal
@@ -138,6 +140,7 @@ func TestSingleAppE2E(t *testing.T) {
 
 	// 11) Create third Version (with app_builds)
 	versionID3 := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		Version:     fmt.Sprintf("v-e2e-%d", uniq+100),
 		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+100),
 		GitCommit:   "e2e-commit-sha",
 		Repository:  "https://github.com/example/repo",
@@ -175,7 +178,7 @@ func TestSingleAppE2E(t *testing.T) {
 
 	// Assert deployment state (best-effort)
 	switch finalStatus3 {
-	case "rolled_back":
+	case "completed":
 		// OK; terminal
 		return
 	case "failed", "success", "cancelled":
@@ -342,11 +345,12 @@ type AppBuildItem struct {
 }
 
 type VersionCreateRequest struct {
+	Version     string         `json:"version"`
 	GitTag      string         `json:"git_tag"`
 	GitCommit   string         `json:"git_commit"`
 	Repository  string         `json:"repository"`
 	Description string         `json:"description"`
-	AppBuild    []AppBuildItem `json:"app_build"`
+	AppBuild    []AppBuildItem `json:"app_builds"`
 }
 
 type StrategyItem struct {
@@ -489,7 +493,7 @@ func pollDeploymentStatus(t *testing.T, client *http.Client, baseURL, token, dep
 
 func isTerminalStatus(s string) bool {
 	switch s {
-	case "success", "failed", "rolled_back", "cancelled":
+	case "completed", "failed":
 		return true
 	default:
 		return false
