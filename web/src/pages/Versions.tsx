@@ -1,9 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { versionApi } from "@/services/api";
+import { versionApi, applicationApi } from "@/services/api";
 import { formatDate } from "@/utils";
-import type { Version } from "@/types";
-import { IconSearch, IconRefresh, IconRocket, IconArrowBackUp } from "@tabler/icons-react";
+import type { Version, VersionCoverageResponse } from "@/types";
+import { IconSearch, IconRefresh, IconRocket, IconArrowBackUp, IconLoader2 } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
+
+// 覆盖率缓存类型
+interface CoverageCache {
+  [versionAppKey: string]: VersionCoverageResponse | "loading" | "error";
+}
 
 const Versions: React.FC = () => {
   const { setError } = useErrorStore();
@@ -14,10 +19,32 @@ const Versions: React.FC = () => {
   const [rollbackVersion, setRollbackVersion] = useState<Version | null>(null);
   const [rollbackReason, setRollbackReason] = useState("");
   const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [coverageCache, setCoverageCache] = useState<CoverageCache>({});
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10); // 每页显示10条
+
+  // 加载单个应用版本的覆盖率
+  const loadCoverage = useCallback(async (appName: string, version: string) => {
+    const cacheKey = `${version}:${appName}`;
+
+    // 使用函数式更新避免依赖 coverageCache
+    setCoverageCache((prev) => {
+      // 避免重复加载
+      if (prev[cacheKey]) {
+        return prev;
+      }
+      return { ...prev, [cacheKey]: "loading" };
+    });
+
+    try {
+      const coverage = await applicationApi.getVersionCoverage(appName, version);
+      setCoverageCache((prev) => ({ ...prev, [cacheKey]: coverage }));
+    } catch (error) {
+      setCoverageCache((prev) => ({ ...prev, [cacheKey]: "error" }));
+    }
+  }, []);
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -28,12 +55,21 @@ const Versions: React.FC = () => {
         page_size: 100,
       });
       setVersions(data);
+
+      // 为每个版本的每个应用加载覆盖率
+      data.forEach((version) => {
+        if (version.app_builds && version.app_builds.length > 0) {
+          version.app_builds.forEach((build) => {
+            loadCoverage(build.app_name, version.version);
+          });
+        }
+      });
     } catch (error) {
       setError("Failed to load versions.");
     } finally {
       setLoading(false);
     }
-  }, [searchText, setError]);
+  }, [searchText, setError, loadCoverage]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -106,8 +142,8 @@ const Versions: React.FC = () => {
             <thead>
               <tr>
                 <th>版本号</th>
-                <th>Git</th>
-                <th>应用信息</th>
+                <th>Commit</th>
+                <th>应用覆盖率</th>
                 <th>创建时间</th>
                 <th>操作</th>
               </tr>
@@ -126,36 +162,46 @@ const Versions: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="d-flex flex-column">
-                      <span className="text-muted" style={{ fontSize: "12px" }}>
-                        Tag:{" "}
-                        <a href={`${ver.repository}/releases/tag/${ver.git_tag}`} target="_blank" rel="noopener noreferrer">
-                          {ver.git_tag}
-                        </a>
-                      </span>
-                      <span className="text-muted" style={{ fontSize: "12px" }}>
-                        Commit: {ver.git_commit.substring(0, 8)}
-                      </span>
-                      <span className="text-muted" style={{ fontSize: "12px" }}>
-                        Repo: {ver.repository.split("/").slice(-2).join("/")}
-                      </span>
-                    </div>
+                    <span className="text-muted" style={{ fontSize: "12px" }}>
+                      {ver.git_commit.substring(0, 8)}
+                    </span>
                   </td>
                   <td>
                     <div className="d-flex flex-column gap-1">
                       {ver.app_builds && ver.app_builds.length > 0 ? (
-                        ver.app_builds.map((build, idx) => (
-                          <div key={idx} className="d-flex align-items-center gap-2">
-                            <a href={`/applications/${build.app_name}`} target="_blank" rel="noopener noreferrer">
-                              <span className="badge bg-secondary-lt">{build.app_name}</span>
-                            </a>
-                            <small className="text-muted" style={{ fontSize: "11px" }}>
-                              {build.docker_image}
-                            </small>
-                          </div>
-                        ))
+                        ver.app_builds.map((build, idx) => {
+                          const cacheKey = `${ver.version}:${build.app_name}`;
+                          const coverage = coverageCache[cacheKey];
+
+                          return (
+                            <div key={idx} className="d-flex align-items-center gap-2">
+                              <a href={`/applications/${build.app_name}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                                <span className="text-secondary">{build.app_name}</span>
+                              </a>
+
+                              {/* 覆盖率显示 */}
+                              {coverage === "loading" ? (
+                                <span className="text-muted" style={{ fontSize: "12px" }}>
+                                  <IconLoader2 size={12} className="me-1" style={{ display: "inline" }} />
+                                </span>
+                              ) : coverage === "error" ? (
+                                <span className="text-danger" style={{ fontSize: "12px" }}>
+                                  -
+                                </span>
+                              ) : coverage && typeof coverage === "object" ? (
+                                <span
+                                  className={coverage.coverage_percent >= 80 ? "text-green" : coverage.coverage_percent >= 50 ? "text-yellow" : "text-orange"}
+                                  style={{ fontSize: "12px", fontWeight: 500 }}
+                                  title={`覆盖 ${coverage.covered_environments}/${coverage.total_environments} 个环境`}
+                                >
+                                  {coverage.coverage_percent.toFixed(0)}%
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })
                       ) : (
-                        <span className="text-muted">暂无构建信息</span>
+                        <span className="text-muted">暂无应用</span>
                       )}
                     </div>
                   </td>
@@ -284,20 +330,77 @@ const Versions: React.FC = () => {
                   <h3 style={{ marginTop: 24 }}>应用构建信息</h3>
                   {selectedVersion.app_builds && selectedVersion.app_builds.length > 0 ? (
                     <div className="list-group">
-                      {selectedVersion.app_builds.map((build, idx) => (
-                        <div key={idx} className="list-group-item">
-                          <div className="row">
-                            <div className="col">
-                              <strong>{build.app_name}</strong>
+                      {selectedVersion.app_builds.map((build, idx) => {
+                        const cacheKey = `${selectedVersion.version}:${build.app_name}`;
+                        const coverage = coverageCache[cacheKey];
+
+                        return (
+                          <div key={idx} className="list-group-item">
+                            <div className="row align-items-center">
+                              <div className="col">
+                                <strong>{build.app_name}</strong>
+                                <br />
+                                <span className="text-muted" style={{ fontSize: "12px" }}>
+                                  {build.docker_image}
+                                </span>
+                              </div>
+                              <div className="col-auto">
+                                {coverage === "loading" ? (
+                                  <span className="badge bg-azure-lt">
+                                    <IconLoader2 size={14} className="me-1" />
+                                    加载覆盖率...
+                                  </span>
+                                ) : coverage === "error" ? (
+                                  <span className="badge bg-red-lt">覆盖率加载失败</span>
+                                ) : coverage && typeof coverage === "object" ? (
+                                  <div className="d-flex flex-column gap-1">
+                                    <span
+                                      className={`badge ${
+                                        coverage.coverage_percent >= 80 ? "bg-green" : coverage.coverage_percent >= 50 ? "bg-yellow" : "bg-orange"
+                                      }`}
+                                    >
+                                      环境覆盖率: {coverage.coverage_percent.toFixed(1)}%
+                                    </span>
+                                    <small className="text-muted">
+                                      {coverage.covered_environments}/{coverage.total_environments} 个环境
+                                    </small>
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
-                            <div className="col-auto">
-                              <span className="text-muted" style={{ fontSize: "12px" }}>
-                                {build.docker_image}
-                              </span>
-                            </div>
+
+                            {/* 环境详情 */}
+                            {coverage && typeof coverage === "object" && coverage.environments && (
+                              <div className="mt-3">
+                                <strong style={{ fontSize: "12px" }}>环境详情:</strong>
+                                <div className="mt-2" style={{ fontSize: "11px" }}>
+                                  {coverage.environments.map((env, envIdx) => (
+                                    <div
+                                      key={envIdx}
+                                      className="d-flex align-items-center justify-content-between mb-1 p-2"
+                                      style={{
+                                        backgroundColor: env.is_covered ? "#d4edda" : "#f8d7da",
+                                        borderRadius: "4px",
+                                      }}
+                                    >
+                                      <span>
+                                        <strong>{env.environment.name}</strong>
+                                        <span className="text-muted ms-2">({env.environment.type})</span>
+                                      </span>
+                                      <span>
+                                        {env.is_covered ? "✓" : "✗"} {env.coverage_percent.toFixed(0)}%
+                                        <span className="text-muted ms-1">
+                                          ({env.covered_instances}/{env.total_instances})
+                                        </span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-muted">暂无构建信息</p>

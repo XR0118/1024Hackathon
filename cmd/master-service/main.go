@@ -209,8 +209,9 @@ func main() {
 	}
 
 	// 应用版本信息路由（使用应用名称）
-	api.GET("/applications/:name/versions", appHandler.GetApplicationVersions)                // 版本详情（按环境组织）
-	api.GET("/applications/:name/versions/summary", appHandler.GetApplicationVersionsSummary) // 版本概要
+	api.GET("/applications/:name/versions", appHandler.GetApplicationVersions)                          // 版本详情（按环境组织）
+	api.GET("/applications/:name/versions/summary", appHandler.GetApplicationVersionsSummary)           // 版本概要
+	api.GET("/applications/:name/versions/:version/coverage", appHandler.GetApplicationVersionCoverage) // 版本覆盖率（累积）
 
 	// 环境管理路由
 	environments := api.Group("/environments")

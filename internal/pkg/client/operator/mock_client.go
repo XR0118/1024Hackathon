@@ -59,7 +59,6 @@ func (c *MockClient) Apply(ctx context.Context, req *models.ApplyDeploymentReque
 
 		versions = append(versions, models.VersionStatus{
 			Version: v.Version,
-			Percent: v.Percent,
 			Healthy: models.HealthInfo{Level: versionHealth},
 			Nodes:   nodes,
 		})

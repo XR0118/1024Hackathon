@@ -138,6 +138,37 @@ export interface Environment {
   updated_at?: string             // 更新时间
 }
 
+// ==================== 版本覆盖率相关类型（累积覆盖率） ====================
+
+// 版本实例计数
+export interface VersionInstanceCount {
+  version: string                 // 版本号
+  instance_count: number          // 实例数
+  is_covered: boolean             // 是否被目标版本覆盖
+}
+
+// 环境版本覆盖详情
+export interface EnvironmentVersionCoverage {
+  environment: Environment        // 环境信息
+  is_covered: boolean             // 是否被覆盖（有版本 >= 目标版本）
+  current_version: string         // 当前最高版本
+  total_instances: number         // 总实例数
+  covered_instances: number       // 被覆盖的实例数（版本 >= 目标版本）
+  coverage_percent: number        // 该环境内的覆盖率
+  version_distribution: VersionInstanceCount[] // 版本分布详情
+}
+
+// 版本覆盖率响应（累积覆盖率）
+export interface VersionCoverageResponse {
+  application_id: string
+  application_name: string
+  target_version: string          // 查询的目标版本
+  total_environments: number      // 总环境数
+  covered_environments: number    // 已覆盖的环境数（版本 >= 目标版本）
+  coverage_percent: number        // 覆盖率百分比
+  environments: EnvironmentVersionCoverage[] // 各环境的覆盖详情
+}
+
 export interface Deployment {
   id: string
   version_id: string

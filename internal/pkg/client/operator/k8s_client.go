@@ -102,7 +102,6 @@ func (c *K8sClient) GetApplicationStatus(ctx context.Context, appName string) (*
 		Versions: []models.VersionStatus{
 			{
 				Version: statusResp.Version,
-				Percent: 1.0, // K8S 单版本，覆盖率 100%
 				Healthy: models.HealthInfo{
 					Level: statusResp.Healthy.Level,
 				},

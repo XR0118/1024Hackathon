@@ -25,6 +25,7 @@ type ApplicationService interface {
 	// 版本相关
 	GetApplicationVersionsSummary(ctx context.Context, appName string) (*models.ApplicationVersionsSummaryResponse, error)
 	GetApplicationVersionsDetail(ctx context.Context, appName string) (*models.ApplicationVersionsDetailResponse, error)
+	GetApplicationVersionCoverage(ctx context.Context, appName string, targetVersion string) (*models.VersionCoverageResponse, error)
 }
 
 // EnvironmentService 环境服务接口

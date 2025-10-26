@@ -523,6 +523,35 @@ type ApplicationVersionsDetailResponse struct {
 	Environments    []EnvironmentVersions `json:"environments"` // 环境列表
 }
 
+// VersionCoverageResponse 版本覆盖率响应（累积覆盖率）
+type VersionCoverageResponse struct {
+	ApplicationID       string                       `json:"application_id"`
+	ApplicationName     string                       `json:"application_name"`
+	TargetVersion       string                       `json:"target_version"`       // 查询的目标版本
+	TotalEnvironments   int                          `json:"total_environments"`   // 总环境数
+	CoveredEnvironments int                          `json:"covered_environments"` // 已覆盖的环境数（版本 >= 目标版本）
+	CoveragePercent     float64                      `json:"coverage_percent"`     // 覆盖率百分比
+	Environments        []EnvironmentVersionCoverage `json:"environments"`         // 各环境的覆盖详情
+}
+
+// EnvironmentVersionCoverage 环境版本覆盖详情
+type EnvironmentVersionCoverage struct {
+	Environment         Environment            `json:"environment"`          // 环境信息
+	IsCovered           bool                   `json:"is_covered"`           // 是否被覆盖（有版本 >= 目标版本）
+	CurrentVersion      string                 `json:"current_version"`      // 当前最高版本
+	TotalInstances      int                    `json:"total_instances"`      // 总实例数
+	CoveredInstances    int                    `json:"covered_instances"`    // 被覆盖的实例数（版本 >= 目标版本）
+	CoveragePercent     float64                `json:"coverage_percent"`     // 该环境内的覆盖率
+	VersionDistribution []VersionInstanceCount `json:"version_distribution"` // 版本分布详情
+}
+
+// VersionInstanceCount 版本实例计数
+type VersionInstanceCount struct {
+	Version       string `json:"version"`        // 版本号
+	InstanceCount int    `json:"instance_count"` // 实例数
+	IsCovered     bool   `json:"is_covered"`     // 是否被目标版本覆盖
+}
+
 // CreateEnvironmentRequest 创建环境请求
 type CreateEnvironmentRequest struct {
 	Name     string            `json:"name" binding:"required"`
@@ -704,9 +733,8 @@ type ApplicationStatusResponse struct {
 // VersionStatus 版本状态
 type VersionStatus struct {
 	Version string       `json:"version"`
-	Percent float64      `json:"percent"`
 	Healthy HealthInfo   `json:"healthy"`
-	Nodes   []NodeStatus `json:"nodes"`
+	Nodes   []NodeStatus `json:"nodes"` // 该版本的节点列表，上层根据节点数计算覆盖率
 }
 
 // NodeStatus 节点状态

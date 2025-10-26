@@ -158,3 +158,26 @@ func (h *applicationHandler) GetApplicationVersionsSummary(c *gin.Context) {
 
 	utils.Success(c, response)
 }
+
+// GetApplicationVersionCoverage 获取应用指定版本的覆盖率（累积覆盖率）
+func (h *applicationHandler) GetApplicationVersionCoverage(c *gin.Context) {
+	name := c.Param("name")
+	version := c.Param("version")
+
+	if name == "" {
+		utils.BadRequest(c, "application name is required")
+		return
+	}
+	if version == "" {
+		utils.BadRequest(c, "version is required")
+		return
+	}
+
+	response, err := h.applicationService.GetApplicationVersionCoverage(c.Request.Context(), name, version)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "GET_VERSION_COVERAGE_FAILED", err.Error(), nil)
+		return
+	}
+
+	utils.Success(c, response)
+}
