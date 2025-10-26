@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/boreas/internal/interfaces"
 	"github.com/boreas/internal/pkg/models"
@@ -44,22 +43,6 @@ func (h *applicationHandler) GetApplicationList(c *gin.Context) {
 	if err := c.ShouldBindQuery(&req); err != nil {
 		utils.ValidationError(c, err)
 		return
-	}
-
-	// 解析分页参数
-	if pageStr := c.Query("page"); pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil {
-			req.Page = page
-		}
-	} else {
-		req.Page = 1
-	}
-	if pageSizeStr := c.Query("page_size"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
-			req.PageSize = pageSize
-		}
-	} else {
-		req.PageSize = 100
 	}
 
 	response, err := h.applicationService.GetApplicationList(c.Request.Context(), &req)
