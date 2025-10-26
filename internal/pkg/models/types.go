@@ -62,14 +62,24 @@ type AppBuild struct {
 
 // Application 应用信息
 type Application struct {
-	ID          string         `json:"id" gorm:"primaryKey"`
-	Name        string         `json:"name" gorm:"uniqueIndex;not null"`
-	Description string         `json:"description"` // 应用描述
-	Repository  string         `json:"repository" gorm:"not null"`
-	Type        string         `json:"type" gorm:"not null"` // microservice, monolith
-	Config      datatypes.JSON `json:"config" gorm:"type:jsonb"`
-	CreatedAt   time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	ID           string         `json:"id" gorm:"primaryKey"`
+	Name         string         `json:"name" gorm:"uniqueIndex;not null"`
+	Description  string         `json:"description"` // 应用描述
+	Repository   string         `json:"repository" gorm:"not null"`
+	Type         string         `json:"type" gorm:"not null"` // microservice, monolith
+	Config       datatypes.JSON `json:"config" gorm:"type:jsonb"`
+	CreatedAt    time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	Environments []Environment  `json:"environments,omitempty" gorm:"many2many:application_environments;"` // 关联的环境列表
+}
+
+// ApplicationEnvironment 应用-环境映射表
+type ApplicationEnvironment struct {
+	ID            string    `json:"id" gorm:"primaryKey"`
+	ApplicationID string    `json:"application_id" gorm:"not null"`
+	EnvironmentID string    `json:"environment_id" gorm:"not null"`
+	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 type BuildConfig struct {
@@ -454,17 +464,70 @@ type ApplicationNodeInfo struct {
 }
 
 // ApplicationVersionsResponse 应用版本列表响应
+// Deprecated: 请使用 ApplicationVersionsDetailResponse
 type ApplicationVersionsResponse struct {
 	ApplicationID string                   `json:"application_id"`
 	Name          string                   `json:"name"`
 	Versions      []ApplicationVersionInfo `json:"versions"`
 }
 
+// ==================== 版本概要相关结构 ====================
+
+// VersionSummary 版本概要信息（只包含核心运行时指标）
+type VersionSummary struct {
+	Version         string  `json:"version"`          // 版本号
+	Status          string  `json:"status"`           // 版本状态: normal, revert
+	HealthPercent   float64 `json:"health_percent"`   // 健康度百分比 (0-100)
+	CoveragePercent float64 `json:"coverage_percent"` // 覆盖度百分比 (0-100)
+}
+
+// ApplicationVersionsSummaryResponse 应用版本概要响应
+type ApplicationVersionsSummaryResponse struct {
+	ApplicationID   string           `json:"application_id"`
+	ApplicationName string           `json:"application_name"`
+	Versions        []VersionSummary `json:"versions"`
+}
+
+// ==================== 版本详情相关结构 ====================
+
+// VersionInstance 版本实例信息
+type VersionInstance struct {
+	NodeName      string    `json:"node_name"`       // 节点名称
+	Health        int       `json:"health"`          // 健康度 (0-100)
+	Status        string    `json:"status"`          // 实例状态
+	LastUpdatedAt time.Time `json:"last_updated_at"` // 最后更新时间
+}
+
+// EnvironmentVersionDetail 环境下的版本详细信息
+type EnvironmentVersionDetail struct {
+	Version       string            `json:"version"`         // 版本号
+	Status        string            `json:"status"`          // 版本状态
+	GitTag        string            `json:"git_tag"`         // Git 标签
+	GitCommit     string            `json:"git_commit"`      // Git 提交哈希
+	Instances     []VersionInstance `json:"instances"`       // 实例列表
+	Health        int               `json:"health"`          // 该版本在此环境的平均健康度
+	Coverage      int               `json:"coverage"`        // 该版本在此环境的覆盖率(%)
+	LastUpdatedAt time.Time         `json:"last_updated_at"` // 最后更新时间
+}
+
+// EnvironmentVersions 环境维度的版本信息
+type EnvironmentVersions struct {
+	Environment Environment                `json:"environment"` // 环境信息
+	Versions    []EnvironmentVersionDetail `json:"versions"`    // 该环境下的版本列表
+}
+
+// ApplicationVersionsDetailResponse 应用版本详情响应（按环境组织）
+type ApplicationVersionsDetailResponse struct {
+	ApplicationID   string                `json:"application_id"`
+	ApplicationName string                `json:"application_name"`
+	Environments    []EnvironmentVersions `json:"environments"` // 环境列表
+}
+
 // CreateEnvironmentRequest 创建环境请求
 type CreateEnvironmentRequest struct {
 	Name     string            `json:"name" binding:"required"`
 	Type     string            `json:"type" binding:"required"`
-	Config   map[string]string `json:"config" binding:"required"`
+	Config   map[string]string `json:"config"` // 可选配置
 	IsActive bool              `json:"is_active"`
 }
 
@@ -619,9 +682,9 @@ type ApplyDeploymentRequest struct {
 
 // VersionDeployment 版本部署信息
 type VersionDeployment struct {
-	Version string                 `json:"version" binding:"required"`
-	Percent float64                `json:"percent" binding:"required,min=0,max=1"`
-	Pkg     map[string]interface{} `json:"pkg" binding:"required"`
+	Version string            `json:"version" binding:"required"`
+	Percent float64           `json:"percent" binding:"required,min=0,max=1"`
+	Package DeploymentPackage `json:"package" binding:"required"`
 }
 
 // ApplyDeploymentResponse 应用部署响应（Operator PM API）

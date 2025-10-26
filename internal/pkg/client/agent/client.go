@@ -56,7 +56,7 @@ func (c *Client) Apply(ctx context.Context, app, version string, pkg models.Depl
 	reqBody := map[string]interface{}{
 		"app":     app,
 		"version": version,
-		"pkg":     pkg,
+		"package": pkg,
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)

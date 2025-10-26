@@ -31,14 +31,14 @@ func (h *OperatorMockHandler) ApplyDeployment(c *gin.Context) {
 	var req struct {
 		App     string                   `json:"app" binding:"required"`
 		Version string                   `json:"version" binding:"required"`
-		Pkg     models.DeploymentPackage `json:"pkg" binding:"required"`
+		Package models.DeploymentPackage `json:"package" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
 
-	result, err := h.mockService.Apply(c.Request.Context(), req.App, req.Version, req.Pkg)
+	result, err := h.mockService.Apply(c.Request.Context(), req.App, req.Version, req.Package)
 	if err != nil {
 		utils.Error(c, http.StatusInternalServerError, "Failed to apply deployment: "+err.Error())
 		return

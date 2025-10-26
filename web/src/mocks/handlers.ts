@@ -2,7 +2,8 @@ import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 import {
   mockVersions,
   mockApplications,
-  mockApplicationVersions,
+  mockApplicationVersionsSummary,
+  mockApplicationVersionsDetail,
   mockEnvironments,
   mockDeployments,
   mockDeploymentDetails,
@@ -135,25 +136,54 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
 
-        // 应用版本信息（匹配 /applications/:name/versions）
-        if (method === 'GET' && url.match(/^\/applications\/.+\/versions$/)) {
+        // 应用版本概要（匹配 /applications/:name/versions/summary）
+        if (method === 'GET' && url.match(/^\/applications\/[^/]+\/versions\/summary$/)) {
           const name = url.split('/')[2]
-          const versionInfo = mockApplicationVersions[name]
-          if (versionInfo) {
+          const summaryInfo = mockApplicationVersionsSummary[name]
+          if (summaryInfo) {
             return Promise.reject({
               config,
-              response: { data: versionInfo, status: 200, statusText: 'OK', headers: {}, config },
+              response: { data: summaryInfo, status: 200, statusText: 'OK', headers: {}, config },
               isMockResponse: true,
             })
           }
-          // 如果没有版本信息，返回空列表
+          // 如果没有版本概要信息，返回空列表
           return Promise.reject({
             config,
             response: {
               data: {
                 application_id: '',
-                name: name,
+                application_name: name,
                 versions: [],
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config,
+            },
+            isMockResponse: true,
+          })
+        }
+
+        // 应用版本详情（匹配 /applications/:name/versions）
+        if (method === 'GET' && url.match(/^\/applications\/[^/]+\/versions$/)) {
+          const name = url.split('/')[2]
+          const detailInfo = mockApplicationVersionsDetail[name]
+          if (detailInfo) {
+            return Promise.reject({
+              config,
+              response: { data: detailInfo, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+          // 如果没有版本详情信息，返回空结构
+          return Promise.reject({
+            config,
+            response: {
+              data: {
+                application_id: '',
+                application_name: name,
+                environments: [],
               },
               status: 200,
               statusText: 'OK',

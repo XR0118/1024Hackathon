@@ -23,9 +23,9 @@ type HealthStatus struct {
 
 // ApplyRequest 应用部署请求
 type ApplyRequest struct {
-	App     string                 `json:"app" binding:"required"`
-	Version string                 `json:"version" binding:"required"`
-	Pkg     map[string]interface{} `json:"pkg" binding:"required"`
+	App     string            `json:"app" binding:"required"`
+	Version string            `json:"version" binding:"required"`
+	Package DeploymentPackage `json:"package" binding:"required"`
 }
 
 // ApplyResponse 应用部署响应

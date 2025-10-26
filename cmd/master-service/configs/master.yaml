@@ -42,3 +42,12 @@ trigger:
   webhook_secret: ""
   work_dir: "/var/lib/boreas"
   docker_registry: ""
+
+# Operator配置
+operator:
+  # Kubernetes Operator 地址
+  k8s_operator_url: "http://localhost:8081"
+  # Physical Machine Operator 地址
+  pm_operator_url: "http://localhost:8082"
+  # 使用 Mock Operator（开发/测试环境可以设为 true）
+  use_mock: false

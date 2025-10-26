@@ -78,7 +78,7 @@ func (s *OperatorPMService) ApplyDeployment(req *models.ApplyDeploymentRequest) 
 			agentReq := map[string]interface{}{
 				"app":     req.App,
 				"version": version.Version,
-				"pkg":     version.Pkg,
+				"package": version.Package,
 			}
 
 			// 发送请求到Agent
