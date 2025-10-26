@@ -147,8 +147,8 @@ const Applications: React.FC = () => {
                             </div>
                             {/* 运行时指标 */}
                             <div className="d-flex align-items-center gap-2" style={{ fontSize: "11px" }}>
-                              <span className={`badge bg-${version.health_percent >= 80 ? "success" : version.health_percent >= 50 ? "warning" : "danger"}-lt`}>
-                                健康度 {version.health_percent.toFixed(0)}%
+                              <span className={`badge bg-${version.healthy.level >= 80 ? "success" : version.healthy.level >= 50 ? "warning" : "danger"}-lt`}>
+                                健康度 {version.healthy.level}%
                               </span>
                               <span className="badge bg-info-lt">覆盖度 {version.coverage_percent.toFixed(0)}%</span>
                             </div>

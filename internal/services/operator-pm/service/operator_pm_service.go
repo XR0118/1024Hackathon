@@ -115,7 +115,8 @@ func (s *OperatorPMService) GetApplicationStatus(appName string) (*models.Applic
 
 	// 2. 从所有节点收集状态信息
 	var allNodeStatuses []models.NodeStatus
-	var overallHealthy int = 100
+	var healthSum int = 0
+	var healthCount int = 0
 
 	for _, nodeName := range nodes {
 		agentURL, exists := s.cfg.GetAgentURL(nodeName)
@@ -129,21 +130,30 @@ func (s *OperatorPMService) GetApplicationStatus(appName string) (*models.Applic
 			// 节点不可用，健康度为0
 			allNodeStatuses = append(allNodeStatuses, models.NodeStatus{
 				Node:    nodeName,
-				Healthy: models.HealthInfo{Level: 0},
+				Healthy: models.HealthInfo{Level: 0, Msg: "Node unreachable"},
 			})
-			overallHealthy = 0
+			healthSum += 0
+			healthCount++
 		} else {
 			allNodeStatuses = append(allNodeStatuses, *nodeStatus)
-			if nodeStatus.Healthy.Level < overallHealthy {
-				overallHealthy = nodeStatus.Healthy.Level
-			}
+			healthSum += nodeStatus.Healthy.Level
+			healthCount++
 		}
 	}
 
-	// 3. 构建响应
+	// 3. 计算平均健康度（加权平均，这里所有节点权重相同）
+	var overallHealthy int = 0
+	if healthCount > 0 {
+		overallHealthy = healthSum / healthCount
+	}
+
+	// 4. 构建响应
 	response := &models.ApplicationStatusResponse{
-		App:     appName,
-		Healthy: models.HealthInfo{Level: overallHealthy},
+		App: appName,
+		Healthy: models.HealthInfo{
+			Level: overallHealthy,
+			Msg:   fmt.Sprintf("Average health: %d%% (%d/%d nodes)", overallHealthy, healthCount, len(nodes)),
+		},
 		Versions: []models.VersionStatus{
 			{
 				Version: "latest", // 简化版本，实际应该从Agent获取

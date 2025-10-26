@@ -35,22 +35,32 @@ func (c *MockClient) Apply(ctx context.Context, req *models.ApplyDeploymentReque
 	// 构建版本状态
 	versions := make([]models.VersionStatus, 0, len(req.Versions))
 	for _, v := range req.Versions {
-		// 模拟节点状态
+		// 模拟节点状态（基础元素）
 		nodes := []models.NodeStatus{
 			{
 				Node:    fmt.Sprintf("node-%d", rand.Intn(100)),
-				Healthy: models.HealthInfo{Level: 85 + rand.Intn(15)},
+				Healthy: models.HealthInfo{Level: 85 + rand.Intn(15)}, // 85-100之间随机
 			},
 			{
 				Node:    fmt.Sprintf("node-%d", rand.Intn(100)),
-				Healthy: models.HealthInfo{Level: 85 + rand.Intn(15)},
+				Healthy: models.HealthInfo{Level: 85 + rand.Intn(15)}, // 85-100之间随机
 			},
+		}
+
+		// 计算版本健康度：节点健康度的加权平均
+		versionHealthSum := 0
+		for _, node := range nodes {
+			versionHealthSum += node.Healthy.Level
+		}
+		versionHealth := 0
+		if len(nodes) > 0 {
+			versionHealth = versionHealthSum / len(nodes)
 		}
 
 		versions = append(versions, models.VersionStatus{
 			Version: v.Version,
 			Percent: v.Percent,
-			Healthy: models.HealthInfo{Level: 90 + rand.Intn(10)},
+			Healthy: models.HealthInfo{Level: versionHealth},
 			Nodes:   nodes,
 		})
 	}
@@ -83,7 +93,7 @@ func (c *MockClient) GetApplicationStatus(ctx context.Context, appName string) (
 		}, nil
 	}
 
-	// 计算总体健康度
+	// 计算总体健康度：各版本健康度的加权平均
 	totalHealth := 0
 	for _, v := range deployment.versions {
 		totalHealth += v.Healthy.Level

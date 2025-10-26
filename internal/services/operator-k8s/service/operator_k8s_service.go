@@ -92,17 +92,25 @@ func (s *OperatorK8sService) GetStatus(app string) (*models.AppStatusResponse, e
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
 	}
 
-	healthy := models.HealthStatus{
+	// 计算健康度：加权平均（假设每个就绪Pod健康度为100，未就绪为0）
+	// 健康度 = (就绪副本数 / 总副本数) * 100
+	healthy := models.HealthInfo{
 		Level: 0,
-		Msg:   "Not healthy",
+		Msg:   "No replicas ready",
 	}
 
-	if deployment.Status.ReadyReplicas == deployment.Status.Replicas && deployment.Status.Replicas > 0 {
-		healthy.Level = 100
-		healthy.Msg = "Healthy"
-	} else if deployment.Status.ReadyReplicas > 0 {
-		healthy.Level = int(float64(deployment.Status.ReadyReplicas) / float64(deployment.Status.Replicas) * 100)
-		healthy.Msg = fmt.Sprintf("%d/%d replicas ready", deployment.Status.ReadyReplicas, deployment.Status.Replicas)
+	if deployment.Status.Replicas > 0 {
+		if deployment.Status.ReadyReplicas == deployment.Status.Replicas {
+			healthy.Level = 100
+			healthy.Msg = "All replicas ready"
+		} else if deployment.Status.ReadyReplicas > 0 {
+			healthy.Level = int(float64(deployment.Status.ReadyReplicas) / float64(deployment.Status.Replicas) * 100)
+			healthy.Msg = fmt.Sprintf("%d/%d replicas ready", deployment.Status.ReadyReplicas, deployment.Status.Replicas)
+		} else {
+			healthy.Msg = "No replicas ready"
+		}
+	} else {
+		healthy.Msg = "No replicas configured"
 	}
 
 	version := ""
