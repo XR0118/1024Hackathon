@@ -64,7 +64,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             isMockResponse: true,
           })
         }
-        
+
         if (method === 'POST' && url.match(/^\/versions\/.+?\/rollback$/)) {
           const version = url.split('/')[2]
           const found = mockVersions.find((v) => v.version === version)
@@ -186,16 +186,30 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       if (url.startsWith('/deployments')) {
         if (method === 'GET' && url === '/deployments') {
           let results = mockDeployments
-          const { status, environmentId, applicationId } = config.params || {}
+          const { status, environmentId, applicationId, includeDetails } = config.params || {}
 
           if (status) {
-            results = results.filter((d) => d.status === status)
+            // 支持逗号分隔的多个状态过滤
+            const statusList = status.split(',').map((s: string) => s.trim())
+            results = results.filter((d) => statusList.includes(d.status))
           }
           if (environmentId) {
             results = results.filter((d) => d.environments.includes(environmentId))
           }
           if (applicationId) {
             results = results.filter((d) => d.applications.includes(applicationId))
+          }
+
+          // 如果需要详情，返回 DeploymentDetail[]
+          if (includeDetails === 'true' || includeDetails === true) {
+            const detailedResults = results
+              .map((d) => mockDeploymentDetails[d.id])
+              .filter((d) => d !== undefined)
+            return Promise.reject({
+              config,
+              response: { data: detailedResults, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
           }
 
           return Promise.reject({
@@ -257,7 +271,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
             if (action === 'confirm') {
               newStatus = 'running'
             } else if (action === 'rollback') {
-              newStatus = 'failed'
+              newStatus = 'completed' // 回滚操作完成
             } else if (action === 'cancel') {
               newStatus = 'pending'
             }

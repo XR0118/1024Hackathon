@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { deploymentApi } from "@/services/api";
 import { formatDate, getStatusColor, getStatusText } from "@/utils";
 import type { Deployment } from "@/types";
-import { IconPlus, IconRefresh } from "@tabler/icons-react";
+import { IconRefresh } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
 
 const Deployments: React.FC = () => {
@@ -36,6 +36,34 @@ const Deployments: React.FC = () => {
     return () => clearInterval(interval);
   }, [loadDeployments]);
 
+  const renderApplications = (applications: string[]) => {
+    const maxDisplay = 3;
+    const displayApps = applications.slice(0, maxDisplay);
+    const remainingCount = applications.length - maxDisplay;
+
+    return (
+      <div className="d-flex flex-wrap gap-1" title={applications.join(", ")}>
+        {displayApps.map((app, index) => (
+          <a
+            key={index}
+            href={`/applications/${app}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="badge bg-blue-lt"
+            style={{ textDecoration: "none", cursor: "pointer" }}
+          >
+            {app}
+          </a>
+        ))}
+        {remainingCount > 0 && (
+          <span className="badge bg-secondary-lt" title={applications.slice(maxDisplay).join(", ")}>
+            +{remainingCount}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="page-header d-print-none">
@@ -43,30 +71,23 @@ const Deployments: React.FC = () => {
           <div className="col">
             <h2 className="page-title">部署任务</h2>
           </div>
-          <div className="col-auto ms-auto d-print-none">
-            <button className="btn btn-primary" onClick={() => navigate("/deployments/new")}>
-              <IconPlus className="icon" />
-              新建任务
-            </button>
-          </div>
         </div>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <div className="d-flex">
-            <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <div className="d-flex align-items-center gap-2">
+            <select className="form-select" style={{ width: "auto" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">所有状态</option>
+              <option value="completed">完成</option>
+              <option value="running">运行中</option>
+              <option value="paused">暂停中</option>
               <option value="pending">待开始</option>
-              <option value="running">进行中</option>
-              <option value="success">成功</option>
-              <option value="failed">失败</option>
-              <option value="waiting_confirm">待确认</option>
             </select>
-            <input type="date" className="form-control ms-2" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            <span className="mx-2">to</span>
-            <input type="date" className="form-control" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            <button className="btn btn-primary ms-2" onClick={loadDeployments} disabled={loading}>
+            <input type="date" className="form-control" style={{ width: "auto" }} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <span className="text-nowrap">至</span>
+            <input type="date" className="form-control" style={{ width: "auto" }} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <button className="btn btn-primary" onClick={loadDeployments} disabled={loading}>
               <IconRefresh className="icon" />
               刷新
             </button>
@@ -91,7 +112,7 @@ const Deployments: React.FC = () => {
                 <tr key={deployment.id}>
                   <td>{deployment.id}</td>
                   <td>{deployment.version}</td>
-                  <td>{deployment.applications.join(", ")}</td>
+                  <td>{renderApplications(deployment.applications)}</td>
                   <td>{deployment.environments.join(", ")}</td>
                   <td>
                     <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
