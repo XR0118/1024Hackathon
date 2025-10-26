@@ -65,15 +65,21 @@ export interface Deployment {
 }
 
 export interface DeploymentDetail extends Deployment {
-  steps: DeploymentStep[]
+  tasks: Task[]
   logs: DeploymentLog[]
 }
 
-export interface DeploymentStep {
+export interface Task {
   id: string
+  deploymentId?: string
+  appId?: string
   name: string
-  status: 'pending' | 'running' | 'success' | 'failed'
+  type: 'build' | 'test' | 'deploy' | 'health_check' | 'prepare' | 'custom'
+  status: 'pending' | 'running' | 'success' | 'failed' | 'blocked' | 'cancelled'
+  blockBy?: string
   duration?: number
+  startedAt?: string
+  completedAt?: string
   logs?: string[]
 }
 

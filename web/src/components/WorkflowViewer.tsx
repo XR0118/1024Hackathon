@@ -15,16 +15,16 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import WorkflowNode from "./WorkflowNode";
-import type { DeploymentStep } from "@/types";
+import type { Task } from "@/types";
 import { IconEdit, IconDeviceFloppy, IconX, IconPlus, IconTrash } from "@tabler/icons-react";
 
 interface WorkflowViewerProps {
-  steps: DeploymentStep[];
-  onSave?: (steps: DeploymentStep[]) => void;
+  tasks: Task[];
+  onSave?: (tasks: Task[]) => void;
   allowEdit?: boolean;
 }
 
-const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ steps, onSave, allowEdit = true }) => {
+const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdit = true }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -102,39 +102,39 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ steps, onSave, allowEdi
 
   // 初始化节点和边
   const initializeNodesAndEdges = useCallback(() => {
-    const initialNodes: Node[] = steps.map((step, index) => ({
-      id: step.id,
+    const initialNodes: Node[] = tasks.map((task, index) => ({
+      id: task.id,
       type: "workflowNode",
       position: { x: 250, y: index * 150 },
       data: {
-        ...step,
+        ...task,
         isFirst: index === 0,
-        isLast: index === steps.length - 1,
+        isLast: index === tasks.length - 1,
         isEditMode: false,
-        onMoveUp: () => handleMoveUp(step.id),
-        onMoveDown: () => handleMoveDown(step.id),
+        onMoveUp: () => handleMoveUp(task.id),
+        onMoveDown: () => handleMoveDown(task.id),
       },
     }));
 
-    const initialEdges: Edge[] = steps.slice(0, -1).map((step, index) => ({
-      id: `e${step.id}-${steps[index + 1].id}`,
-      source: step.id,
-      target: steps[index + 1].id,
+    const initialEdges: Edge[] = tasks.slice(0, -1).map((task, index) => ({
+      id: `e${task.id}-${tasks[index + 1].id}`,
+      source: task.id,
+      target: tasks[index + 1].id,
       type: "smoothstep",
-      animated: step.status === "running" || steps[index + 1].status === "running",
+      animated: task.status === "running" || tasks[index + 1].status === "running",
       style: {
-        stroke: step.status === "success" ? "#52c41a" : step.status === "failed" ? "#ff4d4f" : "#8c8c8c",
+        stroke: task.status === "success" ? "#52c41a" : task.status === "failed" ? "#ff4d4f" : "#8c8c8c",
         strokeWidth: 2,
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: step.status === "success" ? "#52c41a" : step.status === "failed" ? "#ff4d4f" : "#8c8c8c",
+        color: task.status === "success" ? "#52c41a" : task.status === "failed" ? "#ff4d4f" : "#8c8c8c",
       },
     }));
 
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, [steps, handleMoveUp, handleMoveDown]);
+  }, [tasks, handleMoveUp, handleMoveDown]);
 
   // 组件挂载时初始化
   React.useEffect(() => {
@@ -192,9 +192,9 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ steps, onSave, allowEdi
     [isEditMode]
   );
 
-  // 添加新节点
+  // 添加新任务节点
   const handleAddNode = useCallback(() => {
-    const newId = `step-${Date.now()}`;
+    const newId = `task-${Date.now()}`;
     setNodes((nds) => {
       const newNode: Node = {
         id: newId,
@@ -202,7 +202,8 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ steps, onSave, allowEdi
         position: { x: 250, y: nds.length * 150 },
         data: {
           id: newId,
-          name: `新步骤 ${nds.length + 1}`,
+          name: `新任务 ${nds.length + 1}`,
+          type: "custom" as const,
           status: "pending" as const,
           isFirst: nds.length === 0,
           isLast: true,
@@ -245,17 +246,23 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ steps, onSave, allowEdi
 
   // 保存修改
   const handleSave = useCallback(() => {
-    // 将节点和边转换回 DeploymentStep 格式
-    const updatedSteps: DeploymentStep[] = nodes.map((node) => ({
+    // 将节点和边转换回 Task 格式
+    const updatedTasks: Task[] = nodes.map((node) => ({
       id: node.id,
       name: node.data.name,
+      type: node.data.type,
       status: node.data.status,
       duration: node.data.duration,
       logs: node.data.logs,
+      deploymentId: node.data.deploymentId,
+      appId: node.data.appId,
+      blockBy: node.data.blockBy,
+      startedAt: node.data.startedAt,
+      completedAt: node.data.completedAt,
     }));
 
     if (onSave) {
-      onSave(updatedSteps);
+      onSave(updatedTasks);
     }
     setIsEditMode(false);
   }, [nodes, onSave]);
@@ -282,7 +289,7 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ steps, onSave, allowEdi
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleAddNode}>
                 <IconPlus size={16} className="me-1" />
-                添加步骤
+                添加任务
               </button>
               <span className="badge bg-info-lt align-self-center ms-auto" style={{ fontSize: "0.75rem" }}>
                 <IconEdit size={14} className="me-1" />

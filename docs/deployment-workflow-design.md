@@ -30,9 +30,9 @@ Task 是 Deployment 的子单元，表示对单个应用的具体操作。
 - `deploy`: 部署应用
 - `health_check`: 健康检查
 
-### 3. 步骤 (Step)
+### 3. 步骤/任务 (Task)
 
-前端工作流展示的抽象概念，将多个 Task 组织成可视化的执行流程。
+Task 是部署工作流的基本执行单元，前后端统一使用 Task 概念。前端将 Task 可视化为工作流节点。
 
 ---
 
@@ -146,24 +146,30 @@ export interface Deployment {
 }
 
 export interface DeploymentDetail extends Deployment {
-  steps: DeploymentStep[]
+  tasks: Task[]
   logs: DeploymentLog[]
 }
 ```
 
-#### DeploymentStep 接口
+#### Task 接口
 
 ```typescript
-export interface DeploymentStep {
+export interface Task {
   id: string
+  deploymentId?: string
+  appId?: string
   name: string
-  status: 'pending' | 'running' | 'success' | 'failed'
+  type: 'build' | 'test' | 'deploy' | 'health_check' | 'prepare' | 'custom'
+  status: 'pending' | 'running' | 'success' | 'failed' | 'blocked' | 'cancelled'
+  blockBy?: string
   duration?: number
+  startedAt?: string
+  completedAt?: string
   logs?: string[]
 }
 ```
 
-**注意**: 前端的 `status` 比后端简化，`waiting_confirm` 是部署级别的状态，不是步骤状态。
+**注意**: 前端 Task 接口与后端保持一致，便于数据同步和管理。
 
 ---
 
@@ -306,21 +312,20 @@ DeploymentDetail (页面)
         └── ReactFlow (图表引擎)
 ```
 
-#### 步骤映射策略
+#### Task 展示策略
 
-**问题**: 后端的 Task 是细粒度的（每个应用每个类型一个 Task），前端需要更高层次的步骤展示。
+**更新**: 前后端统一使用 Task 概念，不再需要额外的映射层。
 
-**当前方案**: 使用 Mock 数据中预定义的 `steps` 数组
+**当前方案**: 前端直接展示后端返回的 Task 列表
 
 **示例**:
 ```typescript
-// 后端可能有 20+ 个 Task
-// 前端展示为 4 个高层步骤
-steps: [
-  { id: '1', name: '准备部署', status: 'success' },
-  { id: '2', name: '拉取镜像', status: 'success' },
-  { id: '3', name: '更新服务', status: 'running' },
-  { id: '4', name: '健康检查', status: 'pending' }
+// 前端直接使用后端的 Task 数据
+tasks: [
+  { id: 'task-1', name: '准备部署', type: 'prepare', status: 'success' },
+  { id: 'task-2', name: '构建镜像', type: 'build', status: 'success' },
+  { id: 'task-3', name: '部署服务', type: 'deploy', status: 'running' },
+  { id: 'task-4', name: '健康检查', type: 'health_check', status: 'pending' }
 ]
 ```
 
@@ -331,54 +336,26 @@ steps: [
 - ✅ 拖拽节点位置
 - ✅ 上移/下移调整顺序
 - ✅ 创建/删除连接线
-- ✅ 添加新步骤
-- ✅ 删除步骤（Delete/Backspace）
+- ✅ 添加新任务
+- ✅ 删除任务（Delete/Backspace）
 
 ---
 
 ## 🔧 待优化事项
 
-### 1. 步骤生成逻辑
+### 1. Task 与后端同步 ✅ **已完成**
 
-**当前问题**: 前端 steps 是硬编码的 mock 数据
+**更新**: 前后端已统一使用 Task 概念，不再需要额外的聚合逻辑。
 
-**建议方案**:
+**当前实现**:
+- 前端直接使用后端返回的 Task 列表
+- Task 接口在前后端保持一致
+- 通过 `type` 字段区分任务类型（build、test、deploy、health_check 等）
 
-#### 方案A: 后端聚合生成
-```go
-// 在 Deployment Service 中
-func (s *Service) GetDeploymentSteps(deploymentID string) []DeploymentStep {
-    tasks := s.taskRepo.GetByDeploymentID(deploymentID)
-    
-    // 按照类型和应用分组聚合
-    steps := []DeploymentStep{
-        {Name: "准备部署", TaskIDs: [...], Status: "success"},
-        {Name: "构建镜像", TaskIDs: [...], Status: "running"},
-        // ...
-    }
-    
-    return steps
-}
-```
-
-#### 方案B: 前端动态聚合
-```typescript
-function aggregateTasks(tasks: Task[]): DeploymentStep[] {
-  // 按类型分组
-  const grouped = groupBy(tasks, 'type')
-  
-  return [
-    {
-      id: 'prepare',
-      name: '准备部署',
-      status: getGroupStatus(grouped['build']),
-    },
-    // ...
-  ]
-}
-```
-
-**推荐**: 方案A，后端提供聚合后的步骤，减少前端复杂度。
+**优势**:
+- 减少了前后端的概念差异
+- 简化了数据映射逻辑
+- 便于实时状态同步
 
 ### 2. 实时状态更新
 
@@ -401,64 +378,65 @@ func (s *Service) ExecuteDeployment(deploymentID string) {
 }
 ```
 
-### 3. 步骤依赖关系
+### 3. Task 依赖关系可视化
 
-**当前**: 前端步骤是线性顺序（A → B → C → D）
+**当前**: 前端任务是线性顺序（A → B → C → D）
 
-**建议**: 支持复杂 DAG（有向无环图）
+**建议**: 支持复杂 DAG（有向无环图）可视化
 
+- 利用 Task 的 `blockBy` 字段展示依赖关系
+- 支持并行任务的可视化展示
+- 在编辑模式下允许创建复杂的依赖链
+
+**示例**:
 ```typescript
-interface DeploymentStep {
-  id: string
-  name: string
-  status: string
-  dependencies: string[]  // 依赖的步骤ID
-  parallel: boolean        // 是否可并行
-}
-
 // 示例：并行构建多个应用
-steps: [
-  { id: '1', name: '准备', dependencies: [] },
-  { id: '2a', name: '构建服务A', dependencies: ['1'], parallel: true },
-  { id: '2b', name: '构建服务B', dependencies: ['1'], parallel: true },
-  { id: '3', name: '部署', dependencies: ['2a', '2b'] }
+tasks: [
+  { id: 'task-1', name: '准备', type: 'prepare' },
+  { id: 'task-2a', name: '构建服务A', type: 'build', blockBy: 'task-1' },
+  { id: 'task-2b', name: '构建服务B', type: 'build', blockBy: 'task-1' },
+  { id: 'task-3', name: '部署', type: 'deploy', blockBy: 'task-2a,task-2b' }
 ]
 ```
 
-### 4. 步骤日志关联
+### 4. Task 日志关联
 
-**当前**: `DeploymentStep` 包含 `logs` 字段，但未实现详细展示
+**当前**: `Task` 包含 `logs` 字段，但未实现详细展示
 
-**建议**: 点击步骤展开日志面板
+**建议**: 点击任务节点展开日志面板
 
 ```typescript
-interface DeploymentStep {
+interface Task {
   id: string
   name: string
+  type: string
   status: string
-  logs: StepLog[]
-  tasks: Task[]  // 关联的具体任务
+  logs: TaskLog[]
 }
 
-interface StepLog {
+interface TaskLog {
   timestamp: string
   level: 'info' | 'warn' | 'error'
   message: string
-  taskId?: string  // 来源任务
 }
 ```
 
-### 5. 人工确认流程
+**UI 改进**:
+- 点击工作流节点展开侧边日志面板
+- 实时流式显示日志
+- 支持日志级别过滤
 
-**当前**: `waiting_confirm` 状态时显示确认按钮
+### 5. 任务级别人工确认
 
-**建议**: 支持步骤级别的确认
+**当前**: `waiting_confirm` 是部署级别的状态
+
+**建议**: 支持任务级别的确认
 
 ```typescript
-interface DeploymentStep {
+interface Task {
   id: string
   name: string
-  status: 'pending' | 'running' | 'waiting_confirm' | 'success' | 'failed'
+  status: 'pending' | 'running' | 'waiting_confirm' | 'success' | 'failed' | 'blocked'
   requireConfirm: boolean
   confirmedBy?: string
   confirmedAt?: string
@@ -466,15 +444,15 @@ interface DeploymentStep {
 ```
 
 **UI 改进**:
-- 在需要确认的步骤上显示"等待确认"徽章
-- 点击步骤弹出确认对话框
+- 在需要确认的任务节点上显示"等待确认"徽章
+- 点击节点弹出确认对话框
 - 记录确认人和确认时间
 
 ---
 
 ## 📝 API 设计建议
 
-### 获取部署详情（含步骤）
+### 获取部署详情（含任务）
 
 ```http
 GET /api/v1/deployments/:id
@@ -484,26 +462,29 @@ Response:
   "id": "deploy-001",
   "version": "v1.2.5",
   "status": "running",
-  "steps": [
+  "tasks": [
     {
-      "id": "step-1",
+      "id": "task-1",
+      "deploymentId": "deploy-001",
+      "appId": "user-service",
       "name": "准备部署",
       "type": "prepare",
       "status": "success",
       "startedAt": "2024-10-21T14:00:00Z",
       "completedAt": "2024-10-21T14:05:00Z",
       "duration": 300,
-      "tasks": ["task-1", "task-2"],
-      "logs": [...]
+      "logs": ["检查版本信息...", "验证配置文件...", "准备完成"]
     },
     {
-      "id": "step-2",
+      "id": "task-2",
+      "deploymentId": "deploy-001",
+      "appId": "user-service",
       "name": "构建镜像",
       "type": "build",
       "status": "running",
       "startedAt": "2024-10-21T14:05:00Z",
-      "tasks": ["task-3", "task-4", "task-5"],
-      "logs": [...]
+      "blockBy": "task-1",
+      "logs": ["构建中..."]
     }
   ]
 }
@@ -516,18 +497,20 @@ PUT /api/v1/deployments/:id/workflow
 
 Request:
 {
-  "steps": [
+  "tasks": [
     {
-      "id": "step-1",
+      "id": "task-1",
       "name": "准备部署",
+      "type": "prepare",
       "order": 1,
-      "dependencies": []
+      "blockBy": ""
     },
     {
-      "id": "step-2",
+      "id": "task-2",
       "name": "构建镜像",
+      "type": "build",
       "order": 2,
-      "dependencies": ["step-1"]
+      "blockBy": "task-1"
     }
   ]
 }
@@ -539,26 +522,24 @@ Response:
 }
 ```
 
-### 获取步骤日志
+### 获取任务日志
 
 ```http
-GET /api/v1/deployments/:id/steps/:stepId/logs
+GET /api/v1/deployments/:id/tasks/:taskId/logs
 
 Response:
 {
-  "stepId": "step-2",
+  "taskId": "task-2",
   "logs": [
     {
       "timestamp": "2024-10-21T14:05:00Z",
       "level": "info",
-      "message": "开始构建 user-service",
-      "taskId": "task-3"
+      "message": "开始构建 user-service"
     },
     {
       "timestamp": "2024-10-21T14:05:30Z",
       "level": "info",
-      "message": "镜像构建成功: user-service:v1.2.5",
-      "taskId": "task-3"
+      "message": "镜像构建成功: user-service:v1.2.5"
     }
   ]
 }
@@ -569,19 +550,22 @@ Response:
 ## 🎯 下一步行动项
 
 ### 短期（本周）
-- [ ] 明确 Step 和 Task 的映射关系
-- [ ] 确定步骤聚合逻辑（后端 vs 前端）
-- [ ] 设计步骤日志展示 UI
+- [x] ~~明确 Step 和 Task 的映射关系~~ - 已统一为 Task 概念
+- [x] ~~确定步骤聚合逻辑~~ - 前后端直接使用 Task
+- [ ] 设计任务日志展示 UI
+- [ ] 实现点击任务节点查看日志功能
 
 ### 中期（本月）
-- [ ] 实现后端步骤聚合 API
-- [ ] 支持 DAG 复杂依赖关系
-- [ ] 添加 WebSocket 实时推送
+- [ ] 后端实现完整的 Task CRUD API
+- [ ] 支持基于 `blockBy` 的 DAG 依赖关系可视化
+- [ ] 添加 WebSocket 实时推送任务状态
+- [ ] 实现任务级别的人工确认
 
 ### 长期（下季度）
 - [ ] 支持自定义工作流模板
 - [ ] 实现工作流版本控制
 - [ ] 添加工作流可视化编排器（拖拽设计）
+- [ ] 支持工作流的保存和复用
 
 ---
 

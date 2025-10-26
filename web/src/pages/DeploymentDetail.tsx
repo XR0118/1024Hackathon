@@ -56,12 +56,12 @@ const DeploymentDetailPage: React.FC = () => {
     }
   };
 
-  const handleSaveWorkflow = async (steps: any[]) => {
+  const handleSaveWorkflow = async (tasks: any[]) => {
     // TODO: 调用 API 保存工作流修改
-    console.log("保存工作流:", steps);
+    console.log("保存工作流:", tasks);
     useErrorStore.getState().setError("工作流已保存（演示模式）");
     // 实际项目中应该调用 API
-    // await deploymentApi.updateWorkflow(id, steps);
+    // await deploymentApi.updateWorkflow(id, tasks);
   };
 
   if (loading && !deployment) {
@@ -156,7 +156,7 @@ const DeploymentDetailPage: React.FC = () => {
         </div>
         <div className="card-body" style={{ height: "calc(100% - 50px)", overflow: "hidden" }}>
           <WorkflowViewer
-            steps={deployment.steps}
+            tasks={deployment.tasks}
             onSave={handleSaveWorkflow}
             allowEdit={deployment.status === "pending" || deployment.status === "waiting_confirm"}
           />
