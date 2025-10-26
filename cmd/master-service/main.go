@@ -155,7 +155,7 @@ func main() {
 
 	// API 路由组
 	api := router.Group("/api/v1")
-	api.Use(middleware.Auth())
+	// api.Use(middleware.Auth())
 
 	// 版本管理路由
 	versions := api.Group("/versions")

@@ -51,11 +51,15 @@ func (h *applicationHandler) GetApplicationList(c *gin.Context) {
 		if page, err := strconv.Atoi(pageStr); err == nil {
 			req.Page = page
 		}
+	} else {
+		req.Page = 1
 	}
 	if pageSizeStr := c.Query("page_size"); pageSizeStr != "" {
 		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
 			req.PageSize = pageSize
 		}
+	} else {
+		req.PageSize = 100
 	}
 
 	response, err := h.applicationService.GetApplicationList(c.Request.Context(), &req)
