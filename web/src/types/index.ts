@@ -1,3 +1,13 @@
+// ==================== 健康度相关类型 ====================
+
+// 健康状态信息
+export interface HealthInfo {
+  level: number                       // 健康度等级 (0-100)
+  msg?: string                        // 健康状态描述信息
+}
+
+// ==================== 基础类型 ====================
+
 export interface GitInfo {
   tag: string
   commit: string
@@ -40,7 +50,7 @@ export interface Application {
 export interface VersionSummary {
   version: string                     // 版本号
   status: 'normal' | 'revert'         // 版本状态
-  health_percent: number              // 健康度百分比 (0-100)
+  healthy: HealthInfo                 // 健康度 (0-100)
   coverage_percent: number            // 覆盖度百分比 (0-100)
 }
 
@@ -56,7 +66,7 @@ export interface ApplicationVersionsSummaryResponse {
 // 版本实例信息
 export interface VersionInstance {
   node_name: string                   // 节点名称
-  health: number                      // 健康度 (0-100)
+  healthy: HealthInfo                 // 健康度 (0-100)
   status: string                      // 实例状态
   last_updated_at: string             // 最后更新时间
 }
@@ -68,7 +78,7 @@ export interface EnvironmentVersionDetail {
   git_tag: string                     // Git 标签
   git_commit: string                  // Git 提交哈希
   instances: VersionInstance[]        // 实例列表
-  health: number                      // 该版本在此环境的平均健康度
+  healthy: HealthInfo                 // 该版本在此环境的健康度 (0-100)
   coverage: number                    // 该版本在此环境的覆盖率(%)
   last_updated_at: string             // 最后更新时间
 }

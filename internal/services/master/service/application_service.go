@@ -267,14 +267,25 @@ func (s *applicationService) GetApplicationVersionsSummary(ctx context.Context, 
 
 		// 计算运行时指标
 		if stats != nil {
-			// 计算健康度百分比
+			// 计算健康度：跨环境的节点健康度加权平均
+			healthLevel := 0
 			if stats.HealthCount > 0 {
-				summary.HealthPercent = float64(stats.HealthSum) / float64(stats.HealthCount)
+				healthLevel = stats.HealthSum / stats.HealthCount
+			}
+			summary.Healthy = models.HealthInfo{
+				Level: healthLevel,
+				Msg:   fmt.Sprintf("Average health across %d environment(s), %d instance(s)", stats.EnvironmentCount, stats.TotalInstances),
 			}
 
 			// 计算覆盖度百分比（部署环境数 / 总环境数）
 			if len(app.Environments) > 0 {
 				summary.CoveragePercent = float64(stats.EnvironmentCount) / float64(len(app.Environments)) * 100
+			}
+		} else {
+			// 没有统计数据时，健康度为 0
+			summary.Healthy = models.HealthInfo{
+				Level: 0,
+				Msg:   "No deployment data",
 			}
 		}
 
@@ -316,13 +327,21 @@ func (s *applicationService) GetApplicationVersionsDetail(ctx context.Context, a
 		for _, versionStatus := range appStatus.Versions {
 			// 转换实例信息
 			instances := make([]models.VersionInstance, 0, len(versionStatus.Nodes))
+			healthSum := 0
 			for _, nodeStatus := range versionStatus.Nodes {
 				instances = append(instances, models.VersionInstance{
 					NodeName:      nodeStatus.Node,
-					Health:        nodeStatus.Healthy.Level,
-					Status:        "running", // 默认状态
+					Healthy:       nodeStatus.Healthy, // 直接使用 HealthInfo
+					Status:        "running",          // 默认状态
 					LastUpdatedAt: time.Now(),
 				})
+				healthSum += nodeStatus.Healthy.Level
+			}
+
+			// 计算该版本在此环境的健康度：各实例健康度的加权平均
+			versionHealthLevel := 0
+			if len(instances) > 0 {
+				versionHealthLevel = healthSum / len(instances)
 			}
 
 			// 查询版本信息以获取 git tag 和 commit
@@ -335,13 +354,16 @@ func (s *applicationService) GetApplicationVersionsDetail(ctx context.Context, a
 			}
 
 			versions = append(versions, models.EnvironmentVersionDetail{
-				Version:       versionStatus.Version,
-				Status:        versionStatusStr,
-				GitTag:        gitTag,
-				GitCommit:     gitCommit,
-				Instances:     instances,
-				Health:        versionStatus.Healthy.Level,
-				Coverage:      int(versionStatus.Percent), // 覆盖率从 operator 返回
+				Version:   versionStatus.Version,
+				Status:    versionStatusStr,
+				GitTag:    gitTag,
+				GitCommit: gitCommit,
+				Instances: instances,
+				Healthy: models.HealthInfo{
+					Level: versionHealthLevel,
+					Msg:   fmt.Sprintf("Average health of %d instance(s) in this environment", len(instances)),
+				},
+				Coverage:      int(versionStatus.Percent * 100), // 覆盖率转换为百分比
 				LastUpdatedAt: time.Now(),
 			})
 		}

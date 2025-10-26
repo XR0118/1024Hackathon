@@ -9,16 +9,10 @@ type AgentAppStatus struct {
 	App      string            `json:"app"`
 	Version  string            `json:"version"`
 	Replicas int               `json:"replicas"`
-	Healthy  HealthStatus      `json:"healthy"`
+	Healthy  HealthInfo        `json:"healthy"`
 	Config   map[string]string `json:"config,omitempty"`
 	Status   string            `json:"status"` // running, stopped, error
 	Updated  time.Time         `json:"updated"`
-}
-
-// HealthStatus 健康状态
-type HealthStatus struct {
-	Level int    `json:"level"` // 0-100, 0表示不健康，100表示完全健康
-	Msg   string `json:"msg,omitempty"`
 }
 
 // ApplyRequest 应用部署请求
@@ -43,9 +37,9 @@ type StatusResponse struct {
 
 // AppStatusResponse 单个应用状态响应
 type AppStatusResponse struct {
-	App     string       `json:"app"`
-	Version string       `json:"version"`
-	Healthy HealthStatus `json:"healthy"`
+	App     string     `json:"app"`
+	Version string     `json:"version"`
+	Healthy HealthInfo `json:"healthy"`
 }
 
 // AgentConfig Agent配置

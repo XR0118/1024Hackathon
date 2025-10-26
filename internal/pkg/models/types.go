@@ -475,10 +475,10 @@ type ApplicationVersionsResponse struct {
 
 // VersionSummary 版本概要信息（只包含核心运行时指标）
 type VersionSummary struct {
-	Version         string  `json:"version"`          // 版本号
-	Status          string  `json:"status"`           // 版本状态: normal, revert
-	HealthPercent   float64 `json:"health_percent"`   // 健康度百分比 (0-100)
-	CoveragePercent float64 `json:"coverage_percent"` // 覆盖度百分比 (0-100)
+	Version         string     `json:"version"`          // 版本号
+	Status          string     `json:"status"`           // 版本状态: normal, revert
+	Healthy         HealthInfo `json:"healthy"`          // 健康度 (0-100)
+	CoveragePercent float64    `json:"coverage_percent"` // 覆盖度百分比 (0-100)
 }
 
 // ApplicationVersionsSummaryResponse 应用版本概要响应
@@ -492,10 +492,10 @@ type ApplicationVersionsSummaryResponse struct {
 
 // VersionInstance 版本实例信息
 type VersionInstance struct {
-	NodeName      string    `json:"node_name"`       // 节点名称
-	Health        int       `json:"health"`          // 健康度 (0-100)
-	Status        string    `json:"status"`          // 实例状态
-	LastUpdatedAt time.Time `json:"last_updated_at"` // 最后更新时间
+	NodeName      string     `json:"node_name"`       // 节点名称
+	Healthy       HealthInfo `json:"healthy"`         // 健康度 (0-100)
+	Status        string     `json:"status"`          // 实例状态
+	LastUpdatedAt time.Time  `json:"last_updated_at"` // 最后更新时间
 }
 
 // EnvironmentVersionDetail 环境下的版本详细信息
@@ -505,7 +505,7 @@ type EnvironmentVersionDetail struct {
 	GitTag        string            `json:"git_tag"`         // Git 标签
 	GitCommit     string            `json:"git_commit"`      // Git 提交哈希
 	Instances     []VersionInstance `json:"instances"`       // 实例列表
-	Health        int               `json:"health"`          // 该版本在此环境的平均健康度
+	Healthy       HealthInfo        `json:"healthy"`         // 该版本在此环境的健康度 (0-100)
 	Coverage      int               `json:"coverage"`        // 该版本在此环境的覆盖率(%)
 	LastUpdatedAt time.Time         `json:"last_updated_at"` // 最后更新时间
 }
@@ -717,5 +717,6 @@ type NodeStatus struct {
 
 // HealthInfo 健康状态信息
 type HealthInfo struct {
-	Level int `json:"level"` // 0-100
+	Level int    `json:"level"`         // 0-100
+	Msg   string `json:"msg,omitempty"` // 健康状态描述信息
 }

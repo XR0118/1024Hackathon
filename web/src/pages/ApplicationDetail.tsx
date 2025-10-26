@@ -186,9 +186,9 @@ const ApplicationDetail: React.FC = () => {
                                                 <span className="badge bg-info-lt me-3">覆盖率: {versionInfo.coverage}%</span>
                                               </div>
                                               <div className="d-flex align-items-center">
-                                                <span className={`badge bg-${getHealthColor(versionInfo.health)}-lt me-3`}>
-                                                  {getHealthIcon(versionInfo.health)}
-                                                  <span className="ms-1">健康度: {versionInfo.health}%</span>
+                                                <span className={`badge bg-${getHealthColor(versionInfo.healthy.level)}-lt me-3`}>
+                                                  {getHealthIcon(versionInfo.healthy.level)}
+                                                  <span className="ms-1">健康度: {versionInfo.healthy.level}%</span>
                                                 </span>
                                                 <small className="text-muted">最后更新: {formatDate(versionInfo.last_updated_at)}</small>
                                               </div>
@@ -230,9 +230,9 @@ const ApplicationDetail: React.FC = () => {
                                                           </span>
                                                         </td>
                                                         <td>
-                                                          <span className={`badge bg-${getHealthColor(instance.health)}-lt`}>
-                                                            {getHealthIcon(instance.health)}
-                                                            <span className="ms-1">{instance.health}%</span>
+                                                          <span className={`badge bg-${getHealthColor(instance.healthy.level)}-lt`}>
+                                                            {getHealthIcon(instance.healthy.level)}
+                                                            <span className="ms-1">{instance.healthy.level}%</span>
                                                           </span>
                                                         </td>
                                                         <td className="text-muted">{formatDate(instance.last_updated_at)}</td>

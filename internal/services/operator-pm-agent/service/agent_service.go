@@ -114,7 +114,7 @@ func (s *AgentService) ApplyApp(req models.ApplyRequest) (*models.ApplyResponse,
 	appStatus := &models.AgentAppStatus{
 		App:     req.App,
 		Version: req.Version,
-		Healthy: models.HealthStatus{Level: 100, Msg: "Deployed successfully"},
+		Healthy: models.HealthInfo{Level: 100, Msg: "Deployed successfully"},
 		Status:  "running",
 		Updated: time.Now(),
 	}
@@ -213,10 +213,10 @@ func (s *AgentService) updateAppHealth(ctx context.Context, appName string) erro
 	// 更新状态
 	if status.Running {
 		app.Status = "running"
-		app.Healthy = models.HealthStatus{Level: 100, Msg: status.Message}
+		app.Healthy = models.HealthInfo{Level: 100, Msg: status.Message}
 	} else {
 		app.Status = "stopped"
-		app.Healthy = models.HealthStatus{Level: 0, Msg: status.Message}
+		app.Healthy = models.HealthInfo{Level: 0, Msg: status.Message}
 	}
 
 	app.Updated = time.Now()

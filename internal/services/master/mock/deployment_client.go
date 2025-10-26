@@ -41,7 +41,7 @@ func (c *MockDeploymentClient) Apply(ctx context.Context, app string, version st
 		App:      app,
 		Version:  version,
 		Replicas: pkg.Replicas,
-		Healthy: models.HealthStatus{
+		Healthy: models.HealthInfo{
 			Level: level,
 		},
 		Status:  "running",
