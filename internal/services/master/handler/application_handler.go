@@ -123,3 +123,28 @@ func (h *applicationHandler) DeleteApplication(c *gin.Context) {
 
 	utils.Success(c, gin.H{"message": "Application deleted successfully"})
 }
+
+// GetApplicationVersions 获取应用的版本信息（从 Operator 查询）
+// 使用应用名称作为查询参数
+func (h *applicationHandler) GetApplicationVersions(c *gin.Context) {
+	name := c.Param("name")
+	if name == "" {
+		utils.BadRequest(c, "application name is required")
+		return
+	}
+
+	// TODO: 实现从 Operator 查询应用的版本部署信息
+	// 1. 根据应用名称查询所有相关的 Deployment
+	// 2. 调用 Operator API 获取实时部署状态
+	// 3. 聚合部署信息，计算健康度、覆盖率等
+	// 4. 返回版本列表
+
+	// 暂时返回空列表
+	response := models.ApplicationVersionsResponse{
+		ApplicationID: "", // 后续从查询结果获取
+		Name:          name,
+		Versions:      []models.ApplicationVersionInfo{},
+	}
+
+	utils.Success(c, response)
+}

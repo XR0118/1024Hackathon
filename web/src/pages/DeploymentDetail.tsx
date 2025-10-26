@@ -36,21 +36,18 @@ const DeploymentDetailPage: React.FC = () => {
   const handleConfirm = async () => {
     if (!id) return;
     try {
-      await deploymentApi.confirm(id, note);
+      await deploymentApi.start(id);
       setNote("");
       loadDeployment();
     } catch (error) {
-      useErrorStore.getState().setError("Failed to confirm deployment.");
+      useErrorStore.getState().setError("Failed to start deployment.");
     }
   };
 
   const handlePause = async () => {
     if (!id) return;
     try {
-      // TODO: 调用 API 暂停部署
-      console.log("暂停部署:", id);
-      useErrorStore.getState().setError("部署已暂停（演示模式）");
-      // await deploymentApi.pause(id);
+      await deploymentApi.pause(id);
       loadDeployment();
     } catch (error) {
       useErrorStore.getState().setError("Failed to pause deployment.");
@@ -60,10 +57,7 @@ const DeploymentDetailPage: React.FC = () => {
   const handleResume = async () => {
     if (!id) return;
     try {
-      // TODO: 调用 API 继续部署
-      console.log("继续部署:", id);
-      useErrorStore.getState().setError("部署已继续（演示模式）");
-      // await deploymentApi.resume(id);
+      await deploymentApi.resume(id);
       loadDeployment();
     } catch (error) {
       useErrorStore.getState().setError("Failed to resume deployment.");
@@ -112,32 +106,32 @@ const DeploymentDetailPage: React.FC = () => {
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                 版本:
               </span>
-              <strong>{deployment.version}</strong>
+              <strong>{deployment.version || deployment.version_id}</strong>
             </div>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                 应用:
               </span>
-              <strong>{deployment.applications.join(", ")}</strong>
+              <strong>{(deployment.must_in_order || []).join(", ")}</strong>
             </div>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                 环境:
               </span>
-              <strong>{deployment.environments.join(", ")}</strong>
+              <strong>{deployment.environment?.name || deployment.environment_id}</strong>
             </div>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                 创建时间:
               </span>
-              <span>{formatDate(deployment.createdAt)}</span>
+              <span>{formatDate(deployment.created_at)}</span>
             </div>
-            {deployment.duration && (
+            {deployment.started_at && deployment.completed_at && (
               <div className="d-flex align-items-center gap-2">
                 <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                   执行时长:
                 </span>
-                <span>{formatDuration(deployment.duration)}</span>
+                <span>{formatDuration((new Date(deployment.completed_at).getTime() - new Date(deployment.started_at).getTime()) / 1000)}</span>
               </div>
             )}
           </div>
@@ -145,7 +139,7 @@ const DeploymentDetailPage: React.FC = () => {
       </div>
 
       {/* 待开始状态 - 需要人工确认 */}
-      {deployment.status === "pending" && deployment.requireConfirm && (
+      {deployment.status === "pending" && deployment.manual_approval && (
         <div className="alert alert-warning d-flex justify-content-between align-items-center mb-2 py-2">
           <div>
             <strong>待开始</strong> - 此部署需要人工确认后才能开始执行
@@ -163,7 +157,14 @@ const DeploymentDetailPage: React.FC = () => {
       {deployment.status === "running" && (
         <div className="alert alert-info d-flex justify-content-between align-items-center mb-2 py-2">
           <div>
-            <strong>运行中</strong> - 部署正在执行，进度 {deployment.progress}%
+            <strong>运行中</strong> - 部署正在执行
+            {deployment.tasks &&
+              (() => {
+                const totalTasks = deployment.tasks.length;
+                const completedTasks = deployment.tasks.filter((t) => t.status === "success").length;
+                const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                return `, 进度 ${progress}%`;
+              })()}
           </div>
           <div className="d-flex gap-2">
             <button className="btn btn-warning btn-sm" onClick={handlePause}>
@@ -195,11 +196,7 @@ const DeploymentDetailPage: React.FC = () => {
           <h3 className="card-title mb-0">部署流程</h3>
         </div>
         <div className="card-body" style={{ height: "calc(100% - 50px)", overflow: "hidden" }}>
-          <WorkflowViewer
-            tasks={deployment.tasks}
-            onSave={handleSaveWorkflow}
-            allowEdit={deployment.status === "pending"}
-          />
+          <WorkflowViewer tasks={deployment.tasks} onSave={handleSaveWorkflow} allowEdit={deployment.status === "pending"} />
         </div>
       </div>
 
@@ -226,7 +223,6 @@ const DeploymentDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };

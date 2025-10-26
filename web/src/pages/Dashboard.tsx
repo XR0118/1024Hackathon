@@ -24,10 +24,9 @@ const Dashboard: React.FC = () => {
     try {
       const [statsData, deploymentsData] = await Promise.all([
         dashboardApi.getStats(),
-        // 使用统一的 deploymentApi.list，通过参数过滤状态并获取详情
+        // 使用统一的 deploymentApi.list，通过参数过滤状态
         deploymentApi.list({
           status: "running,paused",
-          includeDetails: true,
         }),
       ]);
       setStats(statsData);
@@ -36,7 +35,7 @@ const Dashboard: React.FC = () => {
       // 合并所有部署的任务到一个 DAG 中
       const allTasks: Task[] = [];
       (deploymentsData as DeploymentDetail[]).forEach((deployment) => {
-        deployment.tasks.forEach((task) => {
+        deployment.tasks?.forEach((task) => {
           allTasks.push({
             ...task,
             // 为任务 ID 添加部署前缀以避免冲突
@@ -44,9 +43,9 @@ const Dashboard: React.FC = () => {
             // 更新依赖关系的 ID
             dependencies: task.dependencies?.map((depId) => `${deployment.id}-${depId}`),
             // 记录所属部署
-            deploymentId: deployment.id,
+            deployment_id: deployment.id,
             // 在任务名称中添加部署标识
-            name: `[${deployment.version}] ${task.name}`,
+            name: `[${deployment.version || deployment.version_id}] ${task.name}`,
           });
         });
       });
@@ -160,39 +159,49 @@ const Dashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {runningDeployments.map((deployment) => (
-                    <tr key={deployment.id}>
-                      <td>
-                        <strong>{deployment.version}</strong>
-                      </td>
-                      <td>
-                        <span className="text-muted" style={{ fontSize: "0.875rem" }}>
-                          {deployment.applications.slice(0, 2).join(", ")}
-                          {deployment.applications.length > 2 && ` +${deployment.applications.length - 2}`}
-                        </span>
-                      </td>
-                      <td>{deployment.environments.join(", ")}</td>
-                      <td>
-                        <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
-                      </td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="progress" style={{ width: "80px", height: "6px" }}>
-                            <div className="progress-bar" style={{ width: `${deployment.progress}%` }} />
+                  {runningDeployments.map((deployment) => {
+                    // 计算进度：已完成任务数 / 总任务数
+                    const totalTasks = deployment.tasks?.length || 0;
+                    const completedTasks = deployment.tasks?.filter((t) => t.status === "success").length || 0;
+                    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+                    // 获取应用列表
+                    const apps = deployment.must_in_order || [];
+
+                    return (
+                      <tr key={deployment.id}>
+                        <td>
+                          <strong>{deployment.version || deployment.version_id}</strong>
+                        </td>
+                        <td>
+                          <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+                            {apps.slice(0, 2).join(", ")}
+                            {apps.length > 2 && ` +${apps.length - 2}`}
+                          </span>
+                        </td>
+                        <td>{deployment.environment?.name || deployment.environment_id}</td>
+                        <td>
+                          <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
+                        </td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="progress" style={{ width: "80px", height: "6px" }}>
+                              <div className="progress-bar" style={{ width: `${progress}%` }} />
+                            </div>
+                            <small className="text-muted">{progress}%</small>
                           </div>
-                          <small className="text-muted">{deployment.progress}%</small>
-                        </div>
-                      </td>
-                      <td>
-                        <small className="text-muted">{formatDate(deployment.createdAt)}</small>
-                      </td>
-                      <td>
-                        <Link to={`/deployments/${deployment.id}`} className="btn btn-sm btn-ghost-primary">
-                          详情
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <small className="text-muted">{formatDate(deployment.created_at)}</small>
+                        </td>
+                        <td>
+                          <Link to={`/deployments/${deployment.id}`} className="btn btn-sm btn-ghost-primary">
+                            详情
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

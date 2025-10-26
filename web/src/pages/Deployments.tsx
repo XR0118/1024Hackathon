@@ -108,39 +108,27 @@ const Deployments: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {deployments.map((deployment) => (
-                <tr key={deployment.id}>
-                  <td>{deployment.id}</td>
-                  <td>{deployment.version}</td>
-                  <td>{renderApplications(deployment.applications)}</td>
-                  <td>{deployment.environments.join(", ")}</td>
-                  <td>
-                    <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
-                  </td>
-                  <td>
-                    {deployment.status === "running" && (
-                      <div className="progress">
-                        <div
-                          className="progress-bar"
-                          style={{ width: `${deployment.progress}%` }}
-                          role="progressbar"
-                          aria-valuenow={deployment.progress}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <span className="visually-hidden">{deployment.progress}% Complete</span>
-                        </div>
-                      </div>
-                    )}
-                  </td>
-                  <td>{formatDate(deployment.createdAt)}</td>
-                  <td>
-                    <button className="btn btn-sm btn-ghost-primary" onClick={() => navigate(`/deployments/${deployment.id}`)}>
-                      查看详情
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {deployments.map((deployment) => {
+                const apps = deployment.must_in_order || [];
+                return (
+                  <tr key={deployment.id}>
+                    <td>{deployment.id}</td>
+                    <td>{deployment.version || deployment.version_id}</td>
+                    <td>{renderApplications(apps)}</td>
+                    <td>{deployment.environment?.name || deployment.environment_id}</td>
+                    <td>
+                      <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
+                    </td>
+                    <td>{deployment.status === "running" && <span className="badge bg-primary">运行中</span>}</td>
+                    <td>{formatDate(deployment.created_at)}</td>
+                    <td>
+                      <button className="btn btn-sm btn-ghost-primary" onClick={() => navigate(`/deployments/${deployment.id}`)}>
+                        查看详情
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

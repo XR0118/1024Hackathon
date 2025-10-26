@@ -155,15 +155,17 @@ func main() {
 
 	// API 路由组
 	api := router.Group("/api/v1")
-	api.Use(middleware.Auth())
+	// 开发环境：暂时禁用认证中间件，方便前后端联调
+	// api.Use(middleware.Auth())
 
 	// 版本管理路由
 	versions := api.Group("/versions")
 	{
 		versions.POST("", versionHandler.CreateVersion)
 		versions.GET("", versionHandler.GetVersionList)
-		versions.GET("/:id", versionHandler.GetVersion)
-		versions.DELETE("/:id", versionHandler.DeleteVersion)
+		versions.GET("/:version", versionHandler.GetVersion)
+		versions.DELETE("/:version", versionHandler.DeleteVersion)
+		versions.POST("/:version/rollback", versionHandler.RollbackVersion)
 	}
 
 	// 应用管理路由
@@ -175,6 +177,9 @@ func main() {
 		applications.PUT("/:id", appHandler.UpdateApplication)
 		applications.DELETE("/:id", appHandler.DeleteApplication)
 	}
+
+	// 应用版本信息路由（使用应用名称）
+	api.GET("/applications/:name/versions", appHandler.GetApplicationVersions)
 
 	// 环境管理路由
 	environments := api.Group("/environments")
@@ -192,8 +197,9 @@ func main() {
 		deployments.POST("", deploymentHandler.CreateDeployment)
 		deployments.GET("", deploymentHandler.GetDeploymentList)
 		deployments.GET("/:id", deploymentHandler.GetDeployment)
-		deployments.POST("/:id/rollback", deploymentHandler.RollbackDeployment)
 		deployments.POST("/:id/start", deploymentHandler.StartDeployment)
+		deployments.POST("/:id/pause", deploymentHandler.PauseDeployment)
+		deployments.POST("/:id/resume", deploymentHandler.ResumeDeployment)
 	}
 
 	// 任务管理路由

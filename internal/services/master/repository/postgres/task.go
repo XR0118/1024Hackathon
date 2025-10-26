@@ -43,6 +43,9 @@ func (r *taskRepository) List(ctx context.Context, filter *models.TaskFilter) ([
 	if filter.DeploymentID != "" {
 		query = query.Where("deployment_id = ?", filter.DeploymentID)
 	}
+	if filter.Step != "" {
+		query = query.Where("step = ?", filter.Step)
+	}
 	if filter.Status != "" {
 		query = query.Where("status = ?", filter.Status)
 	}

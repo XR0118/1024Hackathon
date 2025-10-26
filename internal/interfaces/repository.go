@@ -10,6 +10,7 @@ import (
 type VersionRepository interface {
 	Create(ctx context.Context, version *models.Version) error
 	GetByID(ctx context.Context, id string) (*models.Version, error)
+	GetByVersion(ctx context.Context, version string) (*models.Version, error) // 通过版本号查询
 	List(ctx context.Context, filter *models.VersionFilter) ([]*models.Version, int, error)
 	// Get the previous version that contains the given app_id and was created before the target version
 	GetPreviousByVersionAndApp(ctx context.Context, targetVersionID string, appID string) (*models.Version, error)

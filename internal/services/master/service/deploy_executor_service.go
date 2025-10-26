@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 	"time"
 
@@ -45,10 +44,9 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		return models.TaskStatusFailed, err
 	}
 
-	if deployment.Status == models.DeploymentStatusCancelled {
-		return models.TaskStatusCancelled, nil
-	}
-	if deployment.Status == models.DeploymentStatusFailed {
+	// 检查部署状态
+	if deployment.Status == models.DeploymentStatusCompleted {
+		// 部署已完成，不再执行
 		return models.TaskStatusFailed, nil
 	}
 
@@ -64,9 +62,11 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 	}
 
 	pkg := models.DeploymentPackage{}
-	_ = json.Unmarshal([]byte(e.task.Payload), &pkg)
+	_ = e.task.GetPayload(&pkg)
 
-	if deployment.Status == models.DeploymentStatusRolledBack {
+	// TODO: 回滚逻辑需要重新设计
+	// 回滚应该通过单独的接口或标志位来处理，而不是通过 Step 字段
+	if false { // 暂时禁用
 		// 回滚到当前 app 的上一个版本
 		prevVersion, err_ := e.versionRepo.GetPreviousByVersionAndApp(ctx, e.task.Deployment.VersionID, e.task.AppID)
 		if err_ != nil {
@@ -89,7 +89,7 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		if err != nil {
 			return models.TaskStatusFailed, err
 		}
-		return models.TaskStatusRolledBack, nil
+		return models.TaskStatusSuccess, nil // 回滚操作视为成功完成
 	}
 
 	if total == 0 {
@@ -144,9 +144,10 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 	}
 	if unhealthy && step.AutoRollback {
 		logger.GetLogger().Warn("deployment unhealthy, auto rollback", zap.String("deployment_id", deployment.ID))
-		deployment.Status = models.DeploymentStatusRolledBack
+		// TODO: 回滚逻辑需要重新设计
+		deployment.Status = models.DeploymentStatusPaused // 回滚时暂停部署
 		_ = e.deploymentRepo.Update(ctx, deployment)
-		return models.TaskStatusRolledBack, nil
+		return models.TaskStatusFailed, nil // 健康检查失败
 	}
 
 	if time.Since(lastUpdate).Seconds() < float64(step.BatchInterval) ||

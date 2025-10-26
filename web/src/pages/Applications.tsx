@@ -1,19 +1,33 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { applicationApi } from "@/services/api";
-import type { Application } from "@/types";
+import type { Application, ApplicationVersionInfo } from "@/types";
 import { IconPlus, IconRocket, IconCircleCheck, IconAlertCircle } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
+
+interface ApplicationWithVersions extends Application {
+  versions?: ApplicationVersionInfo[];
+}
 
 const Applications: React.FC = () => {
   const navigate = useNavigate();
   const { setError } = useErrorStore();
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<ApplicationWithVersions[]>([]);
 
   const loadApplications = useCallback(async () => {
     try {
       const data = await applicationApi.list();
       setApplications(data);
+
+      // 为每个应用加载版本信息
+      data.forEach(async (app) => {
+        try {
+          const versionData = await applicationApi.getVersions(app.name);
+          setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, versions: versionData.versions } : a)));
+        } catch (error) {
+          console.error(`Failed to load versions for ${app.name}:`, error);
+        }
+      });
     } catch (error) {
       setError("Failed to load applications.");
     }
@@ -21,9 +35,6 @@ const Applications: React.FC = () => {
 
   useEffect(() => {
     loadApplications();
-    // 每5秒自动刷新一次
-    const interval = setInterval(loadApplications, 5000);
-    return () => clearInterval(interval);
   }, [loadApplications]);
 
   const getHealthColor = (health: number) => {
@@ -33,8 +44,8 @@ const Applications: React.FC = () => {
   };
 
   const getHealthIcon = (health: number) => {
-    if (health >= 80) return <IconCircleCheck size={16} />;
-    return <IconAlertCircle size={16} />;
+    if (health >= 80) return <IconCircleCheck size={14} />;
+    return <IconAlertCircle size={14} />;
   };
 
   return (
@@ -55,71 +66,53 @@ const Applications: React.FC = () => {
 
       <div className="row row-cards">
         {applications.map((app) => (
-          <div className="col-sm-6 col-lg-4" key={app.name}>
+          <div className="col-sm-6 col-lg-4" key={app.id}>
             <div className="card">
               <div className="card-body">
-                <div className="d-flex align-items-center mb-3">
-                  {app.icon && (
-                    <div className="me-3">
-                      <img src={app.icon} alt={app.name} style={{ width: "40px", height: "40px" }} />
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="card-title mb-1">{app.name}</h3>
-                    <p className="text-muted mb-0" style={{ fontSize: "14px" }}>
-                      {app.description}
-                    </p>
-                  </div>
-                </div>
+                <h3 className="card-title mb-2">{app.name}</h3>
+                <p className="text-muted mb-3" style={{ fontSize: "14px" }}>
+                  {app.description || "暂无描述"}
+                </p>
 
-                <div className="mt-3">
-                  <strong className="mb-2 d-block">版本信息:</strong>
-                  {app.versions && app.versions.length > 0 ? (
-                    <div className="list-group list-group-flush">
-                      {app.versions.slice(0, 3).map((versionInfo, index) => (
-                        <div key={index} className="list-group-item px-0 py-2">
+                {/* 版本信息 */}
+                {app.versions && app.versions.length > 0 ? (
+                  <div className="mt-3">
+                    <div className="divide-y">
+                      {app.versions.map((version, index) => (
+                        <div key={index} className="py-2">
                           <div className="d-flex justify-content-between align-items-center">
                             <div className="d-flex align-items-center">
-                              <a
-                                href={`/versions?search=${versionInfo.version}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`badge bg-${versionInfo.status === "normal" ? "blue" : "yellow"}-lt me-2`}
-                                style={{ textDecoration: "none", cursor: "pointer" }}
-                              >
-                                {versionInfo.version}
-                              </a>
-                              {versionInfo.status === "revert" && <span className="badge bg-yellow me-2">回滚</span>}
+                              <span className={`badge bg-${version.status === "normal" ? "blue" : "yellow"} me-2`}>{version.version}</span>
+                              {version.status === "revert" && (
+                                <span className="badge bg-yellow-lt me-2" style={{ fontSize: "11px" }}>
+                                  回滚
+                                </span>
+                              )}
                             </div>
                             <div className="d-flex align-items-center">
-                              <span className={`badge bg-${versionInfo.status === "revert" ? "warning" : "info"}-lt me-2`}>
-                                覆盖率: {versionInfo.coverage}%
+                              <span className="badge bg-info-lt me-2" style={{ fontSize: "11px" }}>
+                                覆盖: {version.coverage}%
                               </span>
-                              <span className={`badge bg-${getHealthColor(versionInfo.health)}-lt me-2`}>
-                                {getHealthIcon(versionInfo.health)}
-                                <span className="ms-1">健康度: {versionInfo.health}%</span>
+                              <span className={`badge bg-${getHealthColor(version.health)}-lt`} style={{ fontSize: "11px" }}>
+                                {getHealthIcon(version.health)}
+                                <span className="ms-1">{version.health}%</span>
                               </span>
                             </div>
                           </div>
                         </div>
                       ))}
-                      {app.versions.length > 3 && (
-                        <div className="list-group-item px-0 py-2 text-center">
-                          <small className="text-muted">还有 {app.versions.length - 3} 个版本</small>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <p className="text-muted">暂无版本信息</p>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="text-muted" style={{ fontSize: "12px" }}>
+                    暂无版本信息
+                  </div>
+                )}
               </div>
               <div className="card-footer">
-                <div className="d-flex">
-                  <button className="btn btn-ghost-secondary" onClick={() => navigate(`/applications/${app.name}`)}>
-                    查看详情
-                  </button>
-                </div>
+                <button className="btn btn-ghost-secondary" onClick={() => navigate(`/applications/${app.name}`)}>
+                  查看详情
+                </button>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { environmentApi } from "@/services/api";
 import type { Environment } from "@/types";
 import { IconCloud, IconPlus } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
+import { getEnvironmentTypeDisplay, getEnvironmentTypeBadgeColor, getEnvironmentStatusDisplay, getEnvironmentStatusBadgeColor } from "@/utils";
 
 const Environments: React.FC = () => {
   const { setError } = useErrorStore();
@@ -45,7 +46,6 @@ const Environments: React.FC = () => {
                 <th>环境名称</th>
                 <th>类型</th>
                 <th>状态</th>
-                <th>应用数量</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -57,12 +57,11 @@ const Environments: React.FC = () => {
                     {env.name}
                   </td>
                   <td>
-                    <span className={`badge bg-${env.type === "k8s" ? "primary" : "success"}-lt`}>{env.type === "k8s" ? "Kubernetes" : "物理机"}</span>
+                    <span className={`badge bg-${getEnvironmentTypeBadgeColor(env.type)}-lt`}>{getEnvironmentTypeDisplay(env.type)}</span>
                   </td>
                   <td>
-                    <span className={`badge bg-${env.status === "active" ? "success" : "secondary"}-lt`}>{env.status === "active" ? "运行中" : "已停止"}</span>
+                    <span className={`badge bg-${getEnvironmentStatusBadgeColor(env.is_active)}-lt`}>{getEnvironmentStatusDisplay(env.is_active)}</span>
                   </td>
-                  <td>{env.applicationCount}</td>
                   <td>
                     <button className="btn btn-sm btn-ghost-primary">查看详情</button>
                   </td>

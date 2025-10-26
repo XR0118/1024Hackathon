@@ -30,6 +30,15 @@ func (r *versionRepository) GetByID(ctx context.Context, id string) (*models.Ver
 	return &version, nil
 }
 
+func (r *versionRepository) GetByVersion(ctx context.Context, versionStr string) (*models.Version, error) {
+	var version models.Version
+	err := r.db.WithContext(ctx).Where("version = ?", versionStr).First(&version).Error
+	if err != nil {
+		return nil, err
+	}
+	return &version, nil
+}
+
 func (r *versionRepository) List(ctx context.Context, filter *models.VersionFilter) ([]*models.Version, int, error) {
 	var versions []*models.Version
 	var total int64
