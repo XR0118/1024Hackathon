@@ -30,15 +30,6 @@ func (r *applicationRepository) GetByID(ctx context.Context, id string) (*models
 	return &app, nil
 }
 
-func (r *applicationRepository) GetByName(ctx context.Context, name string) (*models.Application, error) {
-	var app models.Application
-	err := r.db.WithContext(ctx).Where("name = ?", name).First(&app).Error
-	if err != nil {
-		return nil, err
-	}
-	return &app, nil
-}
-
 func (r *applicationRepository) List(ctx context.Context, filter *models.ApplicationFilter) ([]*models.Application, int, error) {
 	var applications []*models.Application
 	var total int64

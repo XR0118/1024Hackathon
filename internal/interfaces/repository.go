@@ -21,7 +21,6 @@ type VersionRepository interface {
 type ApplicationRepository interface {
 	Create(ctx context.Context, app *models.Application) error
 	GetByID(ctx context.Context, id string) (*models.Application, error)
-	GetByName(ctx context.Context, name string) (*models.Application, error)
 	List(ctx context.Context, filter *models.ApplicationFilter) ([]*models.Application, int, error)
 	Update(ctx context.Context, app *models.Application) error
 	Delete(ctx context.Context, id string) error
