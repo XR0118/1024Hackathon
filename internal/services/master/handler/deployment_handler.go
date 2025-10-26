@@ -101,6 +101,23 @@ func (h *deploymentHandler) StartDeployment(c *gin.Context) {
 	utils.Success(c, deployment)
 }
 
+// RollbackDeployment 回滚部署
+func (h *deploymentHandler) RollbackDeployment(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.BadRequest(c, "deployment id is required")
+		return
+	}
+
+	err := h.deploymentService.RollbackDeployment(c.Request.Context(), id, &models.RollbackRequest{})
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "DEPLOYMENT_ROLLBACK_FAILED", err.Error(), nil)
+		return
+	}
+
+	utils.Success(c, nil)
+}
+
 // PauseDeployment 暂停部署
 func (h *deploymentHandler) PauseDeployment(c *gin.Context) {
 	id := c.Param("id")

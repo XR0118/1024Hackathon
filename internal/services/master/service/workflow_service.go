@@ -81,20 +81,53 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 	}
 	builds := version.GetAppBuilds()
 
+	// 创建构建任务
+	buildID := uuid.New().String()
+	buildTask := &models.Task{
+		ID:           buildID,
+		DeploymentID: deployment.ID,
+		AppID:        builds[0].AppID,
+		Type:         models.TaskTypeBuild,
+		Step:         models.TaskStepPending,
+		Status:       models.TaskStatusPending,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := wc.taskRepo.Create(ctx, buildTask); err != nil {
+		return fmt.Errorf("failed to create build task for deployment: %w", err)
+	}
+
+	// 创建审核任务
+	// approvalID := uuid.New().String()
+	// approvalTask := &models.Task{
+	// 	ID:           approvalID,
+	// 	DeploymentID: deployment.ID,
+	// 	Type:         models.TaskTypeApproval,
+	// 	Step:         models.TaskStepBlocked,
+	// 	Status:       models.TaskStatusPending,
+	// 	CreatedAt:    time.Now(),
+	// 	UpdatedAt:    time.Now(),
+	// }
+	// _ = approvalTask.SetDependencies([]string{buildID})
+	// if err := wc.taskRepo.Create(ctx, approvalTask); err != nil {
+	// 	return fmt.Errorf("failed to create approval task for deployment: %w", err)
+	// }
+
 	if len(deployment.MustInOrder) == 0 {
 		for _, appBuild := range version.GetAppBuilds() {
 			task := &models.Task{
 				ID:           uuid.New().String(),
 				DeploymentID: deployment.ID,
-				AppID:        appBuild.AppName,
-				Type:         "deploy",
-				Step:         models.TaskStepPending,
+				AppID:        appBuild.AppID,
+				Type:         models.TaskTypeDeploy,
+				Step:         models.TaskStepBlocked,
 				Status:       models.TaskStatusPending,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
 			}
+			_ = task.SetDependencies([]string{buildID})
 			if err := wc.taskRepo.Create(ctx, task); err != nil {
-				return fmt.Errorf("failed to create task for app %s: %w", appBuild.AppName, err)
+				return fmt.Errorf("failed to create task for app %s: %w", appBuild.AppID, err)
 			}
 		}
 	} else {
@@ -102,7 +135,7 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 		for i, appID := range mustInOrder {
 			var appBuild *models.AppBuild
 			for _, ab := range builds {
-				if ab.AppName == appID {
+				if ab.AppID == appID {
 					appBuild = &ab
 					break
 				}
@@ -122,6 +155,8 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 				if prevTask != nil {
 					blockBy = prevTask.ID
 				}
+			} else {
+				blockBy = buildID
 			}
 
 			// 如果有依赖，初始状态为 blocked；否则为 pending
@@ -191,17 +226,29 @@ func (wc *workflowController) processPendingTasks() {
 	ctx := context.Background()
 
 	// 查询 Step = pending 且 Status = pending 的任务（准备执行的任务）
-	filter := &models.TaskFilter{
-		Step:     models.TaskStepPending,
-		Status:   models.TaskStatusPending,
-		Page:     1,
-		PageSize: 100,
+	var tasks []*models.Task
+	var steps = []models.TaskStep{
+		models.TaskStepPending,
+		models.TaskStepRunning,
 	}
+	for _, step := range steps {
+		status := models.TaskStatusPending
+		if step == models.TaskStepRunning {
+			status = models.TaskStatusRunning
+		}
+		filter := &models.TaskFilter{
+			Step:     step,
+			Status:   status,
+			Page:     1,
+			PageSize: 100,
+		}
 
-	tasks, _, err := wc.taskRepo.List(ctx, filter)
-	if err != nil {
-		wc.log.Error("Failed to list pending tasks", zap.Error(err))
-		return
+		ts, _, err := wc.taskRepo.List(ctx, filter)
+		if err != nil {
+			wc.log.Error("Failed to list pending tasks", zap.Error(err))
+			return
+		}
+		tasks = append(tasks, ts...)
 	}
 
 	for _, task := range tasks {
@@ -263,15 +310,18 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 				continue
 			}
 			for _, pt := range deployment.Tasks {
-				// 如果前一个版本的同 app 任务还在执行，记录日志
-				// 这里可以选择等待或继续执行，取决于业务需求
-				if pt.AppID == task.AppID && !pt.Status.IsFinished() {
+				if pt.Type != models.TaskTypeDeploy {
+					continue
+				}
+				// 如果前一个版本的同 app 任务已被阻塞，记录日志
+				if pt.AppID == task.AppID && pt.Step == models.TaskStepBlocked {
 					wc.log.Info("Previous version task still running",
 						zap.String("task_id", task.ID),
 						zap.String("prev_task_id", pt.ID),
 						zap.String("prev_version", prevVersion.ID))
-					// 可以选择等待前一个版本完成
-					// 这里简化处理，继续执行当前任务
+					task.Step = models.TaskStepBlocked
+					task.UpdatedAt = time.Now()
+					return wc.taskRepo.Update(ctx, task)
 				}
 			}
 		}
@@ -284,6 +334,38 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 	// 更新任务状态为 running
 	if err := wc.taskRepo.Update(ctx, task); err != nil {
 		return fmt.Errorf("failed to update task status to running: %w", err)
+	}
+
+	switch task.Type {
+	case models.TaskTypeBuild:
+		// 模拟构建过程
+		time.Sleep(10 * time.Second)
+
+		task.Status = models.TaskStatusSuccess
+		now := time.Now()
+		task.UpdatedAt = now
+		task.CompletedAt = &[]time.Time{now}[0]
+		task.Step = models.TaskStepCompleted
+		return wc.taskRepo.Update(ctx, task)
+
+	case models.TaskTypeApproval:
+		var result models.ApprovalTaskResult
+		err := task.GetResult(&result)
+		if err != nil {
+			wc.log.Warn("Invalid ApprovalTaskResult:", zap.Error(err), zap.String("payload", string(task.Payload)))
+			return err
+		}
+		if result.Approved {
+			task.Status = models.TaskStatusSuccess
+			now := time.Now()
+			task.UpdatedAt = now
+			task.CompletedAt = &now
+			return wc.taskRepo.Update(ctx, task)
+		}
+		return nil
+	case models.TaskTypeDeploy:
+	default:
+		return fmt.Errorf("unsupported task type: %s", task.Type)
 	}
 
 	executor := NewSimpleDeployExecutor(*task, wc.deploymentRepo, wc.versionRepo)
@@ -402,12 +484,6 @@ func (wc *workflowController) processBlockedTasks() {
 // 如果依赖都完成了，任务就可以被执行（由 executeTask 处理）
 func (wc *workflowController) checkAndUnblockTask(ctx context.Context, task *models.Task) error {
 	deps := task.GetDependencies()
-
-	// 如果没有依赖，任务可以直接执行
-	if len(deps) == 0 {
-		// TODO: 这里可以触发任务执行
-		return nil
-	}
 
 	// 检查所有依赖任务是否都已完成
 	allCompleted := true

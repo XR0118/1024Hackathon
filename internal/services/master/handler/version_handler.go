@@ -12,12 +12,14 @@ import (
 
 type versionHandler struct {
 	versionService interfaces.VersionService
+	deploymentRepo interfaces.DeploymentService
 }
 
 // NewVersionHandler 创建版本处理器
-func NewVersionHandler(versionService interfaces.VersionService) *versionHandler {
+func NewVersionHandler(versionService interfaces.VersionService, deploymentRepo interfaces.DeploymentService) *versionHandler {
 	return &versionHandler{
 		versionService: versionService,
+		deploymentRepo: deploymentRepo,
 	}
 }
 
@@ -115,11 +117,30 @@ func (h *versionHandler) RollbackVersion(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现版本回滚逻辑
-	// 1. 获取目标版本信息
-	// 2. 创建新的部署任务，将应用回滚到目标版本
-	// 3. 更新版本状态为 revert
-	// 4. 记录回滚原因和操作者
+	filter := &models.ListDeploymentsRequest{
+		VersionID: version,
+		Page:      1,
+		PageSize:  1,
+	}
+
+	resp, err := h.deploymentRepo.GetDeploymentList(c.Request.Context(), filter)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "DEPLOYMENT_LIST_FAILED", err.Error(), nil)
+		return
+	}
+
+	deployments := resp.Deployments
+	// 检查是否有正在运行的部署
+	if len(deployments) == 0 || deployments[0].Status != models.DeploymentStatusRunning {
+		utils.BadRequest(c, "No running deployment found for this version")
+		return
+	}
+
+	err = h.deploymentRepo.RollbackDeployment(c.Request.Context(), deployments[0].ID, &models.RollbackRequest{})
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "ROLLBACK_FAILED", err.Error(), nil)
+		return
+	}
 
 	// 暂时返回成功响应
 	utils.Success(c, gin.H{
