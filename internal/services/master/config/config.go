@@ -18,6 +18,7 @@ type Config struct {
 	GitHub   GitHubConfig   `mapstructure:"github"`
 	K8s      K8sConfig      `mapstructure:"k8s"`
 	Trigger  TriggerConfig  `mapstructure:"trigger"`
+	Operator OperatorConfig `mapstructure:"operator"`
 }
 
 // ServerConfig 服务器配置
@@ -68,6 +69,13 @@ type TriggerConfig struct {
 	WebhookSecret  string `mapstructure:"webhook_secret"`
 	WorkDir        string `mapstructure:"work_dir"`
 	DockerRegistry string `mapstructure:"docker_registry"`
+}
+
+// OperatorConfig Operator 配置
+type OperatorConfig struct {
+	K8SOperatorURL string `mapstructure:"k8s_operator_url"`
+	PMOperatorURL  string `mapstructure:"pm_operator_url"`
+	UseMock        bool   `mapstructure:"use_mock"`
 }
 
 // Load 加载配置
@@ -179,6 +187,11 @@ func setDefaults() {
 	viper.SetDefault("trigger.webhook_secret", "")
 	viper.SetDefault("trigger.work_dir", "/var/lib/boreas")
 	viper.SetDefault("trigger.docker_registry", "")
+
+	// Operator配置
+	viper.SetDefault("operator.k8s_operator_url", "http://localhost:8081")
+	viper.SetDefault("operator.pm_operator_url", "http://localhost:8082")
+	viper.SetDefault("operator.use_mock", false)
 }
 
 // overrideFromEnv 从环境变量覆盖配置

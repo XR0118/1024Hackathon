@@ -23,7 +23,22 @@ func (r *applicationRepository) Create(ctx context.Context, app *models.Applicat
 
 func (r *applicationRepository) GetByID(ctx context.Context, id string) (*models.Application, error) {
 	var app models.Application
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&app).Error
+	err := r.db.WithContext(ctx).
+		Preload("Environments").
+		Where("id = ?", id).
+		First(&app).Error
+	if err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
+
+func (r *applicationRepository) GetByName(ctx context.Context, name string) (*models.Application, error) {
+	var app models.Application
+	err := r.db.WithContext(ctx).
+		Preload("Environments").
+		Where("name = ?", name).
+		First(&app).Error
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +72,9 @@ func (r *applicationRepository) List(ctx context.Context, filter *models.Applica
 
 	// 排序
 	query = query.Order("created_at DESC")
+
+	// 预加载关联的环境列表
+	query = query.Preload("Environments")
 
 	// 查询数据
 	if err := query.Find(&applications).Error; err != nil {

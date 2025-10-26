@@ -2,7 +2,8 @@ import axios from 'axios'
 import type {
   Version,
   Application,
-  ApplicationVersionsResponse,
+  ApplicationVersionsSummaryResponse,
+  ApplicationVersionsDetailResponse,
   Environment,
   Deployment,
   DeploymentDetail,
@@ -97,9 +98,13 @@ export const applicationApi = {
   get: (id: string) =>
     api.get<any, Application>(`/applications/${id}`),
 
-  // 获取应用的版本信息（从 Operator 查询，使用应用名称）
+  // 获取应用版本详情（按环境组织）
   getVersions: (name: string) =>
-    api.get<any, ApplicationVersionsResponse>(`/applications/${name}/versions`),
+    api.get<any, ApplicationVersionsDetailResponse>(`/applications/${name}/versions`),
+
+  // 获取应用版本概要
+  getVersionsSummary: (name: string) =>
+    api.get<any, ApplicationVersionsSummaryResponse>(`/applications/${name}/versions/summary`),
 
   create: (data: Partial<Application>) =>
     api.post<any, Application>('/applications', data),

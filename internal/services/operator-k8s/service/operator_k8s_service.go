@@ -70,8 +70,8 @@ func (s *OperatorK8sService) Apply(req *models.ApplyRequest) (*models.ApplyRespo
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	pkg, ok := req.Pkg["type"].(string)
-	if !ok {
+	pkg := req.Package.Type
+	if pkg == "" {
 		return nil, fmt.Errorf("package type is required")
 	}
 
@@ -118,17 +118,17 @@ func (s *OperatorK8sService) GetStatus(app string) (*models.AppStatusResponse, e
 }
 
 func (s *OperatorK8sService) applyDockerDeployment(ctx context.Context, req *models.ApplyRequest) (*models.ApplyResponse, error) {
-	image, ok := req.Pkg["image"].(string)
-	if !ok {
+	image := req.Package.Image
+	if image == "" {
 		return nil, fmt.Errorf("image is required for docker deployment")
 	}
 
 	replicas := int32(1)
-	if r, ok := req.Pkg["replicas"].(float64); ok {
-		replicas = int32(r)
+	if req.Package.Replicas > 0 {
+		replicas = int32(req.Package.Replicas)
 	}
 
-	deploymentSpec := s.buildDeploymentSpec(req.App, req.Version, image, replicas, req.Pkg)
+	deploymentSpec := s.buildDeploymentSpec(req.App, req.Version, image, replicas, req.Package)
 
 	_, err := s.clientset.AppsV1().Deployments(s.namespace).Get(ctx, req.App, metav1.GetOptions{})
 	if err != nil {
@@ -157,7 +157,7 @@ func (s *OperatorK8sService) applyDockerDeployment(ctx context.Context, req *mod
 	}, nil
 }
 
-func (s *OperatorK8sService) buildDeploymentSpec(name, version, image string, replicas int32, pkg map[string]interface{}) *appsv1.Deployment {
+func (s *OperatorK8sService) buildDeploymentSpec(name, version, image string, replicas int32, pkg models.DeploymentPackage) *appsv1.Deployment {
 	labels := map[string]string{
 		"app":     name,
 		"version": version,
@@ -168,27 +168,19 @@ func (s *OperatorK8sService) buildDeploymentSpec(name, version, image string, re
 		Image: image,
 	}
 
-	if ports, ok := pkg["ports"].([]interface{}); ok {
-		for _, p := range ports {
-			if portMap, ok := p.(map[string]interface{}); ok {
-				if containerPort, ok := portMap["container_port"].(float64); ok {
-					container.Ports = append(container.Ports, corev1.ContainerPort{
-						ContainerPort: int32(containerPort),
-					})
-				}
-			}
-		}
+	// 处理端口映射
+	for _, p := range pkg.Ports {
+		container.Ports = append(container.Ports, corev1.ContainerPort{
+			ContainerPort: int32(p.ContainerPort),
+		})
 	}
 
-	if env, ok := pkg["environment"].(map[string]interface{}); ok {
-		for k, v := range env {
-			if vStr, ok := v.(string); ok {
-				container.Env = append(container.Env, corev1.EnvVar{
-					Name:  k,
-					Value: vStr,
-				})
-			}
-		}
+	// 处理环境变量
+	for k, v := range pkg.Environment {
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 
 	return &appsv1.Deployment{

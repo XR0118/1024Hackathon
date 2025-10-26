@@ -11,7 +11,7 @@ type VersionService interface {
 	CreateVersion(ctx context.Context, req *models.CreateVersionRequest) (*models.Version, error)
 	GetVersionList(ctx context.Context, req *models.ListVersionsRequest) (*models.VersionListResponse, error)
 	GetVersion(ctx context.Context, version string) (*models.Version, error) // 通过版本号查询
-	DeleteVersion(ctx context.Context, version string) error                // 通过版本号删除
+	DeleteVersion(ctx context.Context, version string) error                 // 通过版本号删除
 }
 
 // ApplicationService 应用服务接口
@@ -19,8 +19,12 @@ type ApplicationService interface {
 	CreateApplication(ctx context.Context, req *models.CreateApplicationRequest) (*models.Application, error)
 	GetApplicationList(ctx context.Context, req *models.ListApplicationsRequest) (*models.ApplicationListResponse, error)
 	GetApplication(ctx context.Context, id string) (*models.Application, error)
+	GetApplicationByName(ctx context.Context, name string) (*models.Application, error)
 	UpdateApplication(ctx context.Context, id string, req *models.UpdateApplicationRequest) (*models.Application, error)
 	DeleteApplication(ctx context.Context, id string) error
+	// 版本相关
+	GetApplicationVersionsSummary(ctx context.Context, appName string) (*models.ApplicationVersionsSummaryResponse, error)
+	GetApplicationVersionsDetail(ctx context.Context, appName string) (*models.ApplicationVersionsDetailResponse, error)
 }
 
 // EnvironmentService 环境服务接口
@@ -75,7 +79,52 @@ type DeploymentManager interface {
 	GetDeploymentProgress(ctx context.Context, deploymentID string) (*models.DeploymentProgress, error)
 }
 
-// Deployer 部署器基础接口
+// Operator 运行环境操作器统一接口
+// Master 通过此接口与各类 Operator（K8S、PM、Mock）进行通信
+type Operator interface {
+	// Apply 应用部署
+	Apply(ctx context.Context, req *models.ApplyDeploymentRequest) (*models.ApplyDeploymentResponse, error)
+
+	// GetApplicationStatus 获取应用状态
+	GetApplicationStatus(ctx context.Context, appName string) (*models.ApplicationStatusResponse, error)
+
+	// HealthCheck 健康检查
+	HealthCheck(ctx context.Context) error
+
+	// GetType 获取 Operator 类型 (kubernetes/physical/mock)
+	GetType() string
+}
+
+// OperatorManager Operator 管理器接口
+// 负责管理所有运行环境的 Operator 客户端
+type OperatorManager interface {
+	// RegisterOperator 注册 Operator
+	RegisterOperator(environmentID string, operator Operator)
+
+	// GetOperator 获取指定环境的 Operator
+	GetOperator(environmentID string) (Operator, error)
+
+	// GetOperatorByEnvironment 根据环境对象获取 Operator
+	GetOperatorByEnvironment(env *models.Environment) (Operator, error)
+
+	// ApplyDeployment 在指定环境应用部署
+	ApplyDeployment(ctx context.Context, environmentID string, req *models.ApplyDeploymentRequest) (*models.ApplyDeploymentResponse, error)
+
+	// GetApplicationStatus 获取指定环境中应用的状态
+	GetApplicationStatus(ctx context.Context, environmentID string, appName string) (*models.ApplicationStatusResponse, error)
+
+	// HealthCheckAll 检查所有 Operator 的健康状态
+	HealthCheckAll(ctx context.Context) map[string]error
+
+	// RemoveOperator 移除指定环境的 Operator
+	RemoveOperator(environmentID string)
+
+	// ListOperators 列出所有已注册的 Operator
+	ListOperators() []string
+}
+
+// Deployer 部署器基础接口（已废弃，请使用 Operator）
+// Deprecated: 使用 Operator 接口替代
 type Deployer interface {
 	Deploy(ctx context.Context, req *models.DeployRequest) (*models.DeployResult, error)
 	Rollback(ctx context.Context, req *models.RollbackDeployRequest) (*models.DeployResult, error)

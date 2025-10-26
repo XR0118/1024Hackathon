@@ -11,11 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/boreas/internal/pkg/client/operator"
 	"github.com/boreas/internal/pkg/config"
 	"github.com/boreas/internal/pkg/database"
 	"github.com/boreas/internal/pkg/logger"
 	"github.com/boreas/internal/pkg/middleware"
 	"github.com/boreas/internal/pkg/utils"
+	masterconfig "github.com/boreas/internal/services/master/config"
 	"github.com/boreas/internal/services/master/handler"
 	"github.com/boreas/internal/services/master/repository/postgres"
 	"github.com/boreas/internal/services/master/service"
@@ -51,6 +53,12 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	// 加载 master 特定配置（包含 operator 配置）
+	masterCfg, err := masterconfig.Load("")
+	if err != nil {
+		log.Fatalf("Failed to load master config: %v", err)
+	}
+
 	// 初始化日志
 	if err := logger.Init(cfg.Log.Level, cfg.Log.Format); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
@@ -73,9 +81,31 @@ func main() {
 	deploymentRepo := postgres.NewDeploymentRepository(database.GetDB())
 	taskRepo := postgres.NewTaskRepository(database.GetDB())
 
+	// 初始化 Operator Manager
+	logger.GetLogger().Info("Initializing operator manager")
+	envList, _, err := envRepo.List(context.Background(), nil)
+	if err != nil {
+		logger.GetLogger().Fatal("Failed to list environments", zap.Error(err))
+	}
+
+	operatorConfig := &operator.Config{
+		K8SOperatorURL: masterCfg.Operator.K8SOperatorURL,
+		PMOperatorURL:  masterCfg.Operator.PMOperatorURL,
+		UseMock:        masterCfg.Operator.UseMock,
+	}
+
+	operatorManager, err := operator.InitializeOperators(envList, operatorConfig)
+	if err != nil {
+		logger.GetLogger().Fatal("Failed to initialize operator manager", zap.Error(err))
+	}
+	logger.GetLogger().Info("Operator manager initialized",
+		zap.Int("registered_operators", len(operatorManager.ListOperators())),
+		zap.Bool("use_mock", masterCfg.Operator.UseMock),
+	)
+
 	// 创建服务
 	versionService := service.NewVersionService(versionRepo)
-	appService := service.NewApplicationService(appRepo)
+	appService := service.NewApplicationService(appRepo, versionRepo, deploymentRepo, operatorManager)
 	envService := service.NewEnvironmentService(envRepo)
 	triggerService := service.NewTriggerService(&service.TriggerConfig{
 		WebhookSecret:  cfg.Trigger.WebhookSecret,
@@ -173,13 +203,14 @@ func main() {
 	{
 		applications.POST("", appHandler.CreateApplication)
 		applications.GET("", appHandler.GetApplicationList)
-		applications.GET("/:id", appHandler.GetApplication)
+		applications.GET("/:name", appHandler.GetApplication) // 按应用名称查询
 		applications.PUT("/:id", appHandler.UpdateApplication)
 		applications.DELETE("/:id", appHandler.DeleteApplication)
 	}
 
 	// 应用版本信息路由（使用应用名称）
-	api.GET("/applications/:name/versions", appHandler.GetApplicationVersions)
+	api.GET("/applications/:name/versions", appHandler.GetApplicationVersions)                // 版本详情（按环境组织）
+	api.GET("/applications/:name/versions/summary", appHandler.GetApplicationVersionsSummary) // 版本概要
 
 	// 环境管理路由
 	environments := api.Group("/environments")

@@ -22,21 +22,6 @@ export interface Version {
   app_builds?: AppBuild[]
 }
 
-export interface ApplicationVersionInfo {
-  version: string
-  status: 'normal' | 'revert'
-  health: number
-  coverage: number
-  last_updated_at: string  // 匹配后端：使用下划线
-  nodes?: ApplicationNodeInfo[]
-}
-
-export interface ApplicationNodeInfo {
-  name: string
-  health: number
-  last_updated_at: string  // 匹配后端：使用下划线
-}
-
 export interface Application {
   id: string                          // 匹配后端：应用 ID
   name: string                        // 应用名称
@@ -46,9 +31,87 @@ export interface Application {
   config?: Record<string, string>     // 可选配置
   created_at?: string                 // 创建时间
   updated_at?: string                 // 更新时间
+  environments?: Environment[]        // 关联的运行环境列表
 }
 
-// 应用版本列表响应（通过单独接口 /applications/:id/versions 获取）
+// ==================== 版本概要相关类型 ====================
+
+// 版本概要信息（只包含核心运行时指标）
+export interface VersionSummary {
+  version: string                     // 版本号
+  status: 'normal' | 'revert'         // 版本状态
+  health_percent: number              // 健康度百分比 (0-100)
+  coverage_percent: number            // 覆盖度百分比 (0-100)
+}
+
+// 应用版本概要响应
+export interface ApplicationVersionsSummaryResponse {
+  application_id: string
+  application_name: string
+  versions: VersionSummary[]
+}
+
+// ==================== 版本详情相关类型 ====================
+
+// 版本实例信息
+export interface VersionInstance {
+  node_name: string                   // 节点名称
+  health: number                      // 健康度 (0-100)
+  status: string                      // 实例状态
+  last_updated_at: string             // 最后更新时间
+}
+
+// 环境下的版本详细信息
+export interface EnvironmentVersionDetail {
+  version: string                     // 版本号
+  status: 'normal' | 'abnormal' | 'revert'  // 版本状态
+  git_tag: string                     // Git 标签
+  git_commit: string                  // Git 提交哈希
+  instances: VersionInstance[]        // 实例列表
+  health: number                      // 该版本在此环境的平均健康度
+  coverage: number                    // 该版本在此环境的覆盖率(%)
+  last_updated_at: string             // 最后更新时间
+}
+
+// 环境维度的版本信息
+export interface EnvironmentVersions {
+  environment: Environment            // 环境信息
+  versions: EnvironmentVersionDetail[] // 该环境下的版本列表
+}
+
+// 应用版本详情响应（按环境组织）
+export interface ApplicationVersionsDetailResponse {
+  application_id: string
+  application_name: string
+  environments: EnvironmentVersions[]
+}
+
+// ==================== 已废弃的类型（保留用于向后兼容） ====================
+
+/**
+ * @deprecated 请使用 EnvironmentVersionDetail
+ */
+export interface ApplicationVersionInfo {
+  version: string
+  status: 'normal' | 'revert'
+  health: number
+  coverage: number
+  last_updated_at: string
+  nodes?: ApplicationNodeInfo[]
+}
+
+/**
+ * @deprecated 请使用 VersionInstance
+ */
+export interface ApplicationNodeInfo {
+  name: string
+  health: number
+  last_updated_at: string
+}
+
+/**
+ * @deprecated 请使用 ApplicationVersionsDetailResponse
+ */
 export interface ApplicationVersionsResponse {
   application_id: string
   name: string

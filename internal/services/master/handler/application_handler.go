@@ -67,15 +67,16 @@ func (h *applicationHandler) GetApplicationList(c *gin.Context) {
 	utils.Success(c, response)
 }
 
-// GetApplication 获取应用详情
+// GetApplication 获取应用详情（按应用名称查询）
 func (h *applicationHandler) GetApplication(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		utils.BadRequest(c, "application id is required")
+	name := c.Param("name")
+	if name == "" {
+		utils.BadRequest(c, "application name is required")
 		return
 	}
 
-	application, err := h.applicationService.GetApplication(c.Request.Context(), id)
+	// 按应用名称查询
+	application, err := h.applicationService.GetApplicationByName(c.Request.Context(), name)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "APPLICATION_NOT_FOUND", err.Error(), nil)
 		return
@@ -124,8 +125,7 @@ func (h *applicationHandler) DeleteApplication(c *gin.Context) {
 	utils.Success(c, gin.H{"message": "Application deleted successfully"})
 }
 
-// GetApplicationVersions 获取应用的版本信息（从 Operator 查询）
-// 使用应用名称作为查询参数
+// GetApplicationVersions 获取应用版本详情（按环境组织）
 func (h *applicationHandler) GetApplicationVersions(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
@@ -133,17 +133,27 @@ func (h *applicationHandler) GetApplicationVersions(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现从 Operator 查询应用的版本部署信息
-	// 1. 根据应用名称查询所有相关的 Deployment
-	// 2. 调用 Operator API 获取实时部署状态
-	// 3. 聚合部署信息，计算健康度、覆盖率等
-	// 4. 返回版本列表
+	response, err := h.applicationService.GetApplicationVersionsDetail(c.Request.Context(), name)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "GET_VERSIONS_FAILED", err.Error(), nil)
+		return
+	}
 
-	// 暂时返回空列表
-	response := models.ApplicationVersionsResponse{
-		ApplicationID: "", // 后续从查询结果获取
-		Name:          name,
-		Versions:      []models.ApplicationVersionInfo{},
+	utils.Success(c, response)
+}
+
+// GetApplicationVersionsSummary 获取应用版本概要
+func (h *applicationHandler) GetApplicationVersionsSummary(c *gin.Context) {
+	name := c.Param("name")
+	if name == "" {
+		utils.BadRequest(c, "application name is required")
+		return
+	}
+
+	response, err := h.applicationService.GetApplicationVersionsSummary(c.Request.Context(), name)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "GET_VERSIONS_SUMMARY_FAILED", err.Error(), nil)
+		return
 	}
 
 	utils.Success(c, response)

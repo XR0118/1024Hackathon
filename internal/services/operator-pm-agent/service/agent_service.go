@@ -59,11 +59,8 @@ func (s *AgentService) ApplyApp(req models.ApplyRequest) (*models.ApplyResponse,
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// 解析部署包
-	pkg, err := s.parseDeploymentPackage(req.Pkg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse deployment package: %w", err)
-	}
+	// 获取部署包
+	pkg := &req.Package
 
 	// 检查是否为有效的部署类型
 	if pkg.Type != "binary" && pkg.Type != "script" {

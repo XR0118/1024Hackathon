@@ -1,10 +1,10 @@
 import type {
   Version,
   Application,
-  ApplicationVersionsResponse,
+  ApplicationVersionsSummaryResponse,
+  ApplicationVersionsDetailResponse,
   Environment,
   Deployment,
-  DeploymentDetail,
   DashboardStats,
   DeploymentTrend,
 } from '@/types'
@@ -91,6 +91,45 @@ export const mockVersions: Version[] = [
   },
 ]
 
+// 先定义环境数据，用于应用中引用
+const prodEnv: Environment = {
+  id: 'env1',
+  name: 'production',
+  type: 'kubernetes',
+  is_active: true,
+  config: {
+    cluster: 'prod-cluster',
+    namespace: 'production',
+  },
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-10-20T10:00:00Z',
+}
+
+const stagingEnv: Environment = {
+  id: 'env2',
+  name: 'staging',
+  type: 'kubernetes',
+  is_active: true,
+  config: {
+    cluster: 'staging-cluster',
+    namespace: 'staging',
+  },
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-10-20T10:00:00Z',
+}
+
+const devEnv: Environment = {
+  id: 'env3',
+  name: 'development',
+  type: 'physical',
+  is_active: true,
+  config: {
+    servers: '192.168.1.10,192.168.1.11',
+  },
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-10-20T10:00:00Z',
+}
+
 export const mockApplications: Application[] = [
   {
     id: 'app-001',
@@ -104,6 +143,7 @@ export const mockApplications: Application[] = [
     },
     created_at: '2024-01-15T08:00:00Z',
     updated_at: '2024-10-20T10:00:00Z',
+    environments: [prodEnv, stagingEnv, devEnv], // 三个环境都有部署
   },
   {
     id: 'app-002',
@@ -117,6 +157,7 @@ export const mockApplications: Application[] = [
     },
     created_at: '2024-02-10T08:00:00Z',
     updated_at: '2024-10-20T10:00:00Z',
+    environments: [prodEnv, stagingEnv], // 生产和预发布环境
   },
   {
     id: 'app-003',
@@ -130,6 +171,7 @@ export const mockApplications: Application[] = [
     },
     created_at: '2024-03-05T08:00:00Z',
     updated_at: '2024-10-18T09:00:00Z',
+    environments: [prodEnv], // 仅生产环境
   },
   {
     id: 'app-004',
@@ -139,6 +181,7 @@ export const mockApplications: Application[] = [
     type: 'microservice',
     created_at: '2024-04-01T08:00:00Z',
     updated_at: '2024-10-21T14:00:00Z',
+    environments: [prodEnv, stagingEnv], // 生产和预发布环境
   },
   {
     id: 'app-005',
@@ -148,126 +191,9 @@ export const mockApplications: Application[] = [
     type: 'microservice',
     created_at: '2024-05-10T08:00:00Z',
     updated_at: '2024-10-21T14:00:00Z',
+    environments: [prodEnv, devEnv], // 生产和开发环境
   },
 ]
-
-// 应用版本信息 Mock 数据（从 Operator 查询返回）
-export const mockApplicationVersions: Record<string, ApplicationVersionsResponse> = {
-  'user-service': {
-    application_id: 'app-001',
-    name: 'user-service',
-    versions: [
-      {
-        version: 'v1.2.5',
-        status: 'normal',
-        health: 95,
-        coverage: 80,
-        last_updated_at: '2024-10-21T14:30:00Z',
-        nodes: [
-          { name: 'prod-node-1', health: 98, last_updated_at: '2024-10-21T14:30:00Z' },
-          { name: 'prod-node-2', health: 92, last_updated_at: '2024-10-21T14:28:00Z' },
-        ],
-      },
-      {
-        version: 'v1.2.3',
-        status: 'normal',
-        health: 92,
-        coverage: 20,
-        last_updated_at: '2024-10-20T10:00:00Z',
-        nodes: [
-          { name: 'staging-node-1', health: 95, last_updated_at: '2024-10-20T10:00:00Z' },
-          { name: 'staging-node-2', health: 89, last_updated_at: '2024-10-20T09:55:00Z' },
-        ],
-      },
-    ],
-  },
-  'order-service': {
-    application_id: 'app-002',
-    name: 'order-service',
-    versions: [
-      {
-        version: 'v1.2.5',
-        status: 'normal',
-        health: 88,
-        coverage: 100,
-        last_updated_at: '2024-10-21T14:30:00Z',
-        nodes: [
-          { name: 'prod-node-3', health: 90, last_updated_at: '2024-10-21T14:30:00Z' },
-        ],
-      },
-      {
-        version: 'v1.2.3',
-        status: 'normal',
-        health: 88,
-        coverage: 100,
-        last_updated_at: '2024-10-20T10:00:00Z',
-        nodes: [
-          { name: 'staging-node-3', health: 90, last_updated_at: '2024-10-20T10:00:00Z' },
-        ],
-      },
-    ],
-  },
-  'payment-service': {
-    application_id: 'app-003',
-    name: 'payment-service',
-    versions: [
-      {
-        version: 'v1.2.1',
-        status: 'normal',
-        health: 85,
-        coverage: 72,
-        last_updated_at: '2024-10-18T09:00:00Z',
-        nodes: [
-          { name: 'dev-node-4', health: 88, last_updated_at: '2024-10-18T09:00:00Z' },
-          { name: 'dev-node-5', health: 82, last_updated_at: '2024-10-18T08:55:00Z' },
-        ],
-      },
-    ],
-  },
-  'notification-service': {
-    application_id: 'app-004',
-    name: 'notification-service',
-    versions: [
-      {
-        version: 'v1.2.5',
-        status: 'normal',
-        health: 90,
-        coverage: 100,
-        last_updated_at: '2024-10-21T14:30:00Z',
-        nodes: [
-          { name: 'prod-node-4', health: 90, last_updated_at: '2024-10-21T14:30:00Z' },
-        ],
-      },
-    ],
-  },
-  'analytics-service': {
-    application_id: 'app-005',
-    name: 'analytics-service',
-    versions: [
-      {
-        version: 'v1.2.5',
-        status: 'normal',
-        health: 78,
-        coverage: 60,
-        last_updated_at: '2024-10-21T14:30:00Z',
-        nodes: [
-          { name: 'prod-node-5', health: 80, last_updated_at: '2024-10-21T14:30:00Z' },
-          { name: 'prod-node-6', health: 76, last_updated_at: '2024-10-21T14:25:00Z' },
-        ],
-      },
-      {
-        version: 'v1.2.4',
-        status: 'revert',
-        health: 65,
-        coverage: 40,
-        last_updated_at: '2024-10-21T10:00:00Z',
-        nodes: [
-          { name: 'staging-node-4', health: 65, last_updated_at: '2024-10-21T10:00:00Z' },
-        ],
-      },
-    ],
-  },
-}
 
 export const mockEnvironments: Environment[] = [
   {
@@ -787,3 +713,197 @@ export const mockDeploymentTrends: DeploymentTrend[] = [
   { date: '2024-10-19', count: 5, successCount: 5, failedCount: 0 },
   { date: '2024-10-20', count: 8, successCount: 8, failedCount: 0 },
 ]
+
+// ==================== 应用版本概要 Mock 数据 ====================
+export const mockApplicationVersionsSummary: Record<string, ApplicationVersionsSummaryResponse> = {
+  'user-service': {
+    application_id: 'app-001',
+    application_name: 'user-service',
+    versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health_percent: 94.5,
+        coverage_percent: 100,
+      },
+      {
+        version: 'v1.2.4',
+        status: 'revert',
+        health_percent: 100,
+        coverage_percent: 66.7,
+      },
+      {
+        version: 'v1.2.3',
+        status: 'normal',
+        health_percent: 100,
+        coverage_percent: 33.3,
+      },
+      {
+        version: 'v1.2.2',
+        status: 'normal',
+        health_percent: 0,
+        coverage_percent: 0,
+      },
+    ],
+  },
+  'order-service': {
+    application_id: 'app-002',
+    application_name: 'order-service',
+    versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health_percent: 100,
+        coverage_percent: 100,
+      },
+      {
+        version: 'v1.2.3',
+        status: 'normal',
+        health_percent: 100,
+        coverage_percent: 50,
+      },
+    ],
+  },
+  'payment-service': {
+    application_id: 'app-003',
+    application_name: 'payment-service',
+    versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health_percent: 100,
+        coverage_percent: 100,
+      },
+    ],
+  },
+}
+
+// ==================== 应用版本详情 Mock 数据 ====================
+export const mockApplicationVersionsDetail: Record<string, ApplicationVersionsDetailResponse> = {
+  'user-service': {
+    application_id: 'app-001',
+    application_name: 'user-service',
+    environments: [
+      {
+        environment: prodEnv,
+        versions: [
+          {
+            version: 'v1.2.5',
+            status: 'normal',
+            git_tag: 'v1.2.5',
+            git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+            instances: [
+              { node_name: 'prod-node-1', health: 98, status: 'running', last_updated_at: '2024-10-21T14:30:00Z' },
+              { node_name: 'prod-node-2', health: 95, status: 'running', last_updated_at: '2024-10-21T14:28:00Z' },
+            ],
+            health: 96,
+            coverage: 100,
+            last_updated_at: '2024-10-21T14:30:00Z',
+          },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        versions: [
+          {
+            version: 'v1.2.5',
+            status: 'normal',
+            git_tag: 'v1.2.5',
+            git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+            instances: [
+              { node_name: 'staging-node-1', health: 100, status: 'running', last_updated_at: '2024-10-21T14:25:00Z' },
+              { node_name: 'staging-node-2', health: 100, status: 'running', last_updated_at: '2024-10-21T14:25:00Z' },
+            ],
+            health: 100,
+            coverage: 100,
+            last_updated_at: '2024-10-21T14:25:00Z',
+          },
+        ],
+      },
+      {
+        environment: devEnv,
+        versions: [
+          {
+            version: 'v1.2.5',
+            status: 'normal',
+            git_tag: 'v1.2.5',
+            git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+            instances: [
+              { node_name: 'dev-node-1', health: 92, status: 'running', last_updated_at: '2024-10-21T14:20:00Z' },
+              { node_name: 'dev-node-2', health: 88, status: 'running', last_updated_at: '2024-10-21T14:20:00Z' },
+            ],
+            health: 90,
+            coverage: 100,
+            last_updated_at: '2024-10-21T14:20:00Z',
+          },
+        ],
+      },
+    ],
+  },
+  'order-service': {
+    application_id: 'app-002',
+    application_name: 'order-service',
+    environments: [
+      {
+        environment: prodEnv,
+        versions: [
+          {
+            version: 'v1.2.5',
+            status: 'abnormal',
+            git_tag: 'v1.2.5',
+            git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+            instances: [
+              { node_name: 'prod-node-1', health: 85, status: 'running', last_updated_at: '2024-10-21T14:30:00Z' },
+              { node_name: 'prod-node-2', health: 60, status: 'degraded', last_updated_at: '2024-10-21T14:28:00Z' },
+            ],
+            health: 72,
+            coverage: 100,
+            last_updated_at: '2024-10-21T14:30:00Z',
+          },
+        ],
+      },
+      {
+        environment: stagingEnv,
+        versions: [
+          {
+            version: 'v1.2.5',
+            status: 'normal',
+            git_tag: 'v1.2.5',
+            git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+            instances: [
+              { node_name: 'staging-node-1', health: 95, status: 'running', last_updated_at: '2024-10-21T14:25:00Z' },
+              { node_name: 'staging-node-2', health: 98, status: 'running', last_updated_at: '2024-10-21T14:25:00Z' },
+            ],
+            health: 96,
+            coverage: 100,
+            last_updated_at: '2024-10-21T14:25:00Z',
+          },
+        ],
+      },
+    ],
+  },
+  'payment-service': {
+    application_id: 'app-003',
+    application_name: 'payment-service',
+    environments: [
+      {
+        environment: prodEnv,
+        versions: [
+          {
+            version: 'v1.2.5',
+            status: 'normal',
+            git_tag: 'v1.2.5',
+            git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+            instances: [
+              { node_name: 'prod-node-1', health: 100, status: 'running', last_updated_at: '2024-10-21T14:30:00Z' },
+              { node_name: 'prod-node-2', health: 100, status: 'running', last_updated_at: '2024-10-21T14:28:00Z' },
+            ],
+            health: 100,
+            coverage: 100,
+            last_updated_at: '2024-10-21T14:30:00Z',
+          },
+        ],
+      },
+    ],
+  },
+}

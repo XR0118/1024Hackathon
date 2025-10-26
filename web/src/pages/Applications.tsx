@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { applicationApi } from "@/services/api";
-import type { Application, ApplicationVersionInfo } from "@/types";
-import { IconPlus, IconRocket, IconCircleCheck, IconAlertCircle } from "@tabler/icons-react";
+import type { Application, VersionSummary } from "@/types";
+import { IconPlus, IconRocket, IconCloud } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
+import { getEnvironmentTypeBadgeColor } from "@/utils";
 
 interface ApplicationWithVersions extends Application {
-  versions?: ApplicationVersionInfo[];
+  versions?: VersionSummary[];
 }
 
 const Applications: React.FC = () => {
@@ -19,10 +20,10 @@ const Applications: React.FC = () => {
       const data = await applicationApi.list();
       setApplications(data);
 
-      // 为每个应用加载版本信息
+      // 为每个应用加载版本概要信息
       data.forEach(async (app) => {
         try {
-          const versionData = await applicationApi.getVersions(app.name);
+          const versionData = await applicationApi.getVersionsSummary(app.name);
           setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, versions: versionData.versions } : a)));
         } catch (error) {
           console.error(`Failed to load versions for ${app.name}:`, error);
@@ -36,17 +37,6 @@ const Applications: React.FC = () => {
   useEffect(() => {
     loadApplications();
   }, [loadApplications]);
-
-  const getHealthColor = (health: number) => {
-    if (health >= 80) return "success";
-    if (health >= 50) return "warning";
-    return "danger";
-  };
-
-  const getHealthIcon = (health: number) => {
-    if (health >= 80) return <IconCircleCheck size={14} />;
-    return <IconAlertCircle size={14} />;
-  };
 
   return (
     <div>
@@ -70,37 +60,54 @@ const Applications: React.FC = () => {
             <div className="card">
               <div className="card-body">
                 <h3 className="card-title mb-2">{app.name}</h3>
-                <p className="text-muted mb-3" style={{ fontSize: "14px" }}>
+                <p className="text-muted mb-2" style={{ fontSize: "14px" }}>
                   {app.description || "暂无描述"}
                 </p>
 
-                {/* 版本信息 */}
+                {/* 关联环境 */}
+                {app.environments && app.environments.length > 0 && (
+                  <div className="mb-3">
+                    <div className="d-flex align-items-center gap-1 flex-wrap">
+                      <IconCloud size={14} className="text-muted" />
+                      {app.environments.map((env) => (
+                        <span key={env.id} className={`badge bg-${getEnvironmentTypeBadgeColor(env.type)}-lt`} style={{ fontSize: "11px" }}>
+                          {env.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 版本信息（概要，包含运行时信息） */}
                 {app.versions && app.versions.length > 0 ? (
                   <div className="mt-3">
                     <div className="divide-y">
-                      {app.versions.map((version, index) => (
+                      {app.versions.slice(0, 3).map((version, index) => (
                         <div key={index} className="py-2">
-                          <div className="d-flex justify-content-between align-items-center">
+                          <div className="d-flex justify-content-between align-items-center mb-2">
                             <div className="d-flex align-items-center">
                               <span className={`badge bg-${version.status === "normal" ? "blue" : "yellow"} me-2`}>{version.version}</span>
                               {version.status === "revert" && (
-                                <span className="badge bg-yellow-lt me-2" style={{ fontSize: "11px" }}>
+                                <span className="badge bg-yellow-lt" style={{ fontSize: "11px" }}>
                                   回滚
                                 </span>
                               )}
                             </div>
-                            <div className="d-flex align-items-center">
-                              <span className="badge bg-info-lt me-2" style={{ fontSize: "11px" }}>
-                                覆盖: {version.coverage}%
+                            {/* 运行时指标 */}
+                            <div className="d-flex align-items-center gap-2" style={{ fontSize: "11px" }}>
+                              <span className={`badge bg-${version.health_percent >= 80 ? "success" : version.health_percent >= 50 ? "warning" : "danger"}-lt`}>
+                                健康度 {version.health_percent.toFixed(0)}%
                               </span>
-                              <span className={`badge bg-${getHealthColor(version.health)}-lt`} style={{ fontSize: "11px" }}>
-                                {getHealthIcon(version.health)}
-                                <span className="ms-1">{version.health}%</span>
-                              </span>
+                              <span className="badge bg-info-lt">覆盖度 {version.coverage_percent.toFixed(0)}%</span>
                             </div>
                           </div>
                         </div>
                       ))}
+                      {app.versions.length > 3 && (
+                        <div className="py-2">
+                          <small className="text-muted">还有 {app.versions.length - 3} 个版本...</small>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
