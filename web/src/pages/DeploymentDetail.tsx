@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { deploymentApi } from "@/services/api";
 import { formatDate, formatDuration, getStatusColor, getStatusText } from "@/utils";
 import type { DeploymentDetail as DeploymentDetailType } from "@/types";
-import { IconArrowLeft, IconCheck, IconArrowBackUp, IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
+import { IconArrowLeft, IconCheck, IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
 import WorkflowViewer from "@/components/WorkflowViewer";
 
@@ -13,7 +13,6 @@ const DeploymentDetailPage: React.FC = () => {
   const [deployment, setDeployment] = useState<DeploymentDetailType | null>(null);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState("");
-  const [reason, setReason] = useState("");
 
   const loadDeployment = useCallback(async () => {
     if (!id) return;
@@ -42,17 +41,6 @@ const DeploymentDetailPage: React.FC = () => {
       loadDeployment();
     } catch (error) {
       useErrorStore.getState().setError("Failed to confirm deployment.");
-    }
-  };
-
-  const handleRollback = async () => {
-    if (!id) return;
-    try {
-      await deploymentApi.rollback(id, reason);
-      setReason("");
-      loadDeployment();
-    } catch (error) {
-      useErrorStore.getState().setError("Failed to rollback deployment.");
     }
   };
 
@@ -167,9 +155,6 @@ const DeploymentDetailPage: React.FC = () => {
               <IconCheck size={16} className="me-1" />
               确认开始
             </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate("/deployments")}>
-              取消
-            </button>
           </div>
         </div>
       )}
@@ -193,16 +178,12 @@ const DeploymentDetailPage: React.FC = () => {
       {deployment.status === "paused" && (
         <div className="alert alert-warning d-flex justify-content-between align-items-center mb-2 py-2">
           <div>
-            <strong>暂停中</strong> - 部署已暂停，可以继续执行或取消部署
+            <strong>暂停中</strong> - 部署已暂停，可以继续执行
           </div>
           <div className="d-flex gap-2">
             <button className="btn btn-primary btn-sm" onClick={handleResume}>
               <IconPlayerPlay size={16} className="me-1" />
               继续
-            </button>
-            <button className="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rollbackModal">
-              <IconArrowBackUp size={16} className="me-1" />
-              取消部署
             </button>
           </div>
         </div>
@@ -246,28 +227,6 @@ const DeploymentDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="modal" id="rollbackModal" tabIndex={-1}>
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">回滚部署</h5>
-              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div className="modal-body">
-              <p>确认回滚此部署吗?</p>
-              <textarea className="form-control" placeholder="回滚原因(可选)" value={reason} onChange={(e) => setReason(e.target.value)} rows={4}></textarea>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
-                取消
-              </button>
-              <button type="button" className="btn btn-danger" onClick={handleRollback} data-bs-dismiss="modal">
-                回滚
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
