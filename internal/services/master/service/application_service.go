@@ -394,7 +394,7 @@ func (s *applicationService) GetApplicationVersionsDetail(ctx context.Context, a
 }
 
 // GetApplicationVersionCoverage 获取应用指定版本的覆盖率（累积覆盖率）
-// 计算逻辑：运行实例的版本 >= 目标版本，则认为该实例被目标版本覆盖
+// 计算逻辑：运行实例的版本创建时间 >= 目标版本创建时间，则认为该实例被目标版本覆盖
 func (s *applicationService) GetApplicationVersionCoverage(ctx context.Context, appName string, targetVersion string) (*models.VersionCoverageResponse, error) {
 	// 1. 获取应用信息（包括关联的环境）
 	app, err := s.appRepo.GetByName(ctx, appName)
@@ -402,7 +402,13 @@ func (s *applicationService) GetApplicationVersionCoverage(ctx context.Context, 
 		return nil, fmt.Errorf("application not found: %w", err)
 	}
 
-	// 2. 初始化响应
+	// 2. 获取目标版本信息（用于比较创建时间）
+	targetVersionInfo, err := s.versionRepo.GetByVersion(ctx, targetVersion)
+	if err != nil {
+		return nil, fmt.Errorf("target version not found: %w", err)
+	}
+
+	// 3. 初始化响应
 	response := &models.VersionCoverageResponse{
 		ApplicationID:     app.ID,
 		ApplicationName:   app.Name,
@@ -411,7 +417,7 @@ func (s *applicationService) GetApplicationVersionCoverage(ctx context.Context, 
 		Environments:      make([]models.EnvironmentVersionCoverage, 0, len(app.Environments)),
 	}
 
-	// 3. 遍历每个环境，计算覆盖情况
+	// 4. 遍历每个环境，计算覆盖情况
 	coveredEnvCount := 0
 	for _, env := range app.Environments {
 		// 查询该环境的应用状态
@@ -431,7 +437,7 @@ func (s *applicationService) GetApplicationVersionCoverage(ctx context.Context, 
 		}
 
 		// 计算该环境的覆盖情况
-		envCoverage := s.calculateEnvironmentCoverage(env, appStatus, targetVersion)
+		envCoverage := s.calculateEnvironmentCoverage(ctx, env, appStatus, targetVersionInfo)
 		response.Environments = append(response.Environments, envCoverage)
 
 		if envCoverage.IsCovered {
@@ -439,7 +445,7 @@ func (s *applicationService) GetApplicationVersionCoverage(ctx context.Context, 
 		}
 	}
 
-	// 4. 计算总体覆盖率
+	// 5. 计算总体覆盖率
 	response.CoveredEnvironments = coveredEnvCount
 	if response.TotalEnvironments > 0 {
 		response.CoveragePercent = float64(coveredEnvCount) / float64(response.TotalEnvironments) * 100
@@ -449,7 +455,8 @@ func (s *applicationService) GetApplicationVersionCoverage(ctx context.Context, 
 }
 
 // calculateEnvironmentCoverage 计算单个环境的版本覆盖情况
-func (s *applicationService) calculateEnvironmentCoverage(env models.Environment, appStatus *models.ApplicationStatusResponse, targetVersion string) models.EnvironmentVersionCoverage {
+// 基于创建时间比较：如果运行版本的创建时间 >= 目标版本的创建时间，则认为被覆盖
+func (s *applicationService) calculateEnvironmentCoverage(ctx context.Context, env models.Environment, appStatus *models.ApplicationStatusResponse, targetVersionInfo *models.Version) models.EnvironmentVersionCoverage {
 	// 统计总实例数
 	totalInstances := 0
 	for _, versionStatus := range appStatus.Versions {
@@ -459,21 +466,28 @@ func (s *applicationService) calculateEnvironmentCoverage(env models.Environment
 	// 统计覆盖实例数和版本分布
 	coveredInstances := 0
 	currentVersion := ""
+	var currentVersionTime *models.Version
 	versionDistribution := make([]models.VersionInstanceCount, 0, len(appStatus.Versions))
 
 	for _, versionStatus := range appStatus.Versions {
 		instanceCount := len(versionStatus.Nodes)
 
-		// 判断该版本是否覆盖目标版本（版本 >= 目标版本）
-		isCovered := utils.IsVersionGreaterOrEqual(versionStatus.Version, targetVersion)
+		// 查询该版本信息以获取创建时间
+		versionInfo, err := s.versionRepo.GetByVersion(ctx, versionStatus.Version)
+		isCovered := false
+		if err == nil {
+			// 比较创建时间：运行版本创建时间 >= 目标版本创建时间
+			isCovered = !versionInfo.CreatedAt.Before(targetVersionInfo.CreatedAt)
 
-		if isCovered {
-			coveredInstances += instanceCount
-		}
+			if isCovered {
+				coveredInstances += instanceCount
+			}
 
-		// 记录当前最高版本
-		if currentVersion == "" || utils.IsVersionGreaterOrEqual(versionStatus.Version, currentVersion) {
-			currentVersion = versionStatus.Version
+			// 记录当前最新版本（创建时间最晚的）
+			if currentVersionTime == nil || versionInfo.CreatedAt.After(currentVersionTime.CreatedAt) {
+				currentVersion = versionStatus.Version
+				currentVersionTime = versionInfo
+			}
 		}
 
 		versionDistribution = append(versionDistribution, models.VersionInstanceCount{
