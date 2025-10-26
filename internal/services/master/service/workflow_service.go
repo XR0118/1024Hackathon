@@ -15,7 +15,6 @@ import (
 type WorkflowConfig struct {
 	PendingCheckInterval time.Duration
 	BlockedCheckInterval time.Duration
-	RunningCheckInterval time.Duration
 	TaskTimeout          time.Duration
 }
 
@@ -43,9 +42,6 @@ func NewWorkflowController(
 	if config.BlockedCheckInterval == 0 {
 		config.BlockedCheckInterval = 10 * time.Second
 	}
-	if config.RunningCheckInterval == 0 {
-		config.RunningCheckInterval = 30 * time.Second
-	}
 	if config.TaskTimeout == 0 {
 		config.TaskTimeout = 30 * time.Minute
 	}
@@ -66,10 +62,9 @@ func NewWorkflowController(
 func (wc *workflowController) Start() {
 	wc.log.Info("Starting workflow controller")
 
-	wc.wg.Add(3)
+	wc.wg.Add(2)
 	go wc.pendingTaskScheduler()
 	go wc.blockedTaskScheduler()
-	go wc.runningTaskScheduler()
 }
 
 func (wc *workflowController) Stop() {
@@ -231,7 +226,7 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 				continue
 			}
 			for _, pt := range deployment.Tasks {
-				if pt.AppID == task.AppID {
+				if pt.AppID == task.AppID && pt.Status == models.TaskStatusBlocked {
 					task.Status = models.TaskStatusBlocked
 					task.BlockBy = pt.ID
 					block = true
@@ -381,67 +376,6 @@ func (wc *workflowController) checkAndUnblockTask(ctx context.Context, task *mod
 		wc.log.Info("Task unblocked",
 			zap.String("task_id", task.ID),
 			zap.String("blocking_task_id", blockingTask.ID))
-	}
-
-	return nil
-}
-
-func (wc *workflowController) runningTaskScheduler() {
-	defer wc.wg.Done()
-	ticker := time.NewTicker(wc.config.RunningCheckInterval)
-	defer ticker.Stop()
-
-	wc.log.Info("Running task scheduler started")
-
-	for {
-		select {
-		case <-wc.ctx.Done():
-			wc.log.Info("Running task scheduler stopped")
-			return
-		case <-ticker.C:
-			wc.processRunningTasks()
-		}
-	}
-}
-
-func (wc *workflowController) processRunningTasks() {
-	ctx := context.Background()
-
-	filter := &models.TaskFilter{
-		Status:   models.TaskStatusRunning,
-		Page:     1,
-		PageSize: 100,
-	}
-
-	tasks, _, err := wc.taskRepo.List(ctx, filter)
-	if err != nil {
-		wc.log.Error("Failed to list running tasks", zap.Error(err))
-		return
-	}
-
-	for _, task := range tasks {
-		if err := wc.checkTaskTimeout(ctx, task); err != nil {
-			wc.log.Error("Failed to check task timeout", zap.Error(err), zap.String("task_id", task.ID))
-		}
-	}
-}
-
-func (wc *workflowController) checkTaskTimeout(ctx context.Context, task *models.Task) error {
-	elapsed := time.Since(task.UpdatedAt)
-	if elapsed > wc.config.TaskTimeout {
-		wc.log.Warn("Task heartbeat timeout detected, rescheduling",
-			zap.String("task_id", task.ID),
-			zap.String("elapsed", elapsed.String()),
-			zap.String("timeout", wc.config.TaskTimeout.String()))
-
-		task.Status = models.TaskStatusPending
-		task.StartedAt = nil
-		task.UpdatedAt = time.Now()
-		task.Result = fmt.Sprintf("Task heartbeat timeout after %s, rescheduling", elapsed.String())
-
-		if err := wc.taskRepo.Update(ctx, task); err != nil {
-			return fmt.Errorf("failed to reschedule timed out task: %w", err)
-		}
 	}
 
 	return nil
