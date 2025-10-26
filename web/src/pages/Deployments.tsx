@@ -79,10 +79,10 @@ const Deployments: React.FC = () => {
           <div className="d-flex align-items-center gap-2">
             <select className="form-select" style={{ width: "auto" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">所有状态</option>
-              <option value="success">成功</option>
-              <option value="running">进行中</option>
-              <option value="pending">等待</option>
-              <option value="waiting_confirm">待确认</option>
+              <option value="completed">完成</option>
+              <option value="running">运行中</option>
+              <option value="paused">暂停中</option>
+              <option value="pending">待开始</option>
             </select>
             <input type="date" className="form-control" style={{ width: "auto" }} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <span className="text-nowrap">至</span>

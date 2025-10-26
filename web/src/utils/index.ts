@@ -12,11 +12,10 @@ export const formatDuration = (seconds: number): string => {
 
 export const getStatusColor = (status: Deployment['status']): string => {
   const colorMap: Record<Deployment['status'], string> = {
-    pending: 'secondary',
+    pending: 'warning',
     running: 'primary',
-    success: 'success',
-    failed: 'danger',
-    waiting_confirm: 'warning',
+    paused: 'info',
+    completed: 'success',
   }
   return colorMap[status]
 }
@@ -24,10 +23,9 @@ export const getStatusColor = (status: Deployment['status']): string => {
 export const getStatusText = (status: Deployment['status']): string => {
   const textMap: Record<Deployment['status'], string> = {
     pending: '待开始',
-    running: '进行中',
-    success: '成功',
-    failed: '失败',
-    waiting_confirm: '待确认',
+    running: '运行中',
+    paused: '暂停中',
+    completed: '完成',
   }
   return textMap[status]
 }

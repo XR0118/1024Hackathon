@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { deploymentApi } from "@/services/api";
 import { formatDate, formatDuration, getStatusColor, getStatusText } from "@/utils";
 import type { DeploymentDetail as DeploymentDetailType } from "@/types";
-import { IconArrowLeft, IconCheck, IconArrowBackUp } from "@tabler/icons-react";
+import { IconArrowLeft, IconCheck, IconArrowBackUp, IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
 import WorkflowViewer from "@/components/WorkflowViewer";
 
@@ -53,6 +53,32 @@ const DeploymentDetailPage: React.FC = () => {
       loadDeployment();
     } catch (error) {
       useErrorStore.getState().setError("Failed to rollback deployment.");
+    }
+  };
+
+  const handlePause = async () => {
+    if (!id) return;
+    try {
+      // TODO: 调用 API 暂停部署
+      console.log("暂停部署:", id);
+      useErrorStore.getState().setError("部署已暂停（演示模式）");
+      // await deploymentApi.pause(id);
+      loadDeployment();
+    } catch (error) {
+      useErrorStore.getState().setError("Failed to pause deployment.");
+    }
+  };
+
+  const handleResume = async () => {
+    if (!id) return;
+    try {
+      // TODO: 调用 API 继续部署
+      console.log("继续部署:", id);
+      useErrorStore.getState().setError("部署已继续（演示模式）");
+      // await deploymentApi.resume(id);
+      loadDeployment();
+    } catch (error) {
+      useErrorStore.getState().setError("Failed to resume deployment.");
     }
   };
 
@@ -130,20 +156,53 @@ const DeploymentDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 人工确认提示 */}
-      {deployment.status === "waiting_confirm" && (
+      {/* 待开始状态 - 需要人工确认 */}
+      {deployment.status === "pending" && deployment.requireConfirm && (
         <div className="alert alert-warning d-flex justify-content-between align-items-center mb-2 py-2">
           <div>
-            <strong>需要人工确认</strong> - 此部署需要人工确认后才能继续
+            <strong>待开始</strong> - 此部署需要人工确认后才能开始执行
           </div>
           <div className="d-flex gap-2">
             <button className="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#confirmModal">
               <IconCheck size={16} className="me-1" />
-              确认继续
+              确认开始
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate("/deployments")}>
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 运行中状态 - 可以暂停 */}
+      {deployment.status === "running" && (
+        <div className="alert alert-info d-flex justify-content-between align-items-center mb-2 py-2">
+          <div>
+            <strong>运行中</strong> - 部署正在执行，进度 {deployment.progress}%
+          </div>
+          <div className="d-flex gap-2">
+            <button className="btn btn-warning btn-sm" onClick={handlePause}>
+              <IconPlayerPause size={16} className="me-1" />
+              暂停
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 暂停中状态 - 可以继续 */}
+      {deployment.status === "paused" && (
+        <div className="alert alert-warning d-flex justify-content-between align-items-center mb-2 py-2">
+          <div>
+            <strong>暂停中</strong> - 部署已暂停，可以继续执行或取消部署
+          </div>
+          <div className="d-flex gap-2">
+            <button className="btn btn-primary btn-sm" onClick={handleResume}>
+              <IconPlayerPlay size={16} className="me-1" />
+              继续
             </button>
             <button className="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rollbackModal">
               <IconArrowBackUp size={16} className="me-1" />
-              回滚
+              取消部署
             </button>
           </div>
         </div>
@@ -158,7 +217,7 @@ const DeploymentDetailPage: React.FC = () => {
           <WorkflowViewer
             tasks={deployment.tasks}
             onSave={handleSaveWorkflow}
-            allowEdit={deployment.status === "pending" || deployment.status === "waiting_confirm"}
+            allowEdit={deployment.status === "pending"}
           />
         </div>
       </div>

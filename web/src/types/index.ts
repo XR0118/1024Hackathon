@@ -54,7 +54,7 @@ export interface Deployment {
   applications: string[]
   environmentIds: string[]
   environments: string[]
-  status: 'pending' | 'running' | 'success' | 'failed' | 'waiting_confirm'
+  status: 'pending' | 'running' | 'paused' | 'completed'
   progress: number
   createdAt: string
   updatedAt: string
