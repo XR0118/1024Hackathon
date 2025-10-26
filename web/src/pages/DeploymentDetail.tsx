@@ -5,7 +5,7 @@ import { formatDate, formatDuration, getStatusColor, getStatusText } from "@/uti
 import type { DeploymentDetail as DeploymentDetailType } from "@/types";
 import { IconArrowLeft, IconCheck, IconArrowBackUp } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
-import DOMPurify from "dompurify";
+import WorkflowViewer from "@/components/WorkflowViewer";
 
 const DeploymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -56,6 +56,14 @@ const DeploymentDetailPage: React.FC = () => {
     }
   };
 
+  const handleSaveWorkflow = async (steps: any[]) => {
+    // TODO: 调用 API 保存工作流修改
+    console.log("保存工作流:", steps);
+    useErrorStore.getState().setError("工作流已保存（演示模式）");
+    // 实际项目中应该调用 API
+    // await deploymentApi.updateWorkflow(id, steps);
+  };
+
   if (loading && !deployment) {
     return <div>Loading...</div>;
   }
@@ -66,123 +74,92 @@ const DeploymentDetailPage: React.FC = () => {
 
   return (
     <div>
-      <div className="page-header d-print-none">
+      {/* 紧凑的页面头部 */}
+      <div className="page-header d-print-none mb-2">
         <div className="row align-items-center">
           <div className="col">
-            <a
-              href="javascript:void(0)"
-              className="btn btn-ghost-secondary"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/deployments");
-              }}
-            >
-              <IconArrowLeft />
-              返回
-            </a>
-            <h2 className="page-title ms-2 d-inline-block">任务详情</h2>
+            <div className="d-flex align-items-center gap-3">
+              <button className="btn btn-ghost-secondary btn-sm" onClick={() => navigate("/deployments")}>
+                <IconArrowLeft size={18} />
+              </button>
+              <h2 className="page-title mb-0">任务详情 #{deployment.id}</h2>
+              <span className={`badge bg-${getStatusColor(deployment.status)}`}>{getStatusText(deployment.status)}</span>
+              {deployment.grayscaleEnabled && <span className="badge bg-azure-lt">灰度 {deployment.grayscaleRatio}%</span>}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="card mb-3">
-        <div className="card-body">
-          <div className="row">
-            <div className="col-md-6">
-              <p>
-                <strong>部署ID:</strong> {deployment.id}
-              </p>
-              <p>
-                <strong>版本:</strong> {deployment.version}
-              </p>
-              <p>
-                <strong>应用:</strong> {deployment.applications.join(", ")}
-              </p>
+      {/* 紧凑的基本信息 */}
+      <div className="card mb-2" style={{ boxShadow: "none", border: "1px solid #e6e7e9" }}>
+        <div className="card-body py-2">
+          <div className="d-flex flex-wrap gap-4 align-items-center">
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+                版本:
+              </span>
+              <strong>{deployment.version}</strong>
             </div>
-            <div className="col-md-6">
-              <p>
-                <strong>状态:</strong> <span className={`badge bg-${getStatusColor(deployment.status)}-lt`}>{getStatusText(deployment.status)}</span>
-              </p>
-              <p>
-                <strong>环境:</strong> {deployment.environments.join(", ")}
-              </p>
-              <p>
-                <strong>创建时间:</strong> {formatDate(deployment.createdAt)}
-              </p>
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+                应用:
+              </span>
+              <strong>{deployment.applications.join(", ")}</strong>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+                环境:
+              </span>
+              <strong>{deployment.environments.join(", ")}</strong>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+                创建时间:
+              </span>
+              <span>{formatDate(deployment.createdAt)}</span>
             </div>
             {deployment.duration && (
-              <div className="col-12">
-                <p>
-                  <strong>执行时长:</strong> {formatDuration(deployment.duration)}
-                </p>
+              <div className="d-flex align-items-center gap-2">
+                <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+                  执行时长:
+                </span>
+                <span>{formatDuration(deployment.duration)}</span>
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {/* 人工确认提示 */}
       {deployment.status === "waiting_confirm" && (
-        <div className="alert alert-warning d-flex justify-content-between align-items-center">
+        <div className="alert alert-warning d-flex justify-content-between align-items-center mb-2 py-2">
           <div>
-            <strong>需要人工确认:</strong> 此部署需要人工确认后才能继续。
+            <strong>需要人工确认</strong> - 此部署需要人工确认后才能继续
           </div>
-          <div>
-            <button className="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#confirmModal">
-              <IconCheck size={16} className="me-2" />
+          <div className="d-flex gap-2">
+            <button className="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#confirmModal">
+              <IconCheck size={16} className="me-1" />
               确认继续
             </button>
-            <button className="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rollbackModal">
-              <IconArrowBackUp size={16} className="me-2" />
+            <button className="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rollbackModal">
+              <IconArrowBackUp size={16} className="me-1" />
               回滚
             </button>
           </div>
         </div>
       )}
 
-      {deployment.grayscaleEnabled && (
-        <div className="card mb-3">
-          <div className="card-header">
-            <h3 className="card-title">灰度发布</h3>
-          </div>
-          <div className="card-body">
-            <label className="form-label">当前灰度比例: {deployment.grayscaleRatio}%</label>
-            <input type="range" className="form-range" value={deployment.grayscaleRatio} disabled />
-          </div>
+      {/* 工作流区域 - 占据更大空间 */}
+      <div className="card" style={{ height: "calc(100vh - 220px)", minHeight: "600px" }}>
+        <div className="card-header py-2">
+          <h3 className="card-title mb-0">部署流程</h3>
         </div>
-      )}
-
-      <div className="card mb-3">
-        <div className="card-header">
-          <h3 className="card-title">部署流程</h3>
-        </div>
-        <div className="card-body">
-          <ul className="steps">
-            {deployment.steps.map((step, index) => (
-              <li key={index} className={`step-item ${step.status === "success" ? "active" : ""}`}>
-                <a href="javascript:void(0)" onClick={(e) => e.preventDefault()}>
-                  {step.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">实时日志</h3>
-        </div>
-        <div
-          className="card-body"
-          style={{ background: "#000", color: "#0f0", fontFamily: "monospace", fontSize: "12px", maxHeight: "400px", overflow: "auto" }}
-        >
-          {deployment.logs.map((log, index) => (
-            <div key={index}>
-              <span style={{ color: "#666" }}>[{log.timestamp}]</span>{" "}
-              <span style={{ color: log.level === "error" ? "#f00" : log.level === "warn" ? "#fa0" : "#0f0" }}>[{log.level.toUpperCase()}]</span>{" "}
-              <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.message) }} />
-            </div>
-          ))}
+        <div className="card-body" style={{ height: "calc(100% - 50px)", overflow: "hidden" }}>
+          <WorkflowViewer
+            steps={deployment.steps}
+            onSave={handleSaveWorkflow}
+            allowEdit={deployment.status === "pending" || deployment.status === "waiting_confirm"}
+          />
         </div>
       </div>
 

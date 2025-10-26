@@ -222,17 +222,10 @@ const CreateDeployment: React.FC = () => {
       <div className="page-header d-print-none">
         <div className="row align-items-center">
           <div className="col">
-            <a
-              href="javascript:void(0)"
-              className="btn btn-ghost-secondary"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/deployments");
-              }}
-            >
+            <button className="btn btn-ghost-secondary" onClick={() => navigate("/deployments")}>
               <IconArrowLeft />
               返回
-            </a>
+            </button>
             <h2 className="page-title ms-2 d-inline-block">新建任务</h2>
           </div>
         </div>
@@ -243,16 +236,14 @@ const CreateDeployment: React.FC = () => {
           <ul className="nav nav-tabs card-header-tabs">
             {steps.map((step, index) => (
               <li className="nav-item" key={index}>
-                <a
-                  href="javascript:void(0)"
+                <button
+                  type="button"
                   className={`nav-link ${currentStep === index ? "active" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setCurrentStep(index);
-                  }}
+                  onClick={() => setCurrentStep(index)}
+                  style={{ border: "none", background: "none", cursor: "pointer" }}
                 >
                   {step.title}
-                </a>
+                </button>
               </li>
             ))}
           </ul>

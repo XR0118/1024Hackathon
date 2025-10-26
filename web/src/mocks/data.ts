@@ -320,6 +320,46 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
       { timestamp: '2024-10-20T10:15:00Z', level: 'info', message: '部署成功' },
     ],
   },
+  'deploy-005': {
+    id: 'deploy-005',
+    versionId: 'v1.2.1',
+    version: 'v1.2.1',
+    applicationIds: ['payment-service'],
+    applications: ['payment-service'],
+    environmentIds: ['env3'],
+    environments: ['development'],
+    status: 'pending',
+    progress: 0,
+    createdAt: '2024-10-18T09:00:00Z',
+    updatedAt: '2024-10-18T09:00:00Z',
+    requireConfirm: false,
+    grayscaleEnabled: false,
+    steps: [
+      {
+        id: '1',
+        name: '准备部署',
+        status: 'pending',
+      },
+      {
+        id: '2',
+        name: '拉取镜像',
+        status: 'pending',
+      },
+      {
+        id: '3',
+        name: '更新服务',
+        status: 'pending',
+      },
+      {
+        id: '4',
+        name: '健康检查',
+        status: 'pending',
+      },
+    ],
+    logs: [
+      { timestamp: '2024-10-18T09:00:00Z', level: 'info', message: '部署任务已创建' },
+    ],
+  },
   'deploy-006': {
     id: 'deploy-006',
     versionId: 'v1.2.0',
