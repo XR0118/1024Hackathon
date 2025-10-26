@@ -74,13 +74,20 @@ export interface Task {
   deploymentId?: string
   appId?: string
   name: string
-  type: 'build' | 'test' | 'deploy' | 'health_check' | 'prepare' | 'custom'
-  status: 'pending' | 'running' | 'success' | 'failed' | 'blocked' | 'cancelled'
-  blockBy?: string
+  type: 'build' | 'test' | 'deploy' | 'health_check' | 'prepare' | 'sleep' | 'approval' | 'custom'
+  status: 'pending' | 'running' | 'success' | 'failed' | 'blocked' | 'cancelled' | 'waiting_approval'
+  dependencies?: string[]  // 上游依赖的任务ID列表，为空或不存在表示是顶点
   duration?: number
   startedAt?: string
   completedAt?: string
   logs?: string[]
+  params?: TaskParams
+}
+
+export interface TaskParams {
+  sleepDuration?: number  // sleep 任务的等待时间（秒）
+  approvalNote?: string   // approval 任务的审批说明
+  [key: string]: any      // 允许其他自定义参数
 }
 
 export interface DeploymentLog {

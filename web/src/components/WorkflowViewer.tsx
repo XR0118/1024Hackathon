@@ -102,35 +102,89 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
 
   // 初始化节点和边
   const initializeNodesAndEdges = useCallback(() => {
-    const initialNodes: Node[] = tasks.map((task, index) => ({
-      id: task.id,
-      type: "workflowNode",
-      position: { x: 250, y: index * 150 },
-      data: {
-        ...task,
-        isFirst: index === 0,
-        isLast: index === tasks.length - 1,
-        isEditMode: false,
-        onMoveUp: () => handleMoveUp(task.id),
-        onMoveDown: () => handleMoveDown(task.id),
-      },
-    }));
+    // 简单的 DAG 布局：计算每个节点的层级
+    const calculateLevel = (taskId: string, taskMap: Map<string, any>, visited = new Set<string>()): number => {
+      if (visited.has(taskId)) return 0; // 避免循环依赖
+      visited.add(taskId);
 
-    const initialEdges: Edge[] = tasks.slice(0, -1).map((task, index) => ({
-      id: `e${task.id}-${tasks[index + 1].id}`,
-      source: task.id,
-      target: tasks[index + 1].id,
-      type: "smoothstep",
-      animated: task.status === "running" || tasks[index + 1].status === "running",
-      style: {
-        stroke: task.status === "success" ? "#52c41a" : task.status === "failed" ? "#ff4d4f" : "#8c8c8c",
-        strokeWidth: 2,
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: task.status === "success" ? "#52c41a" : task.status === "failed" ? "#ff4d4f" : "#8c8c8c",
-      },
-    }));
+      const task = taskMap.get(taskId);
+      if (!task || !task.dependencies || task.dependencies.length === 0) {
+        return 0; // 顶点节点
+      }
+
+      // 当前节点的层级 = 所有依赖节点的最大层级 + 1
+      const maxDependencyLevel = Math.max(...task.dependencies.map((depId: string) => calculateLevel(depId, taskMap, new Set(visited))));
+      return maxDependencyLevel + 1;
+    };
+
+    const taskMap = new Map(tasks.map((task) => [task.id, task]));
+    const levels = new Map<string, number>();
+
+    // 计算每个任务的层级
+    tasks.forEach((task) => {
+      levels.set(task.id, calculateLevel(task.id, taskMap));
+    });
+
+    // 按层级分组
+    const levelGroups = new Map<number, string[]>();
+    levels.forEach((level, taskId) => {
+      if (!levelGroups.has(level)) {
+        levelGroups.set(level, []);
+      }
+      levelGroups.get(level)!.push(taskId);
+    });
+
+    // 生成节点位置（横向布局：从左到右）
+    const initialNodes: Node[] = tasks.map((task) => {
+      const level = levels.get(task.id) || 0;
+      const tasksInLevel = levelGroups.get(level) || [];
+      const indexInLevel = tasksInLevel.indexOf(task.id);
+      const totalInLevel = tasksInLevel.length;
+
+      // 垂直居中分布同层级的节点
+      const yOffset = (indexInLevel - (totalInLevel - 1) / 2) * 180;
+
+      return {
+        id: task.id,
+        type: "workflowNode",
+        position: { x: level * 320, y: 150 + yOffset }, // x 代表层级，y 代表同层中的位置
+        data: {
+          ...task,
+          isFirst: level === 0,
+          isLast: false, // DAG 中不再有明确的 last 概念
+          isEditMode: false,
+          onMoveUp: () => handleMoveUp(task.id),
+          onMoveDown: () => handleMoveDown(task.id),
+        },
+      };
+    });
+
+    // 根据 dependencies 生成边
+    const initialEdges: Edge[] = [];
+    tasks.forEach((task) => {
+      if (task.dependencies && task.dependencies.length > 0) {
+        task.dependencies.forEach((depId) => {
+          const sourceTask = taskMap.get(depId);
+          if (sourceTask) {
+            initialEdges.push({
+              id: `e${depId}-${task.id}`,
+              source: depId,
+              target: task.id,
+              type: "smoothstep",
+              animated: sourceTask.status === "running" || task.status === "running",
+              style: {
+                stroke: sourceTask.status === "success" ? "#52c41a" : sourceTask.status === "failed" ? "#ff4d4f" : "#8c8c8c",
+                strokeWidth: 2,
+              },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: sourceTask.status === "success" ? "#52c41a" : sourceTask.status === "failed" ? "#ff4d4f" : "#8c8c8c",
+              },
+            });
+          }
+        });
+      }
+    });
 
     setNodes(initialNodes);
     setEdges(initialEdges);
@@ -199,12 +253,13 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
       const newNode: Node = {
         id: newId,
         type: "workflowNode",
-        position: { x: 250, y: nds.length * 150 },
+        position: { x: 100, y: 150 + nds.length * 100 }, // 横向布局：新节点默认在最左侧
         data: {
           id: newId,
           name: `新任务 ${nds.length + 1}`,
           type: "custom" as const,
           status: "pending" as const,
+          dependencies: [], // 新任务默认无依赖（顶点节点）
           isFirst: nds.length === 0,
           isLast: true,
           isEditMode: isEditMode,
@@ -246,14 +301,26 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
 
   // 保存修改
   const handleSave = useCallback(() => {
+    // 从边重新构建每个节点的 dependencies
+    const dependenciesMap = new Map<string, string[]>();
+    edges.forEach((edge) => {
+      const targetId = edge.target;
+      if (!dependenciesMap.has(targetId)) {
+        dependenciesMap.set(targetId, []);
+      }
+      dependenciesMap.get(targetId)!.push(edge.source);
+    });
+
     // 将节点和边转换回 Task 格式
     const updatedTasks: Task[] = nodes.map((node) => ({
       id: node.id,
       name: node.data.name,
       type: node.data.type,
       status: node.data.status,
+      dependencies: dependenciesMap.get(node.id) || [], // 从边重建依赖关系
       duration: node.data.duration,
       logs: node.data.logs,
+      params: node.data.params, // 保存任务参数
       deploymentId: node.data.deploymentId,
       appId: node.data.appId,
       blockBy: node.data.blockBy,
@@ -265,7 +332,7 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
       onSave(updatedTasks);
     }
     setIsEditMode(false);
-  }, [nodes, onSave]);
+  }, [nodes, edges, onSave]);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>

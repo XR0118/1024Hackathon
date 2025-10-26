@@ -238,34 +238,78 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
     grayscaleEnabled: true,
     grayscaleRatio: 30,
     tasks: [
+      // 顶点1：准备部署（无依赖）
       {
         id: 'task-1',
         name: '准备部署',
         type: 'prepare',
         status: 'completed',
+        dependencies: [],
         duration: 300,
         logs: ['检查版本信息...', '验证配置文件...', '准备完成'],
       },
+      // 顶点2：环境检查（并行开始，无依赖）
       {
         id: 'task-2',
+        name: '环境检查',
+        type: 'health_check',
+        status: 'completed',
+        dependencies: [],
+        duration: 120,
+        logs: ['检查生产环境状态...', '环境正常'],
+      },
+      // 依赖 task-1
+      {
+        id: 'task-3',
         name: '构建镜像',
         type: 'build',
         status: 'completed',
+        dependencies: ['task-1'],
         duration: 450,
+        appId: 'user-service',
         logs: ['构建 user-service 镜像', '构建 order-service 镜像', '镜像构建完成'],
       },
-      {
-        id: 'task-3',
-        name: '部署服务',
-        type: 'deploy',
-        status: 'running',
-        logs: ['部署 user-service', '部署 order-service', '等待服务就绪...'],
-      },
+      // 依赖 task-3
       {
         id: 'task-4',
+        name: '等待灰度窗口',
+        type: 'sleep',
+        status: 'completed',
+        dependencies: ['task-3'],
+        duration: 60,
+        params: {
+          sleepDuration: 60,
+        },
+      },
+      // 依赖 task-4 和 task-2（多个上游）
+      {
+        id: 'task-5',
+        name: '人工确认',
+        type: 'approval',
+        status: 'waiting_approval',
+        dependencies: ['task-4', 'task-2'],
+        params: {
+          approvalNote: '请确认是否继续灰度部署到生产环境',
+        },
+      },
+      // 依赖 task-5
+      {
+        id: 'task-6',
+        name: '灰度部署',
+        type: 'deploy',
+        status: 'pending',
+        dependencies: ['task-5'],
+        appId: 'user-service',
+        logs: [],
+      },
+      // 依赖 task-6
+      {
+        id: 'task-7',
         name: '健康检查',
         type: 'health_check',
         status: 'pending',
+        dependencies: ['task-6'],
+        appId: 'user-service',
       },
     ],
     logs: [
@@ -298,6 +342,7 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         name: '准备部署',
         type: 'prepare',
         status: 'completed',
+        dependencies: [],
         duration: 300,
       },
       {
@@ -305,21 +350,27 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         name: '构建镜像',
         type: 'build',
         status: 'completed',
+        dependencies: ['task-1'],
         duration: 600,
+        appId: 'order-service',
       },
       {
         id: 'task-3',
         name: '部署服务',
         type: 'deploy',
         status: 'completed',
+        dependencies: ['task-2'],
         duration: 600,
+        appId: 'order-service',
       },
       {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
         status: 'completed',
+        dependencies: ['task-3'],
         duration: 300,
+        appId: 'order-service',
       },
     ],
     logs: [
@@ -348,6 +399,7 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         name: '准备部署',
         type: 'prepare',
         status: 'success',
+        dependencies: [],
         duration: 180,
       },
       {
@@ -355,6 +407,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         name: '构建镜像',
         type: 'build',
         status: 'running',
+        dependencies: ['task-1'],
+        appId: 'payment-service',
         logs: ['构建 payment-service 镜像中...', '已完成 30%'],
       },
       {
@@ -362,12 +416,16 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         name: '部署服务',
         type: 'deploy',
         status: 'pending',
+        dependencies: ['task-2'],
+        appId: 'payment-service',
       },
       {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
         status: 'pending',
+        dependencies: ['task-3'],
+        appId: 'payment-service',
       },
     ],
     logs: [
@@ -397,24 +455,31 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         name: '准备部署',
         type: 'prepare',
         status: 'pending',
+        dependencies: [],
       },
       {
         id: 'task-2',
         name: '构建镜像',
         type: 'build',
         status: 'pending',
+        dependencies: ['task-1'],
+        appId: 'user-service',
       },
       {
         id: 'task-3',
         name: '部署服务',
         type: 'deploy',
         status: 'pending',
+        dependencies: ['task-2'],
+        appId: 'user-service',
       },
       {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
         status: 'pending',
+        dependencies: ['task-3'],
+        appId: 'user-service',
       },
     ],
     logs: [
