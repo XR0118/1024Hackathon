@@ -16,7 +16,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import WorkflowNode from "./WorkflowNode";
 import type { Task } from "@/types";
-import { IconEdit, IconDeviceFloppy, IconX, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconEdit, IconDeviceFloppy, IconX, IconPlus, IconTrash, IconInfoCircle } from "@tabler/icons-react";
 
 interface WorkflowViewerProps {
   tasks: Task[];
@@ -26,79 +26,10 @@ interface WorkflowViewerProps {
 
 const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdit = true }) => {
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const nodeTypes = useMemo(() => ({ workflowNode: WorkflowNode }), []);
-
-  // 上移节点
-  const handleMoveUp = useCallback((nodeId: string) => {
-    setNodes((nds) => {
-      const index = nds.findIndex((n) => n.id === nodeId);
-      if (index <= 0) return nds;
-
-      const newNodes = [...nds];
-      [newNodes[index - 1], newNodes[index]] = [newNodes[index], newNodes[index - 1]];
-
-      // 更新位置
-      return newNodes.map((node, idx) => ({
-        ...node,
-        position: { x: 250, y: idx * 150 },
-        data: {
-          ...node.data,
-          isFirst: idx === 0,
-          isLast: idx === newNodes.length - 1,
-        },
-      }));
-    });
-
-    // 重建边
-    rebuildEdges();
-  }, []);
-
-  // 下移节点
-  const handleMoveDown = useCallback((nodeId: string) => {
-    setNodes((nds) => {
-      const index = nds.findIndex((n) => n.id === nodeId);
-      if (index < 0 || index >= nds.length - 1) return nds;
-
-      const newNodes = [...nds];
-      [newNodes[index], newNodes[index + 1]] = [newNodes[index + 1], newNodes[index]];
-
-      // 更新位置
-      return newNodes.map((node, idx) => ({
-        ...node,
-        position: { x: 250, y: idx * 150 },
-        data: {
-          ...node.data,
-          isFirst: idx === 0,
-          isLast: idx === newNodes.length - 1,
-        },
-      }));
-    });
-
-    // 重建边
-    rebuildEdges();
-  }, []);
-
-  // 重建顺序边
-  const rebuildEdges = useCallback(() => {
-    setNodes((nds) => {
-      const newEdges: Edge[] = [];
-      for (let i = 0; i < nds.length - 1; i++) {
-        newEdges.push({
-          id: `e${nds[i].id}-${nds[i + 1].id}`,
-          source: nds[i].id,
-          target: nds[i + 1].id,
-          type: "smoothstep",
-          animated: false,
-          style: { stroke: "#8c8c8c", strokeWidth: 2 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#8c8c8c" },
-        });
-      }
-      setEdges(newEdges);
-      return nds;
-    });
-  }, []);
 
   // 初始化节点和边
   const initializeNodesAndEdges = useCallback(() => {
@@ -150,11 +81,7 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
         position: { x: level * 320, y: 150 + yOffset }, // x 代表层级，y 代表同层中的位置
         data: {
           ...task,
-          isFirst: level === 0,
-          isLast: false, // DAG 中不再有明确的 last 概念
           isEditMode: false,
-          onMoveUp: () => handleMoveUp(task.id),
-          onMoveDown: () => handleMoveDown(task.id),
         },
       };
     });
@@ -188,7 +115,7 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
 
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, [tasks, handleMoveUp, handleMoveDown]);
+  }, [tasks]);
 
   // 组件挂载时初始化
   React.useEffect(() => {
@@ -249,37 +176,22 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
   // 添加新任务节点
   const handleAddNode = useCallback(() => {
     const newId = `task-${Date.now()}`;
-    setNodes((nds) => {
-      const newNode: Node = {
+    const newNode: Node = {
+      id: newId,
+      type: "workflowNode",
+      position: { x: 100, y: 150 + nodes.length * 100 }, // 横向布局：新节点默认在最左侧
+      data: {
         id: newId,
-        type: "workflowNode",
-        position: { x: 100, y: 150 + nds.length * 100 }, // 横向布局：新节点默认在最左侧
-        data: {
-          id: newId,
-          name: `新任务 ${nds.length + 1}`,
-          type: "custom" as const,
-          status: "pending" as const,
-          dependencies: [], // 新任务默认无依赖（顶点节点）
-          isFirst: nds.length === 0,
-          isLast: true,
-          isEditMode: isEditMode,
-          onMoveUp: () => handleMoveUp(newId),
-          onMoveDown: () => handleMoveDown(newId),
-        },
-      };
+        name: `新任务 ${nodes.length + 1}`,
+        type: "custom" as const,
+        status: "pending" as const,
+        dependencies: [], // 新任务默认无依赖（顶点节点）
+        isEditMode: isEditMode,
+      },
+    };
 
-      // 更新其他节点的 isLast 标记
-      const updatedNodes = nds.map((node, idx) => ({
-        ...node,
-        data: {
-          ...node.data,
-          isLast: false,
-        },
-      }));
-
-      return [...updatedNodes, newNode];
-    });
-  }, [isEditMode, handleMoveUp, handleMoveDown]);
+    setNodes((nds) => [...nds, newNode]);
+  }, [isEditMode, nodes.length]);
 
   // 进入编辑模式
   const handleEnterEditMode = useCallback(() => {
@@ -336,6 +248,21 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {/* 增强边的选中效果 */}
+      <style>{`
+        .react-flow__edge.selected .react-flow__edge-path {
+          stroke: #3b82f6 !important;
+          stroke-width: 3 !important;
+        }
+        .react-flow__edge:hover .react-flow__edge-path {
+          stroke: #60a5fa !important;
+          stroke-width: 2.5 !important;
+        }
+        .react-flow__edge.selected .react-flow__edge-text {
+          fill: #3b82f6 !important;
+        }
+      `}</style>
+
       {/* 工具栏 */}
       {allowEdit && (
         <div className="d-flex gap-2 mb-2" style={{ flexShrink: 0 }}>
@@ -358,12 +285,29 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
                 <IconPlus size={16} className="me-1" />
                 添加任务
               </button>
-              <span className="badge bg-info-lt align-self-center ms-auto" style={{ fontSize: "0.75rem" }}>
-                <IconEdit size={14} className="me-1" />
-                可拖拽节点、上移/下移调整顺序、创建连接、删除元素（Del/Backspace）
-              </span>
+              <button className="btn btn-ghost-secondary btn-sm ms-auto" onClick={() => setShowHelp(!showHelp)} title="查看编辑帮助">
+                <IconInfoCircle size={16} />
+              </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* 可折叠的帮助提示 */}
+      {isEditMode && showHelp && (
+        <div className="alert alert-info py-2 mb-2" style={{ fontSize: "0.85rem" }}>
+          <div className="d-flex justify-content-between align-items-start">
+            <div>
+              <strong>编辑操作说明：</strong>
+              <ul className="mb-0 mt-1" style={{ paddingLeft: "1.2rem" }}>
+                <li>拖拽节点调整位置</li>
+                <li>拖拽连接点（节点两侧圆点）创建依赖关系</li>
+                <li>点击连接线 → 按 Del/Backspace 删除依赖关系</li>
+                <li>选中节点 → 按 Del/Backspace 删除节点</li>
+              </ul>
+            </div>
+            <button className="btn-close" onClick={() => setShowHelp(false)} aria-label="Close"></button>
+          </div>
         </div>
       )}
 
@@ -380,11 +324,16 @@ const WorkflowViewer: React.FC<WorkflowViewerProps> = ({ tasks, onSave, allowEdi
           nodesDraggable={isEditMode}
           nodesConnectable={isEditMode}
           elementsSelectable={true}
+          edgesUpdatable={isEditMode}
+          edgesFocusable={isEditMode}
           panOnScroll={true}
           zoomOnScroll={true}
           minZoom={0.5}
           maxZoom={1.5}
           deleteKeyCode={isEditMode ? ["Backspace", "Delete"] : []}
+          defaultEdgeOptions={{
+            style: { strokeWidth: 2 },
+          }}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#e5e7eb" />
           <Controls showInteractive={false} />

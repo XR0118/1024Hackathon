@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import { Handle, Position } from "reactflow";
-import { IconCircleCheck, IconAlertCircle, IconClock, IconLoader, IconArrowUp, IconArrowDown, IconMoon, IconUserCheck } from "@tabler/icons-react";
+import { IconCircleCheck, IconAlertCircle, IconClock, IconLoader, IconMoon, IconUserCheck } from "@tabler/icons-react";
 import type { Task } from "@/types";
 
 interface WorkflowNodeProps {
   data: Task & {
-    isFirst?: boolean;
-    isLast?: boolean;
-    onMoveUp?: () => void;
-    onMoveDown?: () => void;
     isEditMode?: boolean;
   };
 }
@@ -186,37 +182,6 @@ const WorkflowNode: React.FC<WorkflowNodeProps> = ({ data }) => {
       {data.status === "running" && (
         <div className="progress mt-2" style={{ height: "4px" }}>
           <div className="progress-bar progress-bar-striped progress-bar-animated" style={{ width: "100%" }} />
-        </div>
-      )}
-
-      {data.isEditMode && (
-        <div className="d-flex gap-1 mt-2">
-          {!data.isFirst && (
-            <button
-              className="btn btn-sm btn-outline-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onMoveUp?.();
-              }}
-              style={{ fontSize: "0.75rem", padding: "2px 6px" }}
-            >
-              <IconArrowUp size={12} />
-              上移
-            </button>
-          )}
-          {!data.isLast && (
-            <button
-              className="btn btn-sm btn-outline-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onMoveDown?.();
-              }}
-              style={{ fontSize: "0.75rem", padding: "2px 6px" }}
-            >
-              <IconArrowDown size={12} />
-              下移
-            </button>
-          )}
         </div>
       )}
 
