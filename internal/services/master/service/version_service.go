@@ -48,9 +48,11 @@ func (s *versionService) CreateVersion(ctx context.Context, req *models.CreateVe
 	// 创建版本
 	version := &models.Version{
 		ID:          uuid.New().String(),
+		Version:     req.Version,
 		GitTag:      req.GitTag,
 		GitCommit:   req.GitCommit,
 		Repository:  req.Repository,
+		Status:      "normal",
 		CreatedBy:   getCurrentUser(ctx),
 		CreatedAt:   time.Now(),
 		Description: req.Description,
@@ -96,23 +98,23 @@ func (s *versionService) GetVersionList(ctx context.Context, req *models.ListVer
 	}, nil
 }
 
-func (s *versionService) GetVersion(ctx context.Context, id string) (*models.Version, error) {
-	version, err := s.versionRepo.GetByID(ctx, id)
+func (s *versionService) GetVersion(ctx context.Context, versionStr string) (*models.Version, error) {
+	version, err := s.versionRepo.GetByVersion(ctx, versionStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get version: %w", err)
 	}
 	return version, nil
 }
 
-func (s *versionService) DeleteVersion(ctx context.Context, id string) error {
-	// 检查版本是否存在
-	_, err := s.versionRepo.GetByID(ctx, id)
+func (s *versionService) DeleteVersion(ctx context.Context, versionStr string) error {
+	// 检查版本是否存在并获取 ID
+	version, err := s.versionRepo.GetByVersion(ctx, versionStr)
 	if err != nil {
 		return fmt.Errorf("version not found: %w", err)
 	}
 
-	// 删除版本
-	if err := s.versionRepo.Delete(ctx, id); err != nil {
+	// 删除版本（使用 ID）
+	if err := s.versionRepo.Delete(ctx, version.ID); err != nil {
 		return fmt.Errorf("failed to delete version: %w", err)
 	}
 

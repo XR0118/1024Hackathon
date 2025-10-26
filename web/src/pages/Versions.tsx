@@ -23,7 +23,9 @@ const Versions: React.FC = () => {
     setLoading(true);
     try {
       const data = await versionApi.list({
-        search: searchText || undefined,
+        repository: searchText || undefined,
+        page: 1,
+        page_size: 100,
       });
       setVersions(data);
     } catch (error) {
@@ -111,54 +113,68 @@ const Versions: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedVersions.map((version) => (
-                <tr key={version.version}>
-                  <td>{version.version}</td>
+              {paginatedVersions.map((ver) => (
+                <tr key={ver.version}>
                   <td>
                     <div className="d-flex flex-column">
-                      <span>
-                        tag:{" "}
-                        <a href={`https://github.com/XR0118/1024Hackathon/releases/tag/${version.git.tag}`} target="_blank" rel="noopener noreferrer">
-                          {version.git.tag}
+                      <span className="fw-bold">{ver.version}</span>
+                      {ver.status === "revert" && (
+                        <span className="badge bg-yellow-lt mt-1" style={{ width: "fit-content" }}>
+                          回滚版本
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="d-flex flex-column">
+                      <span className="text-muted" style={{ fontSize: "12px" }}>
+                        Tag:{" "}
+                        <a href={`${ver.repository}/releases/tag/${ver.git_tag}`} target="_blank" rel="noopener noreferrer">
+                          {ver.git_tag}
                         </a>
+                      </span>
+                      <span className="text-muted" style={{ fontSize: "12px" }}>
+                        Commit: {ver.git_commit.substring(0, 8)}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: "12px" }}>
+                        Repo: {ver.repository.split("/").slice(-2).join("/")}
                       </span>
                     </div>
                   </td>
                   <td>
                     <div className="d-flex flex-column gap-1">
-                      {version.applications.map((app) => (
-                        <div key={app.name} className="d-flex align-items-center gap-2">
-                          <a href={`/applications/${app.name}`} target="_blank" rel="noopener noreferrer">
-                            <span className="badge bg-secondary-lt">{app.name}</span>
-                          </a>
-                          <small className="text-muted">
-                            覆盖度: {app.coverage}% | 健康度: {app.health}% | 更新: {formatDate(app.lastUpdatedAt)}
-                          </small>
-                        </div>
-                      ))}
+                      {ver.app_builds && ver.app_builds.length > 0 ? (
+                        ver.app_builds.map((build, idx) => (
+                          <div key={idx} className="d-flex align-items-center gap-2">
+                            <a href={`/applications/${build.app_name}`} target="_blank" rel="noopener noreferrer">
+                              <span className="badge bg-secondary-lt">{build.app_name}</span>
+                            </a>
+                            <small className="text-muted" style={{ fontSize: "11px" }}>
+                              {build.docker_image}
+                            </small>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-muted">暂无构建信息</span>
+                      )}
                     </div>
                   </td>
-                  <td>{formatDate(version.createdAt)}</td>
+                  <td>{formatDate(ver.created_at)}</td>
                   <td>
                     <div className="d-flex gap-2">
                       <button
                         className="btn btn-sm btn-ghost-primary"
                         data-bs-toggle="modal"
                         data-bs-target="#versionDetailModal"
-                        onClick={() => setSelectedVersion(version)}
+                        onClick={() => setSelectedVersion(ver)}
                       >
                         详情
                       </button>
-                      <a href={`/deployments/${version.version}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost-secondary">
+                      <a href={`/deployments?version=${ver.version}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost-secondary">
                         <IconRocket size={16} className="me-1" />
                         查看任务
                       </a>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        data-bs-toggle="modal"
-                        data-bs-target="#rollbackModal"
-                        onClick={() => setRollbackVersion(version)}
-                      >
+                      <button className="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rollbackModal" onClick={() => setRollbackVersion(ver)}>
                         <IconArrowBackUp size={16} className="me-1" />
                         回滚
                       </button>
@@ -236,40 +252,56 @@ const Versions: React.FC = () => {
                     <strong>版本号:</strong> {selectedVersion.version}
                   </p>
                   <p>
-                    <strong>Git:</strong> tag: {selectedVersion.git.tag}
+                    <strong>状态:</strong>{" "}
+                    <span className={`badge ${selectedVersion.status === "normal" ? "bg-blue" : "bg-yellow"}`}>
+                      {selectedVersion.status === "normal" ? "正常" : "回滚版本"}
+                    </span>
                   </p>
                   <p>
-                    <strong>创建时间:</strong> {formatDate(selectedVersion.createdAt)}
+                    <strong>Git Tag:</strong> {selectedVersion.git_tag}
                   </p>
+                  <p>
+                    <strong>Git Commit:</strong> {selectedVersion.git_commit}
+                  </p>
+                  <p>
+                    <strong>仓库:</strong>{" "}
+                    <a href={selectedVersion.repository} target="_blank" rel="noopener noreferrer">
+                      {selectedVersion.repository}
+                    </a>
+                  </p>
+                  <p>
+                    <strong>创建者:</strong> {selectedVersion.created_by}
+                  </p>
+                  <p>
+                    <strong>创建时间:</strong> {formatDate(selectedVersion.created_at)}
+                  </p>
+                  {selectedVersion.description && (
+                    <p>
+                      <strong>描述:</strong> {selectedVersion.description}
+                    </p>
+                  )}
 
-                  <h3 style={{ marginTop: 24 }}>应用信息</h3>
-                  <div className="list-group">
-                    {selectedVersion.applications.map((app) => (
-                      <div key={app.name} className="list-group-item">
-                        <div className="row align-items-center">
-                          <div className="col">
-                            <strong>{app.name}</strong>
-                          </div>
-                          <div className="col-auto">
-                            <div className="d-flex flex-column gap-1">
-                              <div>
-                                <span className="text-muted">覆盖度:</span> <span className="badge bg-info-lt">{app.coverage}%</span>
-                              </div>
-                              <div>
-                                <span className="text-muted">健康度:</span>{" "}
-                                <span className={`badge ${app.health >= 80 ? "bg-success-lt" : app.health >= 50 ? "bg-warning-lt" : "bg-danger-lt"}`}>
-                                  {app.health}%
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted">最后更新:</span> {formatDate(app.lastUpdatedAt)}
-                              </div>
+                  <h3 style={{ marginTop: 24 }}>应用构建信息</h3>
+                  {selectedVersion.app_builds && selectedVersion.app_builds.length > 0 ? (
+                    <div className="list-group">
+                      {selectedVersion.app_builds.map((build, idx) => (
+                        <div key={idx} className="list-group-item">
+                          <div className="row">
+                            <div className="col">
+                              <strong>{build.app_name}</strong>
+                            </div>
+                            <div className="col-auto">
+                              <span className="text-muted" style={{ fontSize: "12px" }}>
+                                {build.docker_image}
+                              </span>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">暂无构建信息</p>
+                  )}
                 </div>
               )}
             </div>
@@ -291,7 +323,7 @@ const Versions: React.FC = () => {
                   <div className="alert alert-danger">
                     <strong>警告：此操作不可撤销！</strong>
                     <br />
-                    确定要回滚版本 <strong>{rollbackVersion.version}</strong> 吗？
+                    确定要回滚到版本 <strong>{rollbackVersion.version}</strong> 吗？
                   </div>
                   <div className="mb-3">
                     <label className="form-label">回滚原因（必填）</label>

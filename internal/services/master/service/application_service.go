@@ -47,13 +47,14 @@ func (s *applicationService) CreateApplication(ctx context.Context, req *models.
 	cfg, _ := json.Marshal(req.Config)
 	// 创建应用
 	app := &models.Application{
-		ID:         uuid.New().String(),
-		Name:       req.Name,
-		Repository: req.Repository,
-		Type:       req.Type,
-		Config:     cfg,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:          uuid.New().String(),
+		Name:        req.Name,
+		Description: req.Description,
+		Repository:  req.Repository,
+		Type:        req.Type,
+		Config:      cfg,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	if err := s.appRepo.Create(ctx, app); err != nil {
@@ -115,6 +116,9 @@ func (s *applicationService) UpdateApplication(ctx context.Context, id string, r
 	// 更新字段
 	if req.Name != "" {
 		app.Name = req.Name
+	}
+	if req.Description != "" {
+		app.Description = req.Description
 	}
 	if req.Type != "" {
 		app.Type = req.Type

@@ -2,6 +2,7 @@ import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 import {
   mockVersions,
   mockApplications,
+  mockApplicationVersions,
   mockEnvironments,
   mockDeployments,
   mockDeploymentDetails,
@@ -20,23 +21,34 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
 
       if (url.startsWith('/versions')) {
         if (method === 'GET' && url === '/versions') {
-          const search = config.params?.search?.toLowerCase()
+          const repository = config.params?.repository?.toLowerCase()
           let results = mockVersions
-          if (search) {
-            results = mockVersions.filter(
-              (v) =>
-                v.version.toLowerCase().includes(search) ||
-                v.git.tag.toLowerCase().includes(search)
+          if (repository) {
+            results = mockVersions.filter((v) =>
+              v.repository.toLowerCase().includes(repository) ||
+              v.git_tag.toLowerCase().includes(repository)
             )
           }
+          // 返回分页格式
           return Promise.reject({
             config,
-            response: { data: results, status: 200, statusText: 'OK', headers: {}, config },
+            response: {
+              data: {
+                versions: results,
+                total: results.length,
+                page: config.params?.page || 1,
+                page_size: config.params?.page_size || 100,
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config,
+            },
             isMockResponse: true,
           })
         }
 
-        if (method === 'GET' && url.match(/^\/versions\/.+$/)) {
+        if (method === 'GET' && url.match(/^\/versions\/[^/]+$/)) {
           const version = url.split('/')[2]
           const found = mockVersions.find((v) => v.version === version)
           if (found) {
@@ -55,8 +67,10 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
 
         if (method === 'POST' && url === '/versions') {
           const newVersion = {
+            id: `version-${Date.now()}`,
             ...config.data,
-            createdAt: new Date().toISOString(),
+            status: 'normal',
+            created_at: new Date().toISOString(),
           }
           return Promise.reject({
             config,
@@ -65,14 +79,41 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
 
-        if (method === 'POST' && url.match(/^\/versions\/.+?\/rollback$/)) {
+        if (method === 'DELETE' && url.match(/^\/versions\/[^/]+$/)) {
           const version = url.split('/')[2]
           const found = mockVersions.find((v) => v.version === version)
           if (found) {
-            // 模拟回滚操作
             return Promise.reject({
               config,
-              response: { data: { ...found }, status: 200, statusText: 'OK', headers: {}, config },
+              response: { data: { message: 'Version deleted successfully' }, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+          return Promise.reject({
+            config,
+            response: { data: { message: 'Version not found' }, status: 404, statusText: 'Not Found', headers: {}, config },
+            isMockResponse: true,
+          })
+        }
+
+        if (method === 'POST' && url.match(/^\/versions\/[^/]+\/rollback$/)) {
+          const version = url.split('/')[2]
+          const found = mockVersions.find((v) => v.version === version)
+          if (found) {
+            // 模拟回滚操作，返回成功消息
+            return Promise.reject({
+              config,
+              response: {
+                data: {
+                  message: 'Rollback initiated',
+                  version: version,
+                  reason: config.data?.reason,
+                },
+                status: 200,
+                statusText: 'OK',
+                headers: {},
+                config,
+              },
               isMockResponse: true,
             })
           }
@@ -85,17 +126,48 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       }
 
       if (url.startsWith('/applications')) {
+        // 应用列表
         if (method === 'GET' && url === '/applications') {
           return Promise.reject({
             config,
-            response: { data: mockApplications, status: 200, statusText: 'OK', headers: {}, config },
+            response: { data: { applications: mockApplications }, status: 200, statusText: 'OK', headers: {}, config },
             isMockResponse: true,
           })
         }
 
-        if (method === 'GET' && url.match(/^\/applications\/.+$/)) {
+        // 应用版本信息（匹配 /applications/:name/versions）
+        if (method === 'GET' && url.match(/^\/applications\/.+\/versions$/)) {
           const name = url.split('/')[2]
-          const found = mockApplications.find((a) => a.name === name)
+          const versionInfo = mockApplicationVersions[name]
+          if (versionInfo) {
+            return Promise.reject({
+              config,
+              response: { data: versionInfo, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+          // 如果没有版本信息，返回空列表
+          return Promise.reject({
+            config,
+            response: {
+              data: {
+                application_id: '',
+                name: name,
+                versions: [],
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config,
+            },
+            isMockResponse: true,
+          })
+        }
+
+        // 应用详情（匹配 /applications/:id）
+        if (method === 'GET' && url.match(/^\/applications\/[^/]+$/)) {
+          const id = url.split('/')[2]
+          const found = mockApplications.find((a) => a.id === id || a.name === id)
           if (found) {
             return Promise.reject({
               config,
@@ -110,9 +182,13 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
 
+        // 创建应用
         if (method === 'POST' && url === '/applications') {
           const newApp = {
+            id: `app-${Date.now()}`,
             ...config.data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }
           return Promise.reject({
             config,
@@ -121,13 +197,15 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
 
+        // 更新应用
         if (method === 'PUT' && url.match(/^\/applications\/.+$/)) {
-          const name = url.split('/')[2]
-          const found = mockApplications.find((a) => a.name === name)
+          const id = url.split('/')[2]
+          const found = mockApplications.find((a) => a.id === id)
           if (found) {
             const updated = {
               ...found,
               ...config.data,
+              updated_at: new Date().toISOString(),
             }
             return Promise.reject({
               config,
@@ -147,7 +225,7 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         if (method === 'GET' && url === '/environments') {
           return Promise.reject({
             config,
-            response: { data: mockEnvironments, status: 200, statusText: 'OK', headers: {}, config },
+            response: { data: { environments: mockEnvironments }, status: 200, statusText: 'OK', headers: {}, config },
             isMockResponse: true,
           })
         }
@@ -186,35 +264,40 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
       if (url.startsWith('/deployments')) {
         if (method === 'GET' && url === '/deployments') {
           let results = mockDeployments
-          const { status, environmentId, applicationId, includeDetails } = config.params || {}
+          const { status, environment_id, version_id } = config.params || {}
 
           if (status) {
-            // 支持逗号分隔的多个状态过滤
             const statusList = status.split(',').map((s: string) => s.trim())
             results = results.filter((d) => statusList.includes(d.status))
           }
-          if (environmentId) {
-            results = results.filter((d) => d.environments.includes(environmentId))
+          if (environment_id) {
+            results = results.filter((d) => d.environment_id === environment_id)
           }
-          if (applicationId) {
-            results = results.filter((d) => d.applications.includes(applicationId))
-          }
-
-          // 如果需要详情，返回 DeploymentDetail[]
-          if (includeDetails === 'true' || includeDetails === true) {
-            const detailedResults = results
-              .map((d) => mockDeploymentDetails[d.id])
-              .filter((d) => d !== undefined)
-            return Promise.reject({
-              config,
-              response: { data: detailedResults, status: 200, statusText: 'OK', headers: {}, config },
-              isMockResponse: true,
-            })
+          if (version_id) {
+            results = results.filter((d) => d.version_id === version_id)
           }
 
+          // 如果查询的是 running 或 paused 状态，返回包含 tasks 的详细数据
+          const needDetails = status && (status.includes('running') || status.includes('paused'))
+          const deploymentsData = needDetails
+            ? results.map(d => mockDeploymentDetails[d.id] || d)
+            : results
+
+          // 返回分页格式
           return Promise.reject({
             config,
-            response: { data: results, status: 200, statusText: 'OK', headers: {}, config },
+            response: {
+              data: {
+                deployments: deploymentsData,
+                total: deploymentsData.length,
+                page: config.params?.page || 1,
+                page_size: config.params?.page_size || 100,
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config,
+            },
             isMockResponse: true,
           })
         }
@@ -239,20 +322,17 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
         if (method === 'POST' && url === '/deployments') {
           const data = config.data as CreateDeploymentRequest
           const newDeployment = {
-            id: `deploy${mockDeployments.length + 1}`,
-            versionId: data.versionId,
-            version: data.versionId,
-            applicationIds: data.applicationIds,
-            applications: data.applicationIds,
-            environmentIds: data.environmentIds,
-            environments: data.environmentIds,
+            id: `deploy-${Date.now()}`,
+            version_id: data.version_id,
+            must_in_order: data.must_in_order || [],
+            environment_id: data.environment_id,
             status: 'pending' as const,
-            progress: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            requireConfirm: data.requireConfirm,
-            grayscaleEnabled: data.grayscaleEnabled,
-            grayscaleRatio: data.grayscaleRatio,
+            step: 'pending' as const,
+            created_by: 'admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            manual_approval: data.manual_approval || false,
+            strategy: data.strategy,
           }
           return Promise.reject({
             config,
@@ -261,25 +341,52 @@ export function setupMockHandlers(apiInstance: AxiosInstance) {
           })
         }
 
-        if (method === 'PUT' && url.match(/^\/deployments\/.+$/)) {
+        if (method === 'POST' && url.match(/^\/deployments\/[^/]+\/start$/)) {
           const id = url.split('/')[2]
           const found = mockDeployments.find((d) => d.id === id)
           if (found) {
-            const action = config.data?.action
-            let newStatus = found.status
-
-            if (action === 'confirm') {
-              newStatus = 'running'
-            } else if (action === 'rollback') {
-              newStatus = 'completed' // 回滚操作完成
-            } else if (action === 'cancel') {
-              newStatus = 'pending'
-            }
-
             const updated = {
               ...found,
-              status: newStatus,
-              updatedAt: new Date().toISOString(),
+              status: 'running',
+              step: 'running',
+              started_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }
+            return Promise.reject({
+              config,
+              response: { data: updated, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+        }
+
+        if (method === 'POST' && url.match(/^\/deployments\/[^/]+\/pause$/)) {
+          const id = url.split('/')[2]
+          const found = mockDeployments.find((d) => d.id === id)
+          if (found) {
+            const updated = {
+              ...found,
+              status: 'paused',
+              step: 'paused',
+              updated_at: new Date().toISOString(),
+            }
+            return Promise.reject({
+              config,
+              response: { data: updated, status: 200, statusText: 'OK', headers: {}, config },
+              isMockResponse: true,
+            })
+          }
+        }
+
+        if (method === 'POST' && url.match(/^\/deployments\/[^/]+\/resume$/)) {
+          const id = url.split('/')[2]
+          const found = mockDeployments.find((d) => d.id === id)
+          if (found) {
+            const updated = {
+              ...found,
+              status: 'running',
+              step: 'running',
+              updated_at: new Date().toISOString(),
             }
             return Promise.reject({
               config,

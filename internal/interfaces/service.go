@@ -10,8 +10,8 @@ import (
 type VersionService interface {
 	CreateVersion(ctx context.Context, req *models.CreateVersionRequest) (*models.Version, error)
 	GetVersionList(ctx context.Context, req *models.ListVersionsRequest) (*models.VersionListResponse, error)
-	GetVersion(ctx context.Context, id string) (*models.Version, error)
-	DeleteVersion(ctx context.Context, id string) error
+	GetVersion(ctx context.Context, version string) (*models.Version, error) // 通过版本号查询
+	DeleteVersion(ctx context.Context, version string) error                // 通过版本号删除
 }
 
 // ApplicationService 应用服务接口

@@ -131,7 +131,6 @@ func (v *TriggerService) ProcessTagEvent(ctx context.Context, event *TagEvent) (
 		}
 
 		builtApps = append(builtApps, models.AppBuild{
-			AppID:       app.ID,
 			AppName:     appName,
 			DockerImage: imageName,
 		})

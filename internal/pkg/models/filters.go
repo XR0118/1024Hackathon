@@ -35,7 +35,8 @@ type DeploymentFilter struct {
 // TaskFilter 任务过滤器
 type TaskFilter struct {
 	DeploymentID string
-	Status       TaskStatus
+	Step         TaskStep   // workflow 执行状态
+	Status       TaskStatus // 最终结果状态
 	Type         string
 	Page         int
 	PageSize     int

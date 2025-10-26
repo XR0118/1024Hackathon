@@ -86,14 +86,15 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 			task := &models.Task{
 				ID:           uuid.New().String(),
 				DeploymentID: deployment.ID,
-				AppID:        appBuild.AppID,
+				AppID:        appBuild.AppName,
 				Type:         "deploy",
+				Step:         models.TaskStepPending,
 				Status:       models.TaskStatusPending,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
 			}
 			if err := wc.taskRepo.Create(ctx, task); err != nil {
-				return fmt.Errorf("failed to create task for app %s: %w", appBuild.AppID, err)
+				return fmt.Errorf("failed to create task for app %s: %w", appBuild.AppName, err)
 			}
 		}
 	} else {
@@ -101,7 +102,7 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 		for i, appID := range mustInOrder {
 			var appBuild *models.AppBuild
 			for _, ab := range builds {
-				if ab.AppID == appID {
+				if ab.AppName == appID {
 					appBuild = &ab
 					break
 				}
@@ -110,12 +111,10 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 				return fmt.Errorf("app %s not found in version %s", appID, version.ID)
 			}
 
-			var status models.TaskStatus
+			// 所有任务初始状态都是 pending
+			// 是否被阻塞通过检查 dependencies 判断，不需要专门的 blocked 状态
 			var blockBy string
-			if i == 0 {
-				status = models.TaskStatusPending
-			} else {
-				status = models.TaskStatusBlocked
+			if i > 0 {
 				prevTask, err := wc.findTaskByAppID(ctx, deployment.ID, mustInOrder[i-1])
 				if err != nil {
 					return fmt.Errorf("failed to find previous task: %w", err)
@@ -125,15 +124,27 @@ func (wc *workflowController) CreateTasksFromDeployment(ctx context.Context, dep
 				}
 			}
 
+			// 如果有依赖，初始状态为 blocked；否则为 pending
+			step := models.TaskStepPending
+			if blockBy != "" {
+				step = models.TaskStepBlocked
+			}
+
 			task := &models.Task{
 				ID:           uuid.New().String(),
 				DeploymentID: deployment.ID,
 				AppID:        appID,
-				Type:         "deploy",
-				Status:       status,
-				BlockBy:      blockBy,
+				Name:         "Deploy " + appID,
+				Type:         models.TaskTypeDeploy,
+				Step:         step,
+				Status:       models.TaskStatusPending,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
+			}
+
+			// 设置依赖关系
+			if blockBy != "" {
+				_ = task.SetDependencies([]string{blockBy})
 			}
 
 			if err := wc.taskRepo.Create(ctx, task); err != nil {
@@ -179,22 +190,22 @@ func (wc *workflowController) pendingTaskScheduler() {
 func (wc *workflowController) processPendingTasks() {
 	ctx := context.Background()
 
-	tasks := []*models.Task{}
-	for _, status := range []models.TaskStatus{models.TaskStatusPending, models.TaskStatusRunning} {
-		filter := &models.TaskFilter{
-			Status:   status,
-			Page:     1,
-			PageSize: 100,
-		}
-		ts, _, err := wc.taskRepo.List(ctx, filter)
-		if err != nil {
-			wc.log.Error("Failed to list pending tasks", zap.Error(err))
-			return
-		}
-		tasks = append(tasks, ts...)
+	// 查询 Step = pending 且 Status = pending 的任务（准备执行的任务）
+	filter := &models.TaskFilter{
+		Step:     models.TaskStepPending,
+		Status:   models.TaskStatusPending,
+		Page:     1,
+		PageSize: 100,
+	}
+
+	tasks, _, err := wc.taskRepo.List(ctx, filter)
+	if err != nil {
+		wc.log.Error("Failed to list pending tasks", zap.Error(err))
+		return
 	}
 
 	for _, task := range tasks {
+		// 跳过部署尚未开始的任务
 		if task.Deployment.Status == models.DeploymentStatusPending {
 			continue
 		}
@@ -205,12 +216,38 @@ func (wc *workflowController) processPendingTasks() {
 }
 
 func (wc *workflowController) executeTask(ctx context.Context, task *models.Task) error {
+	// 首先检查依赖是否都已完成
+	deps := task.GetDependencies()
+	if len(deps) > 0 {
+		for _, depID := range deps {
+			depTask, err := wc.taskRepo.GetByID(ctx, depID)
+			if err != nil {
+				return fmt.Errorf("failed to get dependency task: %w", err)
+			}
+			if depTask.Status != models.TaskStatusSuccess {
+				// 依赖未完成，任务设置为 blocked
+				if task.Step != models.TaskStepBlocked {
+					task.Step = models.TaskStepBlocked
+					task.UpdatedAt = time.Now()
+					_ = wc.taskRepo.Update(ctx, task)
+				}
+				wc.log.Info("Task dependencies not satisfied, blocked",
+					zap.String("task_id", task.ID),
+					zap.String("waiting_for", depID))
+				return nil
+			}
+		}
+	}
+
+	// 依赖都完成了，可以执行任务
+	task.Step = models.TaskStepRunning
 	task.Status = models.TaskStatusRunning
 	now := time.Now()
 	task.StartedAt = &now
 	task.UpdatedAt = now
 
-	var block bool
+	// 检查前一个版本的同 app 任务是否还在执行
+	// 如果在执行，则等待其完成（可选逻辑）
 	prevVersion, err := wc.versionRepo.GetPreviousByVersionAndApp(
 		ctx, task.Deployment.VersionID, task.AppID)
 	if err == nil {
@@ -226,24 +263,27 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 				continue
 			}
 			for _, pt := range deployment.Tasks {
-				if pt.AppID == task.AppID && pt.Status == models.TaskStatusBlocked {
-					task.Status = models.TaskStatusBlocked
-					task.BlockBy = pt.ID
-					block = true
-					break
+				// 如果前一个版本的同 app 任务还在执行，记录日志
+				// 这里可以选择等待或继续执行，取决于业务需求
+				if pt.AppID == task.AppID && !pt.Status.IsFinished() {
+					wc.log.Info("Previous version task still running",
+						zap.String("task_id", task.ID),
+						zap.String("prev_task_id", pt.ID),
+						zap.String("prev_version", prevVersion.ID))
+					// 可以选择等待前一个版本完成
+					// 这里简化处理，继续执行当前任务
 				}
-			}
-			if block {
-				break
 			}
 		}
 	}
 
-	if block {
-		wc.log.Info("Task blocked",
-			zap.String("task_id", task.ID),
-			zap.String("blocking_task_id", task.BlockBy))
-		return wc.taskRepo.Update(ctx, task)
+	wc.log.Info("Starting task execution",
+		zap.String("task_id", task.ID),
+		zap.Any("dependencies", task.GetDependencies()))
+
+	// 更新任务状态为 running
+	if err := wc.taskRepo.Update(ctx, task); err != nil {
+		return fmt.Errorf("failed to update task status to running: %w", err)
 	}
 
 	executor := NewSimpleDeployExecutor(*task, wc.deploymentRepo, wc.versionRepo)
@@ -251,12 +291,16 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 	task.Status = status
 	task.UpdatedAt = time.Now()
 	if task.Status.IsFinished() {
+		task.Step = models.TaskStepCompleted
 		task.CompletedAt = &[]time.Time{time.Now()}[0]
 	}
 
 	if err != nil {
 		wc.log.Error("Task execution failed", zap.Error(err), zap.String("task_id", task.ID))
-		task.Result = err.Error()
+		// 将错误信息存入 Result
+		_ = task.SetResult(map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
 
 	err = wc.taskRepo.Update(ctx, task)
@@ -276,18 +320,13 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 			for _, dt := range deployment.Tasks {
 				var done bool
 				switch dt.Status {
-				case models.TaskStatusCancelled:
-					deploymentStatus = models.DeploymentStatusCancelled
-					done = true
 				case models.TaskStatusFailed:
-					deploymentStatus = models.DeploymentStatusFailed
-					done = true
-				case models.TaskStatusRolledBack:
-					deploymentStatus = models.DeploymentStatusRolledBack
+					deploymentStatus = models.DeploymentStatusCompleted
 					done = true
 				case models.TaskStatusSuccess:
 					successCnt++
 				default:
+					// pending 或 running
 					deploymentStatus = models.DeploymentStatusRunning
 					done = true
 				}
@@ -296,11 +335,12 @@ func (wc *workflowController) executeTask(ctx context.Context, task *models.Task
 				}
 			}
 			if successCnt == len(deployment.Tasks) {
-				deploymentStatus = models.DeploymentStatusSuccess
+				deploymentStatus = models.DeploymentStatusCompleted
 			}
 			if deploymentStatus.IsFinished() {
 				wc.log.Info("Deployment completed",
-					zap.String("deployment_id", deployment.ID), zap.String("status", string(deploymentStatus)))
+					zap.String("deployment_id", deployment.ID),
+					zap.String("status", string(deploymentStatus)))
 
 				deployment.Status = deploymentStatus
 				deployment.CompletedAt = &[]time.Time{time.Now()}[0]
@@ -333,11 +373,13 @@ func (wc *workflowController) blockedTaskScheduler() {
 	}
 }
 
+// processBlockedTasks 处理 blocked 状态的任务，检查依赖是否满足
 func (wc *workflowController) processBlockedTasks() {
 	ctx := context.Background()
 
+	// 查询所有 Step = blocked 的任务
 	filter := &models.TaskFilter{
-		Status:   models.TaskStatusBlocked,
+		Step:     models.TaskStepBlocked,
 		Page:     1,
 		PageSize: 100,
 	}
@@ -349,33 +391,49 @@ func (wc *workflowController) processBlockedTasks() {
 	}
 
 	for _, task := range tasks {
+		// 检查依赖是否满足，如果满足则可以将 Step 改为 pending，让 processPendingTasks 去执行
 		if err := wc.checkAndUnblockTask(ctx, task); err != nil {
 			wc.log.Error("Failed to check blocked task", zap.Error(err), zap.String("task_id", task.ID))
 		}
 	}
 }
 
+// checkAndUnblockTask 检查任务的依赖是否都已完成
+// 如果依赖都完成了，任务就可以被执行（由 executeTask 处理）
 func (wc *workflowController) checkAndUnblockTask(ctx context.Context, task *models.Task) error {
-	if task.BlockBy == "" {
+	deps := task.GetDependencies()
+
+	// 如果没有依赖，任务可以直接执行
+	if len(deps) == 0 {
+		// TODO: 这里可以触发任务执行
 		return nil
 	}
 
-	blockingTask, err := wc.taskRepo.GetByID(ctx, task.BlockBy)
-	if err != nil {
-		return fmt.Errorf("failed to get blocking task: %w", err)
+	// 检查所有依赖任务是否都已完成
+	allCompleted := true
+	for _, depID := range deps {
+		depTask, err := wc.taskRepo.GetByID(ctx, depID)
+		if err != nil {
+			return fmt.Errorf("failed to get dependency task: %w", err)
+		}
+		// 依赖任务必须成功完成
+		if depTask.Status != models.TaskStatusSuccess {
+			allCompleted = false
+			break
+		}
 	}
 
-	if blockingTask.Status == models.TaskStatusSuccess {
-		task.Status = models.TaskStatusPending
-		task.BlockBy = ""
+	if allCompleted {
+		// 依赖都完成了，将 Step 改为 pending，让 processPendingTasks 去执行
+		// 注意：不清空 dependencies，保留依赖信息用于审计和追踪
+		task.Step = models.TaskStepPending
 		task.UpdatedAt = time.Now()
-
 		if err := wc.taskRepo.Update(ctx, task); err != nil {
 			return fmt.Errorf("failed to unblock task: %w", err)
 		}
-		wc.log.Info("Task unblocked",
+		wc.log.Info("Task unblocked, dependencies satisfied",
 			zap.String("task_id", task.ID),
-			zap.String("blocking_task_id", blockingTask.ID))
+			zap.Any("dependencies", deps))
 	}
 
 	return nil

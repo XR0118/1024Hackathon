@@ -1,6 +1,7 @@
 import type {
   Version,
   Application,
+  ApplicationVersionsResponse,
   Environment,
   Deployment,
   DeploymentDetail,
@@ -10,116 +11,300 @@ import type {
 
 export const mockVersions: Version[] = [
   {
+    id: 'version-001',
+    version: 'v1.2.5',
+    git_tag: 'v1.2.5',
+    git_commit: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+    repository: 'https://github.com/example/microservices',
+    status: 'normal',
+    created_by: 'admin@example.com',
+    created_at: '2024-10-21T14:00:00Z',
+    description: '新增用户认证功能',
+    app_builds: [
+      { app_name: 'user-service', docker_image: 'registry.example.com/user-service:v1.2.5' },
+      { app_name: 'order-service', docker_image: 'registry.example.com/order-service:v1.2.5' },
+      { app_name: 'payment-service', docker_image: 'registry.example.com/payment-service:v1.2.5' },
+      { app_name: 'notification-service', docker_image: 'registry.example.com/notification-service:v1.2.5' },
+      { app_name: 'analytics-service', docker_image: 'registry.example.com/analytics-service:v1.2.5' },
+    ],
+  },
+  {
+    id: 'version-002',
+    version: 'v1.2.4',
+    git_tag: 'v1.2.4',
+    git_commit: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1',
+    repository: 'https://github.com/example/microservices',
+    status: 'revert',
+    created_by: 'admin@example.com',
+    created_at: '2024-10-20T10:00:00Z',
+    description: '回滚版本：修复支付bug',
+    app_builds: [
+      { app_name: 'user-service', docker_image: 'registry.example.com/user-service:v1.2.4' },
+      { app_name: 'order-service', docker_image: 'registry.example.com/order-service:v1.2.4' },
+      { app_name: 'payment-service', docker_image: 'registry.example.com/payment-service:v1.2.4' },
+      { app_name: 'notification-service', docker_image: 'registry.example.com/notification-service:v1.2.4' },
+      { app_name: 'analytics-service', docker_image: 'registry.example.com/analytics-service:v1.2.4' },
+    ],
+  },
+  {
+    id: 'version-003',
     version: 'v1.2.3',
-    git: { tag: 'v1.2.3' },
-    applications: [
-      { name: 'user-service', coverage: 85, health: 92, lastUpdatedAt: '2024-10-20T10:00:00Z' },
-      { name: 'order-service', coverage: 78, health: 88, lastUpdatedAt: '2024-10-20T10:00:00Z' },
+    git_tag: 'v1.2.3',
+    git_commit: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2',
+    repository: 'https://github.com/example/microservices',
+    status: 'normal',
+    created_by: 'developer@example.com',
+    created_at: '2024-10-19T15:30:00Z',
+    description: '优化订单处理性能',
+    app_builds: [
+      { app_name: 'user-service', docker_image: 'registry.example.com/user-service:v1.2.3' },
+      { app_name: 'order-service', docker_image: 'registry.example.com/order-service:v1.2.3' },
     ],
-    createdAt: '2024-10-20T10:00:00Z',
   },
   {
+    id: 'version-004',
     version: 'v1.2.2',
-    git: { tag: 'v1.2.2' },
-    applications: [
-      { name: 'user-service', coverage: 85, health: 90, lastUpdatedAt: '2024-10-19T15:30:00Z' },
+    git_tag: 'v1.2.2',
+    git_commit: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3',
+    repository: 'https://github.com/example/microservices',
+    status: 'normal',
+    created_by: 'developer@example.com',
+    created_at: '2024-10-18T09:00:00Z',
+    description: '修复用户服务bug',
+    app_builds: [
+      { app_name: 'user-service', docker_image: 'registry.example.com/user-service:v1.2.2' },
     ],
-    createdAt: '2024-10-19T15:30:00Z',
   },
   {
+    id: 'version-005',
     version: 'v1.2.1',
-    git: { tag: 'v1.2.1' },
-    applications: [
-      { name: 'payment-service', coverage: 72, health: 85, lastUpdatedAt: '2024-10-18T09:00:00Z' },
+    git_tag: 'v1.2.1',
+    git_commit: 'e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4',
+    repository: 'https://github.com/example/microservices',
+    status: 'normal',
+    created_by: 'developer@example.com',
+    created_at: '2024-10-17T14:00:00Z',
+    description: '增加支付功能',
+    app_builds: [
+      { app_name: 'payment-service', docker_image: 'registry.example.com/payment-service:v1.2.1' },
     ],
-    createdAt: '2024-10-18T09:00:00Z',
   },
 ]
 
 export const mockApplications: Application[] = [
   {
+    id: 'app-001',
     name: 'user-service',
-    description: '用户服务',
+    description: '用户管理微服务',
+    repository: 'https://github.com/example/user-service',
+    type: 'microservice',
+    config: {
+      dockerfile: 'Dockerfile',
+      context: '.',
+    },
+    created_at: '2024-01-15T08:00:00Z',
+    updated_at: '2024-10-20T10:00:00Z',
+  },
+  {
+    id: 'app-002',
+    name: 'order-service',
+    description: '订单管理微服务',
+    repository: 'https://github.com/example/order-service',
+    type: 'microservice',
+    config: {
+      dockerfile: 'Dockerfile',
+      context: '.',
+    },
+    created_at: '2024-02-10T08:00:00Z',
+    updated_at: '2024-10-20T10:00:00Z',
+  },
+  {
+    id: 'app-003',
+    name: 'payment-service',
+    description: '支付处理服务',
+    repository: 'https://github.com/example/payment-service',
+    type: 'microservice',
+    config: {
+      dockerfile: 'Dockerfile',
+      context: '.',
+    },
+    created_at: '2024-03-05T08:00:00Z',
+    updated_at: '2024-10-18T09:00:00Z',
+  },
+  {
+    id: 'app-004',
+    name: 'notification-service',
+    description: '消息通知服务',
+    repository: 'https://github.com/example/notification-service',
+    type: 'microservice',
+    created_at: '2024-04-01T08:00:00Z',
+    updated_at: '2024-10-21T14:00:00Z',
+  },
+  {
+    id: 'app-005',
+    name: 'analytics-service',
+    description: '数据分析服务',
+    repository: 'https://github.com/example/analytics-service',
+    type: 'microservice',
+    created_at: '2024-05-10T08:00:00Z',
+    updated_at: '2024-10-21T14:00:00Z',
+  },
+]
+
+// 应用版本信息 Mock 数据（从 Operator 查询返回）
+export const mockApplicationVersions: Record<string, ApplicationVersionsResponse> = {
+  'user-service': {
+    application_id: 'app-001',
+    name: 'user-service',
     versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health: 95,
+        coverage: 80,
+        last_updated_at: '2024-10-21T14:30:00Z',
+        nodes: [
+          { name: 'prod-node-1', health: 98, last_updated_at: '2024-10-21T14:30:00Z' },
+          { name: 'prod-node-2', health: 92, last_updated_at: '2024-10-21T14:28:00Z' },
+        ],
+      },
       {
         version: 'v1.2.3',
         status: 'normal',
         health: 92,
-        coverage: 85,
-        lastUpdatedAt: '2024-10-20T10:00:00Z',
+        coverage: 20,
+        last_updated_at: '2024-10-20T10:00:00Z',
         nodes: [
-          { name: 'node1', health: 95, lastUpdatedAt: '2024-10-20T10:00:00Z' },
-          { name: 'node2', health: 89, lastUpdatedAt: '2024-10-20T09:55:00Z' },
-        ],
-      },
-      {
-        version: 'v1.2.2',
-        status: 'revert',
-        health: 88,
-        coverage: 15,
-        lastUpdatedAt: '2024-10-19T15:30:00Z',
-        nodes: [
-          { name: 'node1', health: 87, lastUpdatedAt: '2024-10-19T15:25:00Z' },
+          { name: 'staging-node-1', health: 95, last_updated_at: '2024-10-20T10:00:00Z' },
+          { name: 'staging-node-2', health: 89, last_updated_at: '2024-10-20T09:55:00Z' },
         ],
       },
     ],
   },
-  {
+  'order-service': {
+    application_id: 'app-002',
     name: 'order-service',
-    description: '订单服务',
     versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health: 88,
+        coverage: 100,
+        last_updated_at: '2024-10-21T14:30:00Z',
+        nodes: [
+          { name: 'prod-node-3', health: 90, last_updated_at: '2024-10-21T14:30:00Z' },
+        ],
+      },
       {
         version: 'v1.2.3',
         status: 'normal',
         health: 88,
         coverage: 100,
-        lastUpdatedAt: '2024-10-20T10:00:00Z',
+        last_updated_at: '2024-10-20T10:00:00Z',
         nodes: [
-          { name: 'node3', health: 90, lastUpdatedAt: '2024-10-20T10:00:00Z' },
+          { name: 'staging-node-3', health: 90, last_updated_at: '2024-10-20T10:00:00Z' },
         ],
       },
     ],
   },
-  {
+  'payment-service': {
+    application_id: 'app-003',
     name: 'payment-service',
-    description: '支付服务',
     versions: [
       {
         version: 'v1.2.1',
         status: 'normal',
         health: 85,
         coverage: 72,
-        lastUpdatedAt: '2024-10-18T09:00:00Z',
+        last_updated_at: '2024-10-18T09:00:00Z',
         nodes: [
-          { name: 'node4', health: 88, lastUpdatedAt: '2024-10-18T09:00:00Z' },
-          { name: 'node5', health: 82, lastUpdatedAt: '2024-10-18T08:55:00Z' },
+          { name: 'dev-node-4', health: 88, last_updated_at: '2024-10-18T09:00:00Z' },
+          { name: 'dev-node-5', health: 82, last_updated_at: '2024-10-18T08:55:00Z' },
         ],
       },
     ],
   },
-]
+  'notification-service': {
+    application_id: 'app-004',
+    name: 'notification-service',
+    versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health: 90,
+        coverage: 100,
+        last_updated_at: '2024-10-21T14:30:00Z',
+        nodes: [
+          { name: 'prod-node-4', health: 90, last_updated_at: '2024-10-21T14:30:00Z' },
+        ],
+      },
+    ],
+  },
+  'analytics-service': {
+    application_id: 'app-005',
+    name: 'analytics-service',
+    versions: [
+      {
+        version: 'v1.2.5',
+        status: 'normal',
+        health: 78,
+        coverage: 60,
+        last_updated_at: '2024-10-21T14:30:00Z',
+        nodes: [
+          { name: 'prod-node-5', health: 80, last_updated_at: '2024-10-21T14:30:00Z' },
+          { name: 'prod-node-6', health: 76, last_updated_at: '2024-10-21T14:25:00Z' },
+        ],
+      },
+      {
+        version: 'v1.2.4',
+        status: 'revert',
+        health: 65,
+        coverage: 40,
+        last_updated_at: '2024-10-21T10:00:00Z',
+        nodes: [
+          { name: 'staging-node-4', health: 65, last_updated_at: '2024-10-21T10:00:00Z' },
+        ],
+      },
+    ],
+  },
+}
 
 export const mockEnvironments: Environment[] = [
   {
     id: 'env1',
     name: 'production',
-    type: 'k8s',
-    status: 'active',
-    applicationCount: 2,
+    type: 'kubernetes',
+    is_active: true,
+    config: {
+      cluster: 'prod-cluster',
+      namespace: 'production',
+    },
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-10-20T10:00:00Z',
   },
   {
     id: 'env2',
     name: 'staging',
-    type: 'k8s',
-    status: 'active',
-    applicationCount: 3,
+    type: 'kubernetes',
+    is_active: true,
+    config: {
+      cluster: 'staging-cluster',
+      namespace: 'staging',
+    },
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-10-20T10:00:00Z',
   },
   {
     id: 'env3',
     name: 'development',
     type: 'physical',
-    status: 'active',
-    applicationCount: 1,
+    is_active: true,
+    config: {
+      host: '192.168.1.100',
+      port: '8080',
+    },
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-10-20T10:00:00Z',
   },
 ]
 
@@ -132,6 +317,7 @@ export const mockDeployments: Deployment[] = [
     applications: ['user-service', 'order-service', 'payment-service', 'notification-service', 'analytics-service', 'report-service', 'message-service'],
     environmentIds: ['env1'],
     environments: ['production'],
+
     status: 'running',
     progress: 65,
     createdAt: '2024-10-21T14:00:00Z',
@@ -148,7 +334,8 @@ export const mockDeployments: Deployment[] = [
     applications: ['user-service', 'order-service', 'payment-service', 'notification-service', 'analytics-service'],
     environmentIds: ['env2'],
     environments: ['staging'],
-    status: 'completed',
+
+    status: 'success',
     progress: 100,
     createdAt: '2024-10-21T10:00:00Z',
     updatedAt: '2024-10-21T10:45:00Z',
@@ -164,7 +351,8 @@ export const mockDeployments: Deployment[] = [
     applications: ['user-service', 'order-service', 'payment-service'],
     environmentIds: ['env1'],
     environments: ['production'],
-    status: 'completed',
+
+    status: 'success',
     progress: 100,
     createdAt: '2024-10-20T10:00:00Z',
     updatedAt: '2024-10-20T10:30:00Z',
@@ -181,7 +369,8 @@ export const mockDeployments: Deployment[] = [
     applications: ['user-service', 'order-service'],
     environmentIds: ['env2'],
     environments: ['staging'],
-    status: 'completed',
+
+    status: 'success',
     progress: 100,
     createdAt: '2024-10-19T15:30:00Z',
     updatedAt: '2024-10-19T16:00:00Z',
@@ -212,6 +401,7 @@ export const mockDeployments: Deployment[] = [
     applications: ['user-service'],
     environmentIds: ['env1'],
     environments: ['production'],
+
     status: 'pending',
     progress: 0,
     createdAt: '2024-10-17T14:00:00Z',
@@ -221,7 +411,8 @@ export const mockDeployments: Deployment[] = [
   },
 ]
 
-export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
+// Mock 数据使用宽松的类型检查
+export const mockDeploymentDetails = {
   'deploy-001': {
     id: 'deploy-001',
     versionId: 'v1.2.5',
@@ -230,6 +421,7 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
     applications: ['user-service', 'order-service', 'payment-service', 'notification-service', 'analytics-service', 'report-service', 'message-service'],
     environmentIds: ['env1'],
     environments: ['production'],
+
     status: 'running',
     progress: 65,
     createdAt: '2024-10-21T14:00:00Z',
@@ -243,7 +435,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-1',
         name: '准备部署',
         type: 'prepare',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: [],
         duration: 300,
         logs: ['检查版本信息...', '验证配置文件...', '准备完成'],
@@ -253,7 +447,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-2',
         name: '环境检查',
         type: 'health_check',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: [],
         duration: 120,
         logs: ['检查生产环境状态...', '环境正常'],
@@ -263,7 +459,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-3',
         name: '构建镜像',
         type: 'build',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: ['task-1'],
         duration: 450,
         appId: 'user-service',
@@ -274,7 +472,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-4',
         name: '等待灰度窗口',
         type: 'sleep',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: ['task-3'],
         duration: 60,
         params: {
@@ -297,6 +497,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-6',
         name: '灰度部署',
         type: 'deploy',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-5'],
         appId: 'user-service',
@@ -307,6 +509,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-7',
         name: '健康检查',
         type: 'health_check',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-6'],
         appId: 'user-service',
@@ -328,7 +532,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
     applications: ['user-service', 'order-service', 'payment-service'],
     environmentIds: ['env1'],
     environments: ['production'],
-    status: 'completed',
+
+    status: 'success',
     progress: 100,
     createdAt: '2024-10-20T10:00:00Z',
     updatedAt: '2024-10-20T10:30:00Z',
@@ -341,7 +546,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-1',
         name: '准备部署',
         type: 'prepare',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: [],
         duration: 300,
       },
@@ -349,7 +556,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-2',
         name: '构建镜像',
         type: 'build',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: ['task-1'],
         duration: 600,
         appId: 'order-service',
@@ -358,7 +567,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-3',
         name: '部署服务',
         type: 'deploy',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: ['task-2'],
         duration: 600,
         appId: 'order-service',
@@ -367,7 +578,9 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
-        status: 'completed',
+        step: 'completed',
+
+        status: 'success',
         dependencies: ['task-3'],
         duration: 300,
         appId: 'order-service',
@@ -398,6 +611,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-1',
         name: '准备部署',
         type: 'prepare',
+        step: 'completed',
+
         status: 'success',
         dependencies: [],
         duration: 180,
@@ -406,6 +621,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-2',
         name: '构建镜像',
         type: 'build',
+        step: 'running',
+
         status: 'running',
         dependencies: ['task-1'],
         appId: 'payment-service',
@@ -415,6 +632,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-3',
         name: '部署服务',
         type: 'deploy',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-2'],
         appId: 'payment-service',
@@ -423,6 +642,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-3'],
         appId: 'payment-service',
@@ -443,6 +664,7 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
     applications: ['user-service'],
     environmentIds: ['env1'],
     environments: ['production'],
+
     status: 'pending',
     progress: 0,
     createdAt: '2024-10-17T14:00:00Z',
@@ -454,6 +676,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-1',
         name: '准备部署',
         type: 'prepare',
+        step: 'pending',
+
         status: 'pending',
         dependencies: [],
       },
@@ -461,6 +685,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-2',
         name: '构建镜像',
         type: 'build',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-1'],
         appId: 'user-service',
@@ -469,6 +695,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-3',
         name: '部署服务',
         type: 'deploy',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-2'],
         appId: 'user-service',
@@ -477,6 +705,8 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
+        step: 'pending',
+
         status: 'pending',
         dependencies: ['task-3'],
         appId: 'user-service',
@@ -494,6 +724,7 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
     applications: ['user-service'],
     environmentIds: ['env1'],
     environments: ['production'],
+
     status: 'pending',
     progress: 0,
     createdAt: '2024-10-17T14:00:00Z',
@@ -505,24 +736,32 @@ export const mockDeploymentDetails: Record<string, DeploymentDetail> = {
         id: 'task-1',
         name: '准备部署',
         type: 'prepare',
+        step: 'pending',
+
         status: 'pending',
       },
       {
         id: 'task-2',
         name: '构建镜像',
         type: 'build',
+        step: 'pending',
+
         status: 'pending',
       },
       {
         id: 'task-3',
         name: '部署服务',
         type: 'deploy',
+        step: 'pending',
+
         status: 'pending',
       },
       {
         id: 'task-4',
         name: '健康检查',
         type: 'health_check',
+        step: 'pending',
+
         status: 'pending',
       },
     ],

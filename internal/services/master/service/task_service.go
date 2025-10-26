@@ -71,7 +71,8 @@ func (s *taskService) RetryTask(ctx context.Context, id string) (*models.Task, e
 
 	// 重置任务状态
 	task.Status = models.TaskStatusPending
-	task.Result = ""
+	task.Step = models.TaskStepPending
+	task.Result = nil // 清空 Result
 	task.StartedAt = nil
 	task.CompletedAt = nil
 

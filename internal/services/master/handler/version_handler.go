@@ -69,34 +69,62 @@ func (h *versionHandler) GetVersionList(c *gin.Context) {
 
 // GetVersion 获取版本详情
 func (h *versionHandler) GetVersion(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		utils.BadRequest(c, "version id is required")
+	version := c.Param("version")
+	if version == "" {
+		utils.BadRequest(c, "version is required")
 		return
 	}
 
-	version, err := h.versionService.GetVersion(c.Request.Context(), id)
+	versionObj, err := h.versionService.GetVersion(c.Request.Context(), version)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "VERSION_NOT_FOUND", err.Error(), nil)
 		return
 	}
 
-	utils.Success(c, version)
+	utils.Success(c, versionObj)
 }
 
 // DeleteVersion 删除版本
 func (h *versionHandler) DeleteVersion(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		utils.BadRequest(c, "version id is required")
+	version := c.Param("version")
+	if version == "" {
+		utils.BadRequest(c, "version is required")
 		return
 	}
 
-	err := h.versionService.DeleteVersion(c.Request.Context(), id)
+	err := h.versionService.DeleteVersion(c.Request.Context(), version)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "VERSION_DELETE_FAILED", err.Error(), nil)
 		return
 	}
 
 	utils.Success(c, gin.H{"message": "Version deleted successfully"})
+}
+
+// RollbackVersion 回滚版本
+func (h *versionHandler) RollbackVersion(c *gin.Context) {
+	version := c.Param("version")
+	if version == "" {
+		utils.BadRequest(c, "version is required")
+		return
+	}
+
+	var req models.RollbackVersionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationError(c, err)
+		return
+	}
+
+	// TODO: 实现版本回滚逻辑
+	// 1. 获取目标版本信息
+	// 2. 创建新的部署任务，将应用回滚到目标版本
+	// 3. 更新版本状态为 revert
+	// 4. 记录回滚原因和操作者
+
+	// 暂时返回成功响应
+	utils.Success(c, gin.H{
+		"message": "Rollback initiated",
+		"version": version,
+		"reason":  req.Reason,
+	})
 }

@@ -61,7 +61,7 @@ func (s *deploymentService) CreateDeployment(ctx context.Context, req *models.Cr
 		// 验证应用是否在版本中
 		appFound := false
 		for _, app := range version.GetAppBuilds() {
-			if app.AppID == appID {
+			if app.AppName == appID {
 				appFound = true
 				break
 			}
@@ -174,7 +174,8 @@ func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, r
 		return fmt.Errorf("deployment not found: %w", err)
 	}
 
-	currentDeployment.Status = models.DeploymentStatusRolledBack
+	// TODO: 回滚逻辑需要重新设计
+	currentDeployment.Status = models.DeploymentStatusCompleted // 回滚后标记为已完成
 	currentDeployment.UpdatedAt = time.Now()
 
 	if err := s.deploymentRepo.Update(ctx, currentDeployment); err != nil {
