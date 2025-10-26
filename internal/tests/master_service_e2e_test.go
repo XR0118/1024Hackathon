@@ -62,7 +62,7 @@ func TestMasterServiceE2E(t *testing.T) {
 	})
 	t.Logf("created version: id=%s", versionID)
 
-	// 4) Create Deployment
+	// 4) Create First Deployment
 	deploymentID := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
 		VersionID:      versionID,
 		MustInOrder:    []string{appID},
@@ -82,19 +82,19 @@ func TestMasterServiceE2E(t *testing.T) {
 	finalStatus := pollDeploymentStatus(t, client, baseURL, token, deploymentID, 30, 5*time.Second)
 	t.Logf("deployment %s final status: %s", deploymentID, finalStatus)
 
-	// Assert terminal state (best-effort)
+	// Assert deployment state (best-effort)
 	switch finalStatus {
-	case "success", "failed", "rolled_back", "cancelled":
+	case "success":
 		// OK; terminal
 		break
-	case "":
+	case "failed", "rolled_back", "cancelled":
 		// Unrecognized/empty; treat as non-terminal
 		fallthrough
 	default:
 		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
 	}
 
-	// 3) Create Version (with app_builds)
+	// 7) Create Second Version (with app_builds)
 	versionID2 := createVersion(t, client, baseURL, token, VersionCreateRequest{
 		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+10),
 		GitCommit:   "e2e-commit-sha",
@@ -106,7 +106,7 @@ func TestMasterServiceE2E(t *testing.T) {
 	})
 	t.Logf("created version2: id=%s", versionID)
 
-	// 4) Create Deployment
+	// 8) Create Second Deployment, Update From First Version (include grayscale strategy)
 	deploymentID2 := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
 		VersionID:      versionID2,
 		EnvironmentID:  envID,
@@ -117,11 +117,25 @@ func TestMasterServiceE2E(t *testing.T) {
 	})
 	t.Logf("created deployment2: id=%s", deploymentID2)
 
-	// 5) Start Deployment
+	// 9) Start Second Deployment
 	did2 := startDeployment(t, client, baseURL, token, deploymentID2)
 	t.Logf("started deployment2: id=%s deployment=%s", deploymentID2, did2)
 
-	t.Fatal()
+	// 10) Poll Second Deployment Status
+	finalStatus2 := pollDeploymentStatus(t, client, baseURL, token, deploymentID2, 30, 5*time.Second)
+	t.Logf("deployment %s final status: %s", deploymentID, finalStatus2)
+
+	// Assert deployment state (best-effort)
+	switch finalStatus2 {
+	case "success":
+		// OK; terminal
+		return
+	case "failed", "rolled_back", "cancelled":
+		// Unrecognized/empty; treat as non-terminal
+		fallthrough
+	default:
+		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
+	}
 
 }
 

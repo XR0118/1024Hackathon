@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/boreas/internal/interfaces"
+	"github.com/boreas/internal/pkg/logger"
 	"github.com/boreas/internal/pkg/models"
 	"github.com/boreas/internal/services/master/mock"
+	"go.uber.org/zap"
 )
 
 type DeployExecutor interface {
@@ -27,14 +29,12 @@ type SimpleDeployExecutor struct {
 	client         DeployClient
 }
 
-var mockClient = mock.NewMockDeploymentClient()
-
 func NewSimpleDeployExecutor(task models.Task,
 	deploymentRepo interfaces.DeploymentRepository, versionRepo interfaces.VersionRepository) *SimpleDeployExecutor {
 	return &SimpleDeployExecutor{
 		task:           task,
 		deploymentRepo: deploymentRepo,
-		client:         mockClient,
+		client:         mock.MockAgent,
 		versionRepo:    versionRepo,
 	}
 }
@@ -130,7 +130,7 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 	var unhealthy bool
 	var lastUpdate time.Time
 	for _, status := range appStatus {
-		if status.Version == e.task.Deployment.ID {
+		if status.Version == e.task.Deployment.VersionID {
 			lastUpdate = status.Updated
 			if status.Healthy.Level < 80 {
 				unhealthy = true
@@ -139,6 +139,7 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 		}
 	}
 	if unhealthy && step.AutoRollback {
+		logger.GetLogger().Warn("deployment unhealthy, auto rollback", zap.String("deployment_id", deployment.ID))
 		deployment.Status = models.DeploymentStatusRolledBack
 		_ = e.deploymentRepo.Update(ctx, deployment)
 		return models.TaskStatusRolledBack, nil
@@ -146,11 +147,22 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 
 	if time.Since(lastUpdate).Seconds() < float64(step.BatchInterval) ||
 		step.ManualApprovalStatus != nil && !*step.ManualApprovalStatus {
+
+		logger.GetLogger().Warn(
+			"deployment unhealthy, wait for next batch",
+			zap.String("deployment_id", deployment.ID),
+			zap.Duration("batch_interval", time.Duration(step.BatchInterval)*time.Second),
+			zap.Any("ManualApprovalStatus", step.ManualApprovalStatus),
+		)
 		return models.TaskStatusRunning, nil
 	}
 
 	if idx == len(ss) {
 		// 没有下一个阶段, 开始全量
+		logger.GetLogger().Info("========full deployment",
+			zap.String("deployment_id", deployment.ID),
+			zap.Any("version_status", versionMap),
+		)
 		increase := 0
 		idx_ := 0
 		for i, version := range versions {
@@ -207,6 +219,13 @@ func (e *SimpleDeployExecutor) Apply(ctx context.Context) (models.TaskStatus, er
 			break
 		}
 	}
+
+	logger.GetLogger().Info("========step deployment",
+		zap.Any("step", ns),
+		zap.Any("version_status", versionMap),
+		zap.Any("decrease", decreaseMap),
+	)
+
 	pkg.Replicas -= increaseNum
 	_, err = e.client.Apply(ctx, e.task.AppID, e.task.Deployment.VersionID, pkg)
 	if err != nil {

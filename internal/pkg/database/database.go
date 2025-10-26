@@ -23,7 +23,7 @@ func Init(cfg *config.Config) error {
 // InitWithDSN 使用 DSN 初始化数据库
 func InitWithDSN(dsn string) error {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
