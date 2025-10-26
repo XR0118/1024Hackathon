@@ -19,8 +19,6 @@ const Deployments: React.FC = () => {
     try {
       const data = await deploymentApi.list({
         status: statusFilter || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
       });
       setDeployments(data);
     } catch (error) {
@@ -28,7 +26,7 @@ const Deployments: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, startDate, endDate]);
+  }, [statusFilter]);
 
   useEffect(() => {
     loadDeployments();
@@ -109,11 +107,16 @@ const Deployments: React.FC = () => {
             </thead>
             <tbody>
               {deployments.map((deployment) => {
-                const apps = deployment.must_in_order || [];
+                // 处理 version 字段：可能是字符串或 Version 对象
+                const versionDisplay = typeof deployment.version === "string" ? deployment.version : deployment.version?.version || deployment.version_id;
+                // 从 version.app_builds 中获取应用列表
+                const apps =
+                  typeof deployment.version === "object" && deployment.version?.app_builds ? deployment.version.app_builds.map((build) => build.app_name) : [];
+
                 return (
                   <tr key={deployment.id}>
                     <td>{deployment.id}</td>
-                    <td>{deployment.version || deployment.version_id}</td>
+                    <td>{versionDisplay}</td>
                     <td>{renderApplications(apps)}</td>
                     <td>{deployment.environment?.name || deployment.environment_id}</td>
                     <td>

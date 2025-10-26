@@ -92,7 +92,6 @@ const DeploymentDetailPage: React.FC = () => {
               </button>
               <h2 className="page-title mb-0">部署详情 #{deployment.id}</h2>
               <span className={`badge bg-${getStatusColor(deployment.status)}`}>{getStatusText(deployment.status)}</span>
-              {deployment.grayscaleEnabled && <span className="badge bg-azure-lt">灰度 {deployment.grayscaleRatio}%</span>}
             </div>
           </div>
         </div>
@@ -106,13 +105,17 @@ const DeploymentDetailPage: React.FC = () => {
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                 版本:
               </span>
-              <strong>{deployment.version || deployment.version_id}</strong>
+              <strong>{typeof deployment.version === "string" ? deployment.version : deployment.version?.version || deployment.version_id}</strong>
             </div>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
                 应用:
               </span>
-              <strong>{(deployment.must_in_order || []).join(", ")}</strong>
+              <strong>
+                {typeof deployment.version === "object" && deployment.version?.app_builds
+                  ? deployment.version.app_builds.map((build) => build.app_name).join(", ")
+                  : "N/A"}
+              </strong>
             </div>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted" style={{ fontSize: "0.875rem" }}>
