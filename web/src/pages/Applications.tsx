@@ -14,6 +14,14 @@ const Applications: React.FC = () => {
   const navigate = useNavigate();
   const { setError } = useErrorStore();
   const [applications, setApplications] = useState<ApplicationWithVersions[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    repository: "",
+    type: "microservice" as "microservice" | "monolith",
+  });
 
   const loadApplications = useCallback(async () => {
     try {
@@ -38,6 +46,50 @@ const Applications: React.FC = () => {
     loadApplications();
   }, [loadApplications]);
 
+  const handleOpenModal = () => {
+    setShowCreateModal(true);
+    setFormData({
+      name: "",
+      description: "",
+      repository: "",
+      type: "microservice",
+    });
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setFormData({
+      name: "",
+      description: "",
+      repository: "",
+      type: "microservice",
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name.trim()) {
+      setError("应用名称不能为空");
+      return;
+    }
+    if (!formData.repository.trim()) {
+      setError("Git 仓库地址不能为空");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await applicationApi.create(formData);
+      handleCloseModal();
+      loadApplications();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "创建应用失败");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-header d-print-none">
@@ -46,7 +98,7 @@ const Applications: React.FC = () => {
             <h2 className="page-title">应用</h2>
           </div>
           <div className="col-auto ms-auto d-print-none">
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={handleOpenModal}>
               <IconPlus className="icon" />
               新建应用
             </button>
@@ -135,6 +187,80 @@ const Applications: React.FC = () => {
           <p className="empty-subtitle text-muted">点击上方"新建应用"按钮创建您的第一个应用</p>
         </div>
       )}
+
+      {/* 新建应用模态框 */}
+      {showCreateModal && (
+        <div className="modal modal-blur fade show" style={{ display: "block" }} onClick={handleCloseModal}>
+          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">新建应用</h5>
+                <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label required">应用名称</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="例如: user-service"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">应用描述</label>
+                    <textarea
+                      className="form-control"
+                      rows={3}
+                      placeholder="简要描述应用的功能..."
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label required">Git 仓库地址</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="例如: https://github.com/org/repo.git"
+                      value={formData.repository}
+                      onChange={(e) => setFormData({ ...formData, repository: e.target.value })}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label required">应用类型</label>
+                    <select
+                      className="form-select"
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value as "microservice" | "monolith" })}
+                      disabled={isSubmitting}
+                    >
+                      <option value="microservice">微服务</option>
+                      <option value="monolith">单体应用</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-link link-secondary" onClick={handleCloseModal} disabled={isSubmitting}>
+                    取消
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                    {isSubmitting ? "创建中..." : "创建应用"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {showCreateModal && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };
