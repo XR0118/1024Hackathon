@@ -45,6 +45,7 @@ export const mockApplications: Application[] = [
         version: 'v1.2.3',
         status: 'normal',
         health: 92,
+        coverage: 85,
         lastUpdatedAt: '2024-10-20T10:00:00Z',
         nodes: [
           { name: 'node1', health: 95, lastUpdatedAt: '2024-10-20T10:00:00Z' },
@@ -55,6 +56,7 @@ export const mockApplications: Application[] = [
         version: 'v1.2.2',
         status: 'revert',
         health: 88,
+        coverage: 15,
         lastUpdatedAt: '2024-10-19T15:30:00Z',
         nodes: [
           { name: 'node1', health: 87, lastUpdatedAt: '2024-10-19T15:25:00Z' },
@@ -70,6 +72,7 @@ export const mockApplications: Application[] = [
         version: 'v1.2.3',
         status: 'normal',
         health: 88,
+        coverage: 100,
         lastUpdatedAt: '2024-10-20T10:00:00Z',
         nodes: [
           { name: 'node3', health: 90, lastUpdatedAt: '2024-10-20T10:00:00Z' },
@@ -85,6 +88,7 @@ export const mockApplications: Application[] = [
         version: 'v1.2.1',
         status: 'normal',
         health: 85,
+        coverage: 72,
         lastUpdatedAt: '2024-10-18T09:00:00Z',
         nodes: [
           { name: 'node4', health: 88, lastUpdatedAt: '2024-10-18T09:00:00Z' },

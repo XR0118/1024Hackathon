@@ -20,6 +20,7 @@ export interface ApplicationVersionInfo {
   version: string
   status: 'normal' | 'revert'
   health: number
+  coverage: number
   lastUpdatedAt: string
   nodes?: ApplicationNodeInfo[]
 }

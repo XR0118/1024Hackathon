@@ -14,7 +14,7 @@ const Versions: React.FC = () => {
   const [rollbackVersion, setRollbackVersion] = useState<Version | null>(null);
   const [rollbackReason, setRollbackReason] = useState("");
   const [rollbackLoading, setRollbackLoading] = useState(false);
-  
+
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10); // 每页显示10条
@@ -71,7 +71,7 @@ const Versions: React.FC = () => {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     // 滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -176,34 +176,27 @@ const Versions: React.FC = () => {
                 共 {versions.length} 条记录，第 {currentPage} / {totalPages} 页
               </div>
               <ul className="pagination m-0 ms-auto">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                   <button className="page-link" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
                     首页
                   </button>
                 </li>
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                   <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
                     上一页
                   </button>
                 </li>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                   // 只显示当前页附近的页码
-                  if (
-                    page === 1 ||
-                    page === totalPages ||
-                    (page >= currentPage - 2 && page <= currentPage + 2)
-                  ) {
+                  if (page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)) {
                     return (
-                      <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                      <li key={page} className={`page-item ${currentPage === page ? "active" : ""}`}>
                         <button className="page-link" onClick={() => handlePageChange(page)}>
                           {page}
                         </button>
                       </li>
                     );
-                  } else if (
-                    page === currentPage - 3 ||
-                    page === currentPage + 3
-                  ) {
+                  } else if (page === currentPage - 3 || page === currentPage + 3) {
                     return (
                       <li key={page} className="page-item disabled">
                         <span className="page-link">...</span>
@@ -212,12 +205,12 @@ const Versions: React.FC = () => {
                   }
                   return null;
                 })}
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                   <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
                     下一页
                   </button>
                 </li>
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                   <button className="page-link" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages}>
                     末页
                   </button>

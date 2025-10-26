@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { applicationApi } from "@/services/api";
-import { formatDate } from "@/utils";
 import type { Application } from "@/types";
 import { IconPlus, IconRocket, IconCircleCheck, IconAlertCircle } from "@tabler/icons-react";
 import { useErrorStore } from "@/store/error";
@@ -22,6 +21,9 @@ const Applications: React.FC = () => {
 
   useEffect(() => {
     loadApplications();
+    // 每5秒自动刷新一次
+    const interval = setInterval(loadApplications, 5000);
+    return () => clearInterval(interval);
   }, [loadApplications]);
 
   const getHealthColor = (health: number) => {
@@ -78,15 +80,25 @@ const Applications: React.FC = () => {
                         <div key={index} className="list-group-item px-0 py-2">
                           <div className="d-flex justify-content-between align-items-center">
                             <div className="d-flex align-items-center">
-                              <span className={`badge bg-${versionInfo.status === "normal" ? "blue" : "yellow"}-lt me-2`}>{versionInfo.version}</span>
+                              <a
+                                href={`/versions?search=${versionInfo.version}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`badge bg-${versionInfo.status === "normal" ? "blue" : "yellow"}-lt me-2`}
+                                style={{ textDecoration: "none", cursor: "pointer" }}
+                              >
+                                {versionInfo.version}
+                              </a>
                               {versionInfo.status === "revert" && <span className="badge bg-yellow me-2">回滚</span>}
                             </div>
                             <div className="d-flex align-items-center">
+                              <span className={`badge bg-${versionInfo.status === "revert" ? "warning" : "info"}-lt me-2`}>
+                                覆盖率: {versionInfo.coverage}%
+                              </span>
                               <span className={`badge bg-${getHealthColor(versionInfo.health)}-lt me-2`}>
                                 {getHealthIcon(versionInfo.health)}
-                                <span className="ms-1">{versionInfo.health}%</span>
+                                <span className="ms-1">健康度: {versionInfo.health}%</span>
                               </span>
-                              <small className="text-muted">{formatDate(versionInfo.lastUpdatedAt)}</small>
                             </div>
                           </div>
                         </div>
@@ -104,11 +116,7 @@ const Applications: React.FC = () => {
               </div>
               <div className="card-footer">
                 <div className="d-flex">
-                  <button className="btn btn-ghost-primary" onClick={() => navigate(`/deployments/new?appName=${app.name}`)}>
-                    <IconRocket size={16} className="me-2" />
-                    新建任务
-                  </button>
-                  <button className="btn btn-ghost-secondary ms-auto" onClick={() => navigate(`/applications/${app.name}`)}>
+                  <button className="btn btn-ghost-secondary" onClick={() => navigate(`/applications/${app.name}`)}>
                     查看详情
                   </button>
                 </div>
