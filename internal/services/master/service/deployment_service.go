@@ -167,39 +167,19 @@ func (s *deploymentService) StartDeployment(ctx context.Context, id string) (*mo
 	return deployment, nil
 }
 
-func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, req *models.RollbackRequest) (*models.Deployment, error) {
-	// 验证请求
-	if err := utils.ValidateStruct(req); err != nil {
-		return nil, fmt.Errorf("validation failed: %w", err)
-	}
+func (s *deploymentService) RollbackDeployment(ctx context.Context, id string, req *models.RollbackRequest) error {
 
-	// 获取当前部署
 	currentDeployment, err := s.deploymentRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("deployment not found: %w", err)
+		return fmt.Errorf("deployment not found: %w", err)
 	}
 
-	// 验证目标版本是否存在
-	_, err = s.versionRepo.GetByID(ctx, req.TargetVersionID)
-	if err != nil {
-		return nil, fmt.Errorf("target version not found: %w", err)
+	currentDeployment.Status = models.DeploymentStatusRolledBack
+	currentDeployment.UpdatedAt = time.Now()
+
+	if err := s.deploymentRepo.Update(ctx, currentDeployment); err != nil {
+		return fmt.Errorf("failed to update deployment: %w", err)
 	}
 
-	// 创建回滚部署
-	rollbackDeployment := &models.Deployment{
-		ID:            uuid.New().String(),
-		VersionID:     req.TargetVersionID,
-		MustInOrder:   currentDeployment.MustInOrder,
-		EnvironmentID: currentDeployment.EnvironmentID,
-		Status:        models.DeploymentStatusRolledBack,
-		CreatedBy:     getCurrentUser(ctx),
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
-
-	if err := s.deploymentRepo.Create(ctx, rollbackDeployment); err != nil {
-		return nil, fmt.Errorf("failed to create rollback deployment: %w", err)
-	}
-
-	return rollbackDeployment, nil
+	return nil
 }

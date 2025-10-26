@@ -129,8 +129,56 @@ func TestMasterServiceE2E(t *testing.T) {
 	switch finalStatus2 {
 	case "success":
 		// OK; terminal
-		return
 	case "failed", "rolled_back", "cancelled":
+		// Unrecognized/empty; treat as non-terminal
+		fallthrough
+	default:
+		t.Fatalf("deployment %s did not reach a recognized terminal state; status=%q", deploymentID, finalStatus)
+	}
+
+	// 11) Create third Version (with app_builds)
+	versionID3 := createVersion(t, client, baseURL, token, VersionCreateRequest{
+		GitTag:      fmt.Sprintf("v-e2e-%d", uniq+100),
+		GitCommit:   "e2e-commit-sha",
+		Repository:  "https://github.com/example/repo",
+		Description: "E2E test version",
+		AppBuild: []AppBuildItem{
+			{AppID: appID, AppName: appName, DockerImage: fmt.Sprintf("registry.local/%s:%d", appName, uniq+100)},
+		},
+	})
+	t.Logf("created version3: id=%s", versionID3)
+
+	// 12) Create Second Deployment, Update From First Version (include grayscale strategy)
+	deploymentID3 := createDeployment(t, client, baseURL, token, DeploymentCreateRequest{
+		VersionID:      versionID3,
+		EnvironmentID:  envID,
+		ManualApproval: false,
+		Strategy: []StrategyItem{
+			{BatchSize: 3, BatchInterval: 100, CanaryRatio: 0, AutoRollback: true},
+		},
+	})
+	t.Logf("created deployment3: id=%s", deploymentID3)
+
+	// 13) Start Second Deployment
+	did3 := startDeployment(t, client, baseURL, token, deploymentID3)
+	t.Logf("started deployment3: id=%s deployment=%s", deploymentID3, did3)
+
+	// 14) sleep 20s, wait step1 conmplete
+	time.Sleep(20 * time.Second)
+
+	// 14) sleep 20s, wait step1 conmplete
+	rollbackDeployment(t, client, baseURL, token, deploymentID3)
+
+	// 10) Poll Second Deployment Status
+	finalStatus3 := pollDeploymentStatus(t, client, baseURL, token, deploymentID3, 30, 5*time.Second)
+	t.Logf("deployment %s final status: %s", deploymentID3, finalStatus3)
+
+	// Assert deployment state (best-effort)
+	switch finalStatus3 {
+	case "rolled_back":
+		// OK; terminal
+		return
+	case "failed", "success", "cancelled":
 		// Unrecognized/empty; treat as non-terminal
 		fallthrough
 	default:
@@ -268,6 +316,14 @@ func startDeployment(t *testing.T, client *http.Client, baseURL, token string, i
 		t.Fatalf("create deployment returned no id: body=%s", string(body))
 	}
 	return id
+}
+
+func rollbackDeployment(t *testing.T, client *http.Client, baseURL, token string, id string) {
+	url := fmt.Sprintf("%s/api/v1/deployments/%s/rollback", baseURL, id)
+	status, body := httpJSON(t, client, http.MethodPost, url, token, nil)
+	if status != http.StatusCreated && status != http.StatusOK {
+		t.Fatalf("create deployment failed: status=%d body=%s", status, string(body))
+	}
 }
 
 func getDeploymentStatus(t *testing.T, client *http.Client, baseURL, token, deploymentID string) string {

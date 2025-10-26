@@ -36,6 +36,7 @@ func Init(level, format string) error {
 	// 设置输出
 	config.OutputPaths = []string{"stdout"}
 	config.ErrorOutputPaths = []string{"stderr"}
+	config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 
 	// 创建日志器
 	var err error

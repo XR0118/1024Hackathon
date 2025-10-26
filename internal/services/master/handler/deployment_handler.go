@@ -115,11 +115,11 @@ func (h *deploymentHandler) RollbackDeployment(c *gin.Context) {
 		return
 	}
 
-	deployment, err := h.deploymentService.RollbackDeployment(c.Request.Context(), id, &req)
+	err := h.deploymentService.RollbackDeployment(c.Request.Context(), id, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "DEPLOYMENT_ROLLBACK_FAILED", err.Error(), nil)
 		return
 	}
 
-	utils.Success(c, deployment)
+	utils.Success(c, nil)
 }

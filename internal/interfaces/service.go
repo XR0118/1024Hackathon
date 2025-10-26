@@ -38,7 +38,7 @@ type DeploymentService interface {
 	GetDeploymentList(ctx context.Context, req *models.ListDeploymentsRequest) (*models.DeploymentListResponse, error)
 	GetDeployment(ctx context.Context, id string) (*models.Deployment, error)
 	StartDeployment(ctx context.Context, id string) (*models.Deployment, error)
-	RollbackDeployment(ctx context.Context, id string, req *models.RollbackRequest) (*models.Deployment, error)
+	RollbackDeployment(ctx context.Context, id string, req *models.RollbackRequest) error
 }
 
 // TaskService 任务服务接口
